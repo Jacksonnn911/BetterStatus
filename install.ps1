@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$Repository = "Jacksonnn911/StatusHotkeys"
+$Repository = "Jacksonnn911/BetterStatus"
 $PluginName = "betterStatus"
 $PluginUrl = "https://github.com/$Repository/releases/latest/download/better-status.zip"
 $VencordUrl = "https://github.com/Vendicated/Vencord/archive/refs/heads/main.zip"

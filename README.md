@@ -46,13 +46,13 @@ Before downloading Vencord, the installer searches the current directory and com
 **macOS or Linux:**
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/StatusHotkeys/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/install.sh | bash
 ```
 
 **Windows PowerShell:**
 
 ```powershell
-irm https://raw.githubusercontent.com/Jacksonnn911/StatusHotkeys/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/install.ps1 | iex
 ```
 
 Answer the prompts and choose Discord Desktop or Vesktop at the end. No knowledge of Node.js or package managers is required.
@@ -64,7 +64,7 @@ Because Vencord does not publish a macOS CLI executable, each BetterStatus relea
 On macOS, Discord must be installed at `/Applications/Discord.app`. Immediately before patching, the installer runs `sudo chown -R "$USER":wheel /Applications/Discord.app` and asks for the account password. This gives the current user ownership of the Discord application bundle so it can be patched.
 
 > [!TIP]
-> If your Vencord source is in a non-standard location, set `VENCORD_DIR` for the shell that runs the installer. For example: `curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/StatusHotkeys/main/install.sh | VENCORD_DIR=/path/to/Vencord bash`.
+> If your Vencord source is in a non-standard location, set `VENCORD_DIR` for the shell that runs the installer. For example: `curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/install.sh | VENCORD_DIR=/path/to/Vencord bash`.
 
 > [!NOTE]
 > Piping a remote script into a shell runs code from the internet. You can [inspect `install.sh`](./install.sh) or [inspect `install.ps1`](./install.ps1) before running it.
@@ -91,7 +91,7 @@ From your Vencord directory, create the user plugin directory and extract the la
 
 ```sh
 mkdir -p src/userplugins/betterStatus
-curl -fsSL https://github.com/Jacksonnn911/StatusHotkeys/releases/latest/download/better-status.tar.gz \
+curl -fsSL https://github.com/Jacksonnn911/BetterStatus/releases/latest/download/better-status.tar.gz \
     | tar -xz -C src/userplugins/betterStatus
 ```
 

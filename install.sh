@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-REPOSITORY="Jacksonnn911/StatusHotkeys"
+REPOSITORY="Jacksonnn911/BetterStatus"
 PLUGIN_NAME="betterStatus"
 PLUGIN_URL="https://github.com/${REPOSITORY}/releases/latest/download/better-status.tar.gz"
 VENCORD_URL="https://github.com/Vendicated/Vencord/archive/refs/heads/main.tar.gz"

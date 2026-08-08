@@ -34,7 +34,7 @@ const TYPE_OPTIONS = [
     }
 ];
 
-const PROJECT_URL = "https://github.com/Jacksonnn911/StatusHotkeys";
+const PROJECT_URL = "https://github.com/Jacksonnn911/BetterStatus";
 
 function openProject(path = "") {
     VencordNative.native.openExternal(`${PROJECT_URL}${path}`);
