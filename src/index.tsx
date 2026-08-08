@@ -5,8 +5,8 @@
  */
 
 import { getUserSettingLazy } from "@api/UserSettings";
+import { Paragraph } from "@components/Paragraph";
 import definePlugin from "@utils/types";
-import { Forms } from "@webpack/common";
 
 import { getPresets, savePresets, settings } from "./Settings";
 import type { StatusPreset } from "./types";
@@ -65,20 +65,6 @@ async function rememberActivePreset() {
     ));
 }
 
-function AboutComponent() {
-    return (
-        <Forms.FormText>
-            BetterStatus is an open-source Vencord user plugin by nik_jandaaa27829 (Jacksonnn911). {" "}
-            <a href="https://github.com/Jacksonnn911/BetterStatus" target="_blank" rel="noreferrer">GitHub</a>
-            {" · "}
-            <a href="https://github.com/Jacksonnn911/BetterStatus#usage" target="_blank" rel="noreferrer">Documentation</a>
-            {" · "}
-            <a href="https://github.com/Jacksonnn911/BetterStatus/issues/new" target="_blank" rel="noreferrer">Report an issue</a>
-        </Forms.FormText>
-    );
-}
-
-
 export default definePlugin({
     name: "BetterStatus",
 
@@ -97,7 +83,18 @@ export default definePlugin({
     dependencies: ["UserSettingsAPI"],
 
     settings,
-    settingsAboutComponent: AboutComponent,
+    settingsAboutComponent() {
+        return (
+            <Paragraph>
+                BetterStatus is an open-source Vencord user plugin by nik_jandaaa27829 (Jacksonnn911). {" "}
+                <a href="https://github.com/Jacksonnn911/BetterStatus" target="_blank" rel="noreferrer">GitHub</a>
+                {" · "}
+                <a href="https://github.com/Jacksonnn911/BetterStatus#usage" target="_blank" rel="noreferrer">Documentation</a>
+                {" · "}
+                <a href="https://github.com/Jacksonnn911/BetterStatus/issues/new" target="_blank" rel="noreferrer">Report an issue</a>
+            </Paragraph>
+        );
+    },
 
 
     async triggerPreset(id: string) {
