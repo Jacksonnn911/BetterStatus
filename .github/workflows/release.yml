@@ -14,6 +14,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build-macos-cli:
+    name: Build headless macOS installer
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out official Vencord Installer source
+        uses: actions/checkout@v4
+        with:
+          repository: Vencord/Installer
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build CLI for Intel and Apple Silicon
+        run: |
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -tags cli -o vencord-installer-cli-macos-x64 .
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -tags cli -o vencord-installer-cli-macos-arm64 .
+
+      - name: Upload macOS CLI binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: vencord-installer-cli-macos
+          path: vencord-installer-cli-macos-*
+
   compatibility-test:
     name: Test on Node ${{ matrix.node }}
     runs-on: ubuntu-latest
@@ -61,7 +87,9 @@ jobs:
           pnpm build
 
   release:
-    needs: compatibility-test
+    needs:
+      - compatibility-test
+      - build-macos-cli
     runs-on: ubuntu-latest
 
     steps:
@@ -77,13 +105,21 @@ jobs:
           bash -n install.sh
           pwsh -NoProfile -Command '$tokens = $null; $errors = $null; [System.Management.Automation.Language.Parser]::ParseFile("install.ps1", [ref]$tokens, [ref]$errors) > $null; if ($errors.Count) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }'
 
+      - name: Download headless macOS installer binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: vencord-installer-cli-macos
+          path: macos-cli
+
       - name: Create release packages
         run: |
           mkdir -p package
           cp index.tsx Settings.tsx native.ts types.ts README.md package/
           tar -C package -czf status-hotkeys.tar.gz .
           (cd package && zip -qr ../status-hotkeys.zip .)
-          sha256sum status-hotkeys.tar.gz status-hotkeys.zip > SHA256SUMS.txt
+          cp macos-cli/vencord-installer-cli-macos-* .
+          chmod +x vencord-installer-cli-macos-*
+          sha256sum status-hotkeys.tar.gz status-hotkeys.zip vencord-installer-cli-macos-* > SHA256SUMS.txt
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
@@ -95,6 +131,7 @@ jobs:
             SHA256SUMS.txt
             install.sh
             install.ps1
+            vencord-installer-cli-macos-*
 
       - name: Replace rolling GitHub release
         env:
@@ -107,6 +144,8 @@ jobs:
             SHA256SUMS.txt \
             install.sh \
             install.ps1 \
+            vencord-installer-cli-macos-x64 \
+            vencord-installer-cli-macos-arm64 \
             --target "$GITHUB_SHA" \
             --title "Latest StatusHotkeys build" \
             --notes "Automated build from commit $GITHUB_SHA. This rolling release is replaced after every push to main." \

@@ -213,8 +213,38 @@ printf '\nWhich Discord client do you use?\n  1) Discord Desktop\n  2) Vesktop\n
 read -r client_choice </dev/tty || true
 case "${client_choice:-1}" in
     1)
-        info "Opening the Vencord installer. Select your Discord installation when asked."
-        pnpm --dir "$vencord_dir" inject
+        installer_script="$vencord_dir/scripts/runInstaller.mjs"
+        [ -f "$installer_script" ] || fail "Vencord's installer script was not found."
+        if [ "$(uname -s)" = "Darwin" ]; then
+            discord_app="/Applications/Discord.app"
+            [ -d "$discord_app" ] ||
+                fail "Discord was not found at $discord_app. Install Discord in Applications and rerun this installer."
+            current_user="$(id -un)"
+            case "$(uname -m)" in
+                x86_64|amd64) cli_arch="x64" ;;
+                arm64|aarch64) cli_arch="arm64" ;;
+                *) fail "Unsupported macOS CPU architecture: $(uname -m)" ;;
+            esac
+            cli_name="vencord-installer-cli-macos-$cli_arch"
+            cli_path="$temporary_dir/$cli_name"
+            info "Downloading the headless Vencord installer"
+            download "https://github.com/${REPOSITORY}/releases/latest/download/$cli_name" "$cli_path"
+            download "https://github.com/${REPOSITORY}/releases/latest/download/SHA256SUMS.txt" "$temporary_dir/SHA256SUMS.txt"
+            expected_cli_hash="$(awk -v file="$cli_name" '$2 == file { print $1 }' "$temporary_dir/SHA256SUMS.txt")"
+            actual_cli_hash="$(shasum -a 256 "$cli_path" | awk '{print $1}')"
+            [ -n "$expected_cli_hash" ] && [ "$actual_cli_hash" = "$expected_cli_hash" ] ||
+                fail "The headless Vencord installer checksum did not match."
+            chmod +x "$cli_path"
+
+            info "Correcting ownership of $discord_app (macOS will ask for your password)"
+            sudo chown -R "$current_user:wheel" "$discord_app"
+            info "Installing the custom Vencord build into Discord without opening a GUI"
+            VENCORD_USER_DATA_DIR="$vencord_dir" VENCORD_DEV_INSTALL=1 \
+                "$cli_path" --install --location "$discord_app"
+        else
+            info "Installing the custom Vencord build into Discord without opening the installer GUI"
+            node "$installer_script" -- --install --branch auto
+        fi
         printf '\nRestart Discord, enable StatusHotkeys under Vencord > Plugins, and you are done.\n'
         ;;
     2)

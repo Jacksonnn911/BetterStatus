@@ -36,7 +36,7 @@ The guided installer is designed for non-technical users. It checks the computer
 - Install pnpm privately without administrator access
 - Download Vencord without requiring Git
 - Download and build StatusHotkeys
-- Open the Discord Desktop injector or show the exact Vesktop folder to select
+- Patch Discord Desktop non-interactively or show the exact Vesktop folder to select
 
 Files managed by the installer are kept inside your user data directory, not installed system-wide.
 
@@ -55,6 +55,10 @@ irm https://raw.githubusercontent.com/Jacksonnn911/StatusHotkeys/main/install.ps
 ```
 
 Answer the prompts and choose Discord Desktop or Vesktop at the end. No knowledge of Node.js or package managers is required.
+
+For Discord Desktop, the installer uses Vencord's CLI with `--install` and an automatically selected location; it does not open the Vencord installer GUI. Because Vencord does not publish a macOS CLI executable, each StatusHotkeys release builds the CLI directly from the official [`Vencord/Installer`](https://github.com/Vencord/Installer) source for Intel and Apple Silicon Macs. The downloaded binary is verified against the release's SHA-256 checksums before execution.
+
+On macOS, Discord must be installed at `/Applications/Discord.app`. Immediately before patching, the installer runs `sudo chown -R "$USER":wheel /Applications/Discord.app` and asks for the account password. This gives the current user ownership of the Discord application bundle so it can be patched.
 
 > [!TIP]
 > If your Vencord source is in a non-standard location, set `VENCORD_DIR` for the shell that runs the installer. For example: `curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/StatusHotkeys/main/install.sh | VENCORD_DIR=/path/to/Vencord bash`.
@@ -210,4 +214,4 @@ The main files are:
 
 ## Automated releases
 
-Every push to `main` runs the GitHub Actions release workflow. Before publishing, it installs the plugin into a clean Vencord checkout and builds it on Node.js 22 and 24 with pnpm 11. It then validates the installer, creates `.tar.gz` and `.zip` plugin packages, generates SHA-256 checksums, uploads workflow artifacts, and replaces the rolling `latest` GitHub release used by the installers.
+Every push to `main` runs the GitHub Actions release workflow. Before publishing, it installs the plugin into a clean Vencord checkout and builds it on Node.js 22 and 24 with pnpm 11. It also builds headless macOS Vencord CLI binaries from the official installer source for Intel and Apple Silicon. It then validates the installers, creates `.tar.gz` and `.zip` plugin packages, generates SHA-256 checksums, uploads workflow artifacts, and replaces the rolling `latest` GitHub release used by the installers.

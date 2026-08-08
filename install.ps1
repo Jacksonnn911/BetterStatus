@@ -214,8 +214,12 @@ try {
         }
         "3" { Write-Host "`nBuild complete. Vencord is located at: $VencordDir" }
         default {
-            Write-Step "Opening the Vencord installer. Select your Discord installation when asked."
-            pnpm --dir $VencordDir inject
+            $InstallerScript = Join-Path $VencordDir "scripts\runInstaller.mjs"
+            if (-not (Test-Path $InstallerScript)) {
+                throw "Vencord's installer script was not found."
+            }
+            Write-Step "Installing the custom Vencord build into Discord without opening the installer GUI"
+            node $InstallerScript -- --install --branch auto
             Write-Host "`nRestart Discord, enable StatusHotkeys under Vencord > Plugins, and you are done." -ForegroundColor Green
         }
     }
