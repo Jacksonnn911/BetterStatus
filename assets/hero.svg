@@ -44,7 +44,7 @@
       <circle cx="42" cy="43" r="8" fill="#ef4d5d"/>
       <text x="66" y="49" fill="white" font-size="22" font-weight="700">Deep focus</text>
       <text x="332" y="48" fill="#f8a9b0" font-size="13" font-weight="700">DND</text>
-      <text x="42" y="83" fill="#a8a6b5" font-size="16">Heads down. Shipping something good.</text>
+      <text x="42" y="83" fill="#a8a6b5" font-size="16">Heads down. Shipping.</text>
       <rect x="286" y="70" width="90" height="28" rx="7" fill="#252333"/>
       <text x="331" y="89" text-anchor="middle" fill="#c9c7d3" font-size="13">⌘ + Shift + 1</text>
     </g>
