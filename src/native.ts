@@ -37,6 +37,12 @@ interface UpdateManifest {
     files: ManifestFile[];
 }
 
+interface GitHubBranchReference {
+    object?: {
+        sha?: unknown;
+    };
+}
+
 interface UpdateResult {
     status: "disabled" | "current" | "updated" | "failed";
     version?: string;
@@ -98,8 +104,21 @@ async function fetchText(url: string) {
     return response.text();
 }
 
-function manifestUrl(channel: UpdateChannel) {
-    return `https://raw.githubusercontent.com/${REPOSITORY}/${channel}/files.json?checkedAt=${Date.now()}`;
+async function fetchManifest(channel: UpdateChannel) {
+    const reference = JSON.parse(await fetchText(
+        `https://api.github.com/repos/${REPOSITORY}/git/ref/heads/${channel}`
+    )) as GitHubBranchReference;
+    const head = reference.object?.sha;
+
+    if (typeof head !== "string" || !/^[0-9a-f]{40}$/i.test(head))
+        throw new Error(`GitHub returned an invalid ${channel} branch reference.`);
+
+    return parseManifest(
+        JSON.parse(await fetchText(
+            `https://raw.githubusercontent.com/${REPOSITORY}/${head}/files.json`
+        )),
+        channel
+    );
 }
 
 async function fetchBytes(url: string) {
@@ -193,10 +212,7 @@ export async function getUpdateInfo(
     requestedChannel: UpdateChannel = "prod"
 ): Promise<UpdateInfo> {
     const channel: UpdateChannel = requestedChannel === "dev" ? "dev" : "prod";
-    const manifest = parseManifest(
-        JSON.parse(await fetchText(manifestUrl(channel))),
-        channel
-    );
+    const manifest = await fetchManifest(channel);
     const installed = parseInstalledVersion(await readFile(VERSION_FILE, "utf8").catch(() => ""));
     const status = pendingRestartVersion === `${channel}:${manifest.commit}`
         ? "restartRequired"
@@ -233,10 +249,7 @@ async function copyWithParents(source: string, destination: string) {
 }
 
 async function performUpdate(channel: UpdateChannel): Promise<UpdateResult> {
-    const manifest = parseManifest(
-        JSON.parse(await fetchText(manifestUrl(channel))),
-        channel
-    );
+    const manifest = await fetchManifest(channel);
     const remoteTargets = new Set(manifest.files.map(file => file.target));
     const previousTargets = await readPreviousTargets();
     const obsoleteTargets = [...new Set([
