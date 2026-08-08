@@ -15,10 +15,51 @@ fail() {
     exit 1
 }
 
-for command_name in git node pnpm curl tar; do
+for command_name in git node curl tar; do
     command -v "$command_name" >/dev/null 2>&1 ||
-        fail "Missing '$command_name'. Install Git, Node.js, and pnpm, then run this command again."
+        fail "Missing '$command_name'. Install Git and Node.js, then run this command again."
 done
+
+node_major="$(node --version | sed 's/^v//' | cut -d. -f1)"
+[ "$node_major" -ge 22 ] || fail "Vencord requires Node.js 22 or newer (found $(node --version))."
+
+if ! command -v pnpm >/dev/null 2>&1; then
+    if command -v bun >/dev/null 2>&1; then
+        installer_name="Bun"
+        install_command=(bun add --global pnpm@11.9.0)
+    elif command -v yarn >/dev/null 2>&1; then
+        installer_name="Yarn"
+        install_command=(yarn global add pnpm@11.9.0)
+    elif command -v corepack >/dev/null 2>&1; then
+        installer_name="Corepack"
+        install_command=(corepack install --global pnpm@11.9.0)
+    elif command -v npm >/dev/null 2>&1; then
+        installer_name="npm"
+        install_command=(npm install --global pnpm@11.9.0)
+    else
+        fail "Vencord requires pnpm, and no Bun, Yarn, Corepack, or npm installation method was found."
+    fi
+
+    printf "pnpm is required by Vencord but is not installed. Install it with %s? [Y/n] " "$installer_name"
+    if [ -r /dev/tty ]; then
+        read -r answer </dev/tty
+    else
+        fail "Cannot ask for confirmation without a terminal. Install pnpm 11 manually and rerun the installer."
+    fi
+
+    case "${answer:-y}" in
+        y|Y|yes|YES|Yes)
+            info "Installing pnpm 11 with $installer_name"
+            "${install_command[@]}"
+            ;;
+        *)
+            fail "pnpm installation declined. No changes were made."
+            ;;
+    esac
+
+    command -v pnpm >/dev/null 2>&1 ||
+        fail "pnpm was installed but is not available on PATH. Restart your terminal and run the installer again."
+fi
 
 if [ -n "${VENCORD_DIR:-}" ]; then
     vencord_dir="$VENCORD_DIR"
@@ -61,4 +102,3 @@ pnpm --dir "$vencord_dir" build
 printf '\nStatusHotkeys is installed and Vencord was built successfully.\n'
 printf 'Discord Desktop: run  cd %q && pnpm inject  and restart Discord.\n' "$vencord_dir"
 printf 'Vesktop: select %s/dist as the Vencord Location, then restart Vesktop.\n' "$vencord_dir"
-

@@ -14,7 +14,50 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  compatibility-test:
+    name: Test on Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node:
+          - 22
+          - 24
+
+    steps:
+      - name: Check out StatusHotkeys
+        uses: actions/checkout@v4
+        with:
+          path: statusHotkeys
+
+      - name: Check out Vencord
+        uses: actions/checkout@v4
+        with:
+          repository: Vendicated/Vencord
+          path: Vencord
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Add plugin to Vencord
+        run: |
+          mkdir -p Vencord/src/userplugins/statusHotkeys
+          cp statusHotkeys/index.tsx statusHotkeys/Settings.tsx statusHotkeys/native.ts statusHotkeys/types.ts Vencord/src/userplugins/statusHotkeys/
+
+      - name: Install dependencies and build
+        working-directory: Vencord
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
   release:
+    needs: compatibility-test
     runs-on: ubuntu-latest
 
     steps:
@@ -63,4 +106,3 @@ jobs:
             --title "Latest StatusHotkeys build" \
             --notes "Automated build from commit $GITHUB_SHA. This rolling release is replaced after every push to main." \
             --latest
-

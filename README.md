@@ -2,6 +2,8 @@
 
 StatusHotkeys is a custom [Vencord](https://vencord.dev/) plugin that lets you create Discord status presets and activate them with system-wide keyboard shortcuts—even while Discord is in the background.
 
+Created by [Jacksonnn911](https://github.com/Jacksonnn911).
+
 Each preset can define:
 
 - A display name
@@ -17,7 +19,8 @@ Each preset can define:
 
 - Discord Desktop or [Vesktop](https://vesktop.vencord.dev/)
 - A [Vencord source installation](https://docs.vencord.dev/installing/)
-- Git, Node.js, and pnpm
+- Git and Node.js 22 or newer
+- pnpm 11 (the installer can install it after asking for permission)
 
 The plugin uses Electron's native global shortcut API, so browser and userscript builds are not supported.
 
@@ -27,7 +30,7 @@ The plugin uses Electron's native global shortcut API, so browser and userscript
 
 The installer finds your Vencord source checkout automatically. If one does not exist, it clones Vencord into `~/Vencord` and installs its dependencies. It then downloads the latest StatusHotkeys release and builds Vencord.
 
-You still need Git, Node.js, and pnpm installed. See the [Vencord prerequisites](https://docs.vencord.dev/installing/#prerequisites).
+You need Git and Node.js 22 or newer. If pnpm is missing, the installer detects Bun, Yarn, Corepack, or npm and asks before using the available tool to install pnpm. See the [Vencord prerequisites](https://docs.vencord.dev/installing/#prerequisites).
 
 **macOS or Linux:**
 
@@ -48,6 +51,20 @@ After the build finishes, follow the printed instruction for Discord Desktop or 
 
 > [!NOTE]
 > Piping a remote script into a shell runs code from the internet. You can [inspect `install.sh`](./install.sh) or [inspect `install.ps1`](./install.ps1) before running it.
+
+### Runtime compatibility
+
+| Runtime/tool | Status | Notes |
+| --- | --- | --- |
+| Node.js 22 | Tested | Built in GitHub Actions on every release |
+| Node.js 24 | Tested | Built in GitHub Actions on every release |
+| Node.js 20 or older | Unsupported | Current Vencord requires Node.js 22 or newer |
+| pnpm 11 | Supported | Vencord's declared package manager; used for installation and builds |
+| Bun | Bootstrap only | Detected and can install pnpm, but does not directly build Vencord |
+| Yarn | Bootstrap only | Detected and can install pnpm, but does not directly build Vencord |
+| npm/Corepack | Bootstrap only | Fallback methods for installing pnpm |
+
+Bun is not the default build tool because Vencord currently declares `pnpm@11.9.0`, uses a pnpm workspace with patched dependencies, and calls pnpm from its own scripts. The installer prefers an existing pnpm installation. If pnpm is absent, Bun is the first bootstrap option, followed by Yarn, Corepack, and npm.
 
 ### Manual installation
 
@@ -179,4 +196,4 @@ The main files are:
 
 ## Automated releases
 
-Every push to `main` runs the GitHub Actions release workflow. It validates the installer, creates `.tar.gz` and `.zip` plugin packages, generates SHA-256 checksums, uploads workflow artifacts, and replaces the rolling `latest` GitHub release used by the installers.
+Every push to `main` runs the GitHub Actions release workflow. Before publishing, it installs the plugin into a clean Vencord checkout and builds it on Node.js 22 and 24 with pnpm 11. It then validates the installer, creates `.tar.gz` and `.zip` plugin packages, generates SHA-256 checksums, uploads workflow artifacts, and replaces the rolling `latest` GitHub release used by the installers.
