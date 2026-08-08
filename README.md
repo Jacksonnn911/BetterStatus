@@ -50,62 +50,18 @@ The guided installer detects your tools, reuses existing Vencord source code, bu
 > [!IMPORTANT]
 > BetterStatus is a third-party user plugin. Custom plugins require a source build and are not supported by the official Vencord support team.
 
-## Features
+## What makes BetterStatus different
 
-### Status switching
+| | Standout feature | Why it matters |
+| --- | --- | --- |
+| ⚡ | **True global shortcuts** | Change both your custom status and Discord presence from any app—without opening Discord. |
+| 🧠 | **Memory presets** | BetterStatus learns manual status changes made while a preset is active and restores the latest one next time. |
+| 📚 | **A status library inside Discord** | Search, favorite, and reuse up to 1,000 past statuses directly from Discord's own **Set your status** dialog. |
+| ↩️ | **Presence that survives restarts** | Your last active preset, custom text, and Online, Idle, DND, or Invisible state return when Discord starts. |
+| 🛡️ | **Updates built for custom plugins** | Get SHA-256-verified incremental updates, visible version state, Development opt-in, and automatic rollback if a rebuild fails. |
+| ✨ | **Actually easy to install** | One guided command finds or installs every build tool, builds Vencord, and patches Discord on macOS, Linux, and Windows. |
 
-| Feature | What it gives you |
-| --- | --- |
-| ⚡ **System-wide shortcuts** | Switch your status from any application without opening Discord. |
-| ♾️ **Unlimited presets** | Create as many focused profiles as you need for work, gaming, sleep, streaming, and more. |
-| 🧠 **Fixed and Memory behavior** | Always apply exact text, or remember manual status changes made while a preset is active. |
-| 🟢 **Complete presence control** | Pair custom text with Online, Idle, Do Not Disturb, or Invisible. |
-| ↩️ **Startup restoration** | Restore the last active preset, including its custom text and presence, when Discord starts. |
-
-### Preset workspace
-
-| Feature | What it gives you |
-| --- | --- |
-| 🔎 **Instant search** | Filter presets by name, status text, shortcut, presence, or behavior. |
-| 🎛️ **Live dashboard** | See total, active, and Memory counts with the current preset clearly highlighted. |
-| 🗂️ **Collapsible editor** | Expand one preset at a time, collapse everything, or open all editors together. |
-| 🧬 **Safe duplication** | Create a preset variant that starts disabled and without a copied shortcut, avoiding conflicts. |
-| ⌨️ **Shortcut recorder** | Record or cancel global key combinations directly inside each preset. |
-| 🎨 **Discord-style controls** | Edit presence through the familiar Online, Idle, Do Not Disturb, and Invisible picker. |
-
-### Saved-status library
-
-| Feature | What it gives you |
-| --- | --- |
-| 📚 **Up to 1,000 saved statuses** | Keep a reusable history directly inside Discord's existing **Set your status** dialog. |
-| ⭐ **Favorites first** | Pin important statuses above recent entries while preserving their usage history. |
-| 🔍 **Search and reuse** | Find and apply an old status without reopening BetterStatus settings. |
-| 🧹 **History controls** | Favorite or remove individual entries, with duplicate text normalized automatically. |
-
-### Updates and safety
-
-| Feature | What it gives you |
-| --- | --- |
-| 🔄 **Production and Development channels** | Stay on stable Production by default or explicitly opt into early Development builds. |
-| ⚠️ **Development confirmation** | Require acknowledgement of the instability and no-warranty warning before changing channels. |
-| 🕒 **Flexible update schedule** | Check only at startup or automatically every 15 minutes through once per day. |
-| 🔎 **Manual update checks** | Check on demand and see the installed commit, latest commit, channel, and last-check time. |
-| 🛡️ **Verified incremental updates** | Download only changed files from an immutable commit and verify every SHA-256 hash. |
-| 🧯 **Safe rebuild and rollback** | Rebuild Vencord after an update and restore the previous plugin files if that build fails. |
-| 🚦 **Clear version state** | Distinguish Up to date, Update available, Restart required, and Version unavailable at a glance. |
-| 🔁 **Optional automatic restart** | Apply an installed update immediately by opting into a Discord relaunch. |
-
-### Installation and compatibility
-
-| Feature | What it gives you |
-| --- | --- |
-| 🧰 **One-command setup** | Install or repair BetterStatus from Terminal or PowerShell on macOS, Linux, and Windows. |
-| 🔍 **Existing Vencord discovery** | Search common project folders and reuse an existing Vencord source checkout automatically. |
-| 📦 **Self-contained build tools** | Detect Node, Bun, Yarn, and pnpm, then privately install compatible Node.js and pnpm when required. |
-| 🔐 **Verified downloads** | Validate downloaded Node.js archives and macOS Vencord CLI binaries before using them. |
-| 🧩 **Real user-plugin install** | Place BetterStatus in Vencord's user-plugin directory and build it as part of Vencord. |
-| 🤖 **Headless Discord patching** | Patch Discord without opening the Vencord installer GUI; close and relaunch it only when necessary. |
-| 🖥️ **Discord and Vesktop guidance** | Configure Discord Desktop automatically or print the exact Vencord build path Vesktop needs. |
+Everything else—unlimited presets, instant search, safe duplication, a shortcut recorder, collapsible editors, configurable update schedules, and optional automatic restarts—is included without turning this page into a wall of features. See [Usage](#usage) for the full workflow.
 
 <p align="center">
   Crafted by <a href="https://github.com/Jacksonnn911"><strong>Jacksonnn911</strong></a> (<code>nik_jandaaa27829</code>) and <a href="https://github.com/qtmisaliba"><strong>qtmisaliba</strong></a> (<code>qtmisaliba</code>).
