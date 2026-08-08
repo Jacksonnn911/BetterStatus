@@ -549,7 +549,7 @@ export default function SettingsComponent() {
                         />
                       </div>
 
-                      <label className="bs-field">
+                      <div className="bs-field">
                         <span>Behavior</span>
                         <Select
                           options={TYPE_OPTIONS}
@@ -562,7 +562,7 @@ export default function SettingsComponent() {
                           isSelected={value => value === preset.type}
                           closeOnSelect
                         />
-                      </label>
+                      </div>
 
                       <label className="bs-field bs-field-status">
                         <span>
