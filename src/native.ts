@@ -163,12 +163,12 @@ async function performUpdate(channel: UpdateChannel): Promise<UpdateResult> {
 export function checkForUpdates(
     _event: IpcMainInvokeEvent,
     enabled: boolean,
-    requestedChannel: UpdateChannel = "production"
+    requestedChannel: UpdateChannel = "prod"
 ) {
     if (!enabled)
         return Promise.resolve<UpdateResult>({ status: "disabled" });
 
-    const channel: UpdateChannel = requestedChannel === "dev" ? "dev" : "production";
+    const channel: UpdateChannel = requestedChannel === "dev" ? "dev" : "prod";
 
     return updatePromise ??= performUpdate(channel)
         .catch(error => ({

@@ -1393,12 +1393,29 @@
 }
 
 .bs-card-header .vc-form-switch-wrapper {
+    display: flex;
+    height: 32px;
+    align-items: center;
     flex: 0 0 auto;
+    margin: 0;
 }
 
 .bs-card-header .vc-form-switch {
+    width: auto;
+    height: 32px;
+    align-items: center;
     gap: 8px;
     padding: 0;
+}
+
+.bs-card-header .vc-form-switch > :last-child {
+    margin-left: 0;
+}
+
+.bs-card-header .vc-form-switch-text {
+    height: 32px;
+    justify-content: center;
+    gap: 0;
 }
 
 .bs-collapse-button {
@@ -1637,7 +1654,7 @@
 
 .bs-status-menu {
     position: absolute;
-    z-index: 100;
+    z-index: 1000;
     top: calc(100% + 7px);
     right: 0;
     overflow: hidden;
@@ -1646,17 +1663,16 @@
     border: 1px solid var(--background-modifier-accent);
     border-radius: 12px;
     color: var(--interactive-normal);
-    background:
-        linear-gradient(var(--background-floating), var(--background-floating)),
-        #111214;
-    backdrop-filter: none;
+    background-color: #111214 !important;
+    background-image: none !important;
+    backdrop-filter: none !important;
+    isolation: isolate;
+    opacity: 1 !important;
     box-shadow: 0 16px 40px rgb(0 0 0 / 40%), 0 0 0 1px rgb(0 0 0 / 12%);
 }
 
 .theme-light .bs-status-menu {
-    background:
-        linear-gradient(var(--background-floating), var(--background-floating)),
-        #fff;
+    background-color: #fff !important;
 }
 
 .bs-status-menu-label {

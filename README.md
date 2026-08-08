@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/production/assets/hero.svg?v=685c6dd" alt="BetterStatus — Your Discord presence, one shortcut away" width="100%">
+  <img src="https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/prod/assets/hero.svg?v=685c6dd" alt="BetterStatus — Your Discord presence, one shortcut away" width="100%">
 </p>
 
 <p align="center">
-  <a href="https://github.com/Jacksonnn911/BetterStatus/actions/workflows/release.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/Jacksonnn911/BetterStatus/release.yml?branch=production&amp;style=for-the-badge&amp;logo=githubactions&amp;logoColor=white&amp;label=Build"></a>
+  <a href="https://github.com/Jacksonnn911/BetterStatus/actions/workflows/release.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/Jacksonnn911/BetterStatus/release.yml?branch=prod&amp;style=for-the-badge&amp;logo=githubactions&amp;logoColor=white&amp;label=Build"></a>
   <a href="https://github.com/Jacksonnn911/BetterStatus/releases/tag/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Jacksonnn911/BetterStatus?display_name=tag&amp;style=for-the-badge&amp;logo=github&amp;label=Release"></a>
   <img alt="Node 22 and 24" src="https://img.shields.io/badge/Node-22%20%7C%2024-5FA04E?style=for-the-badge&amp;logo=nodedotjs&amp;logoColor=white">
   <img alt="macOS, Linux and Windows" src="https://img.shields.io/badge/macOS%20%7C%20Linux%20%7C%20Windows-5865F2?style=for-the-badge&amp;logo=discord&amp;logoColor=white">
@@ -34,7 +34,7 @@ No Node.js knowledge, Git setup, or manual Vencord patching required.
 Open **Terminal**, paste this command, and press Enter:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/production/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/prod/install.sh | bash
 ```
 
 ### 🪟 Windows
@@ -42,7 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/productio
 Open **PowerShell**, paste this command, and press Enter:
 
 ```powershell
-irm https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/production/install.ps1 | iex
+irm https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/prod/install.ps1 | iex
 ```
 
 The guided installer detects your tools, reuses existing Vencord source code, builds BetterStatus, and patches Discord with simple prompts.
@@ -102,7 +102,7 @@ Because Vencord does not publish a macOS CLI executable, each BetterStatus relea
 On macOS, Discord must be installed at `/Applications/Discord.app`. Immediately before patching, the installer runs `sudo chown -R "$USER":wheel /Applications/Discord.app` and asks for the account password. This gives the current user ownership of the Discord application bundle so it can be patched.
 
 > [!TIP]
-> If your Vencord source is in a non-standard location, set `VENCORD_DIR` for the shell that runs the installer. For example: `curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/production/install.sh | VENCORD_DIR=/path/to/Vencord bash`.
+> If your Vencord source is in a non-standard location, set `VENCORD_DIR` for the shell that runs the installer. For example: `curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/prod/install.sh | VENCORD_DIR=/path/to/Vencord bash`.
 
 > [!NOTE]
 > Piping a remote script into a shell runs code from the internet. You can [inspect `install.sh`](./install.sh) or [inspect `install.ps1`](./install.ps1) before running it.
@@ -173,7 +173,7 @@ Changes are saved immediately. Press the shortcut from any application to activa
 
 BetterStatus remembers the last active preset and restores its custom status and presence whenever Discord starts. For a Memory preset, the current Discord status is captured before restoration so manual changes are retained across restarts.
 
-To receive new BetterStatus releases automatically, enable **Auto Update** at the top of the plugin settings. The update channel defaults to **Production**, which follows the `production` branch. Users who want changes earlier can explicitly select **Development** to follow the `dev` branch. BetterStatus checks the selected branch when Discord starts, downloads that branch's latest commit, and rebuilds the existing Vencord source installation with rollback on failure. The currently running Discord session is not interrupted; restart Discord when the update notification appears. Auto Update is off by default, and the production one-command installer remains the manual recovery/update method.
+To receive new BetterStatus releases automatically, enable **Auto Update** at the top of the plugin settings. The update channel defaults to **Production**, which follows the `prod` branch. Users who want changes earlier can explicitly select **Development** to follow the `dev` branch. BetterStatus checks the selected branch when Discord starts, downloads that branch's latest commit, and rebuilds the existing Vencord source installation with rollback on failure. The currently running Discord session is not interrupted; restart Discord when the update notification appears. Auto Update is off by default, and the production one-command installer remains the manual recovery/update method.
 
 Press `Escape` while recording to cancel. A preset can be temporarily disabled with its **Enabled** switch or permanently removed with **Delete Status**.
 
@@ -297,4 +297,4 @@ The main files are:
 
 ## Automated releases
 
-Every push to `production` or `dev` runs compatibility builds on Node.js 22 and 24 with pnpm 11. Only `production` publishes: it builds headless macOS Vencord CLI binaries from the official installer source, validates the installers, creates `.tar.gz` and `.zip` plugin packages, generates SHA-256 checksums, uploads workflow artifacts, and replaces the rolling `latest` GitHub release used by the production installers. The `dev` branch remains available only to users who explicitly subscribe to the Development channel.
+Every push to `prod` or `dev` runs compatibility builds on Node.js 22 and 24 with pnpm 11. Only `prod` publishes: it builds headless macOS Vencord CLI binaries from the official installer source, validates the installers, creates `.tar.gz` and `.zip` plugin packages, generates SHA-256 checksums, uploads workflow artifacts, and replaces the rolling `latest` GitHub release used by the production installers. The `dev` branch remains available only to users who explicitly subscribe to the Development channel.

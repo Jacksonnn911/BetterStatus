@@ -63,7 +63,7 @@ const TYPE_OPTIONS = [
 const UPDATE_CHANNEL_OPTIONS = [
   {
     label: "Production (recommended)",
-    value: "production",
+    value: "prod",
   },
   {
     label: "Development",
@@ -153,7 +153,7 @@ export default function SettingsComponent() {
   const [checkingForUpdates, setCheckingForUpdates] = React.useState(false);
   const [updateStatus, setUpdateStatus] = React.useState<string | null>(null);
   const selectedUpdateChannel: UpdateChannel =
-    updateChannel === "dev" ? "dev" : "production";
+    updateChannel === "dev" ? "dev" : "prod";
 
   async function checkForUpdates() {
     if (checkingForUpdates) return;
@@ -645,7 +645,7 @@ export const settings = definePluginSettings({
   },
   updateChannel: {
     type: OptionType.CUSTOM,
-    default: "production" as UpdateChannel,
+    default: "prod" as UpdateChannel,
   },
   presets: {
     type: OptionType.CUSTOM,
@@ -696,7 +696,7 @@ export function rememberSavedStatus(text: string) {
 }
 
 export function getUpdateChannel(): UpdateChannel {
-  const channel = settings.store.updateChannel === "dev" ? "dev" : "production";
+  const channel = settings.store.updateChannel === "dev" ? "dev" : "prod";
 
   if (settings.store.updateChannel !== channel)
     settings.store.updateChannel = channel;
