@@ -77,11 +77,11 @@ export default definePlugin({
 
     authors: [
         {
-            name: "nik_jandaaa27829 (Jacksonnn911)",
+            name: "nik_jandaaa27829",
             id: 523075512579522562n
         },
         {
-            name: "misaliba (qtmisaliba)",
+            name: "misaliba",
             id: 686582690597568520n
         }
     ],
@@ -95,6 +95,9 @@ export default definePlugin({
                 <Paragraph>
                     BetterStatus provides configurable Discord status presets with system-wide hotkeys,
                     including fixed and memory-based status behavior.
+                </Paragraph>
+                <Paragraph>
+                    Plugin by nik_jandaaa27829 (Jacksonnn911) &amp; misaliba (qtmisaliba).
                 </Paragraph>
                 <Paragraph>
                     Project resources: {" "}
