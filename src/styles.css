@@ -1,30 +1,43 @@
 .bs-settings {
     --bs-card-border: color-mix(in srgb, var(--brand-500) 18%, var(--background-modifier-accent));
+
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding-top: 4px;
+    gap: 18px;
+    padding: 18px;
+    border: 1px solid color-mix(in srgb, var(--brand-500) 10%, var(--background-modifier-accent));
+    border-radius: 18px;
+    background:
+        radial-gradient(circle at 12% 0, color-mix(in srgb, var(--brand-500) 7%, transparent), transparent 30%),
+        color-mix(in srgb, var(--background-secondary) 32%, transparent);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
 }
 
 .bs-control-panel {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 13px;
-    padding: 14px 16px;
+    gap: 15px;
+    padding: 16px 18px;
     border: 1px solid color-mix(in srgb, var(--brand-500) 24%, var(--background-modifier-accent));
-    border-radius: 12px;
-    background: linear-gradient(110deg, color-mix(in srgb, var(--brand-500) 10%, var(--background-secondary)), var(--background-secondary));
+    border-radius: 14px;
+    background:
+        radial-gradient(circle at 0 50%, color-mix(in srgb, var(--brand-500) 16%, transparent), transparent 24%),
+        linear-gradient(110deg, color-mix(in srgb, var(--brand-500) 8%, var(--background-secondary)), var(--background-secondary));
+    box-shadow: 0 8px 24px rgb(0 0 0 / 8%), inset 0 1px 0 rgb(255 255 255 / 4%);
 }
 
 .bs-control-icon {
     display: grid;
-    width: 38px;
-    height: 38px;
-    border-radius: 11px;
-    color: var(--brand-360);
-    background: color-mix(in srgb, var(--brand-500) 16%, transparent);
-    font-size: 24px;
+    width: 42px;
+    height: 42px;
+    border: 1px solid color-mix(in srgb, var(--brand-500) 32%, transparent);
+    border-radius: 13px;
+    color: white;
+    background: linear-gradient(145deg, var(--brand-360), var(--brand-600));
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--brand-500) 24%, transparent);
+    font-size: 25px;
     font-weight: 500;
     place-items: center;
 }
@@ -51,13 +64,25 @@
     position: relative;
     display: flex;
     overflow: hidden;
-    gap: 16px;
-    padding: 18px;
-    border: 1px solid color-mix(in srgb, var(--brand-500) 28%, var(--background-modifier-accent));
-    border-radius: 14px;
+    gap: 20px;
+    padding: 22px;
+    border: 1px solid color-mix(in srgb, var(--brand-500) 38%, var(--background-modifier-accent));
+    border-radius: 18px;
     background:
-        radial-gradient(circle at 100% 0, color-mix(in srgb, var(--brand-500) 22%, transparent), transparent 42%),
+        radial-gradient(circle at 100% 0, color-mix(in srgb, var(--brand-500) 28%, transparent), transparent 44%),
+        radial-gradient(circle at 0 100%, color-mix(in srgb, #a855f7 12%, transparent), transparent 38%),
         linear-gradient(135deg, var(--background-secondary-alt), var(--background-secondary));
+    box-shadow: 0 16px 40px rgb(0 0 0 / 14%), inset 0 1px 0 rgb(255 255 255 / 5%);
+}
+
+.bs-about::before {
+    position: absolute;
+    top: 0;
+    right: 18%;
+    left: 18%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--brand-360) 80%, white), transparent);
+    content: "";
 }
 
 .bs-about::after {
@@ -73,14 +98,16 @@
 
 .bs-about-icon {
     display: grid;
-    width: 50px;
-    height: 50px;
+    position: relative;
+    width: 56px;
+    height: 56px;
     flex: 0 0 auto;
-    border-radius: 14px;
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 17px;
     color: white;
     background: linear-gradient(145deg, var(--brand-360), var(--brand-600));
-    box-shadow: 0 8px 24px color-mix(in srgb, var(--brand-500) 30%, transparent);
-    font-size: 18px;
+    box-shadow: 0 12px 30px color-mix(in srgb, var(--brand-500) 38%, transparent), inset 0 1px 0 rgb(255 255 255 / 24%);
+    font-size: 20px;
     font-weight: 800;
     letter-spacing: -.04em;
     place-items: center;
@@ -95,8 +122,9 @@
 .bs-about-heading {
     margin-bottom: 4px;
     color: var(--header-primary);
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 20px;
+    font-weight: 750;
+    letter-spacing: -.02em;
 }
 
 .bs-about-content p {
@@ -118,11 +146,12 @@
 }
 
 .bs-about-features span {
-    padding: 4px 8px;
+    padding: 5px 9px;
     border: 1px solid color-mix(in srgb, var(--brand-500) 20%, var(--background-modifier-accent));
     border-radius: 999px;
     color: var(--header-secondary);
-    background: color-mix(in srgb, var(--background-primary) 72%, transparent);
+    background: color-mix(in srgb, var(--background-primary) 78%, transparent);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
     font-size: 11px;
     font-weight: 600;
 }
@@ -137,19 +166,24 @@
 .bs-about-link {
     display: inline-flex;
     align-items: center;
-    padding: 6px 10px;
+    gap: 4px;
+    padding: 7px 11px;
     border: 1px solid var(--background-modifier-accent);
     border-radius: 8px;
     color: var(--interactive-active);
-    background: var(--background-modifier-hover);
+    background: color-mix(in srgb, var(--background-primary) 74%, transparent);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
     font-size: 12px;
     font-weight: 600;
     text-decoration: none;
+    transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
 }
 
 .bs-about-link:hover {
+    color: white;
     border-color: var(--brand-500);
-    background: color-mix(in srgb, var(--brand-500) 18%, transparent);
+    background: color-mix(in srgb, var(--brand-500) 68%, var(--background-primary));
+    transform: translateY(-1px);
 }
 
 .bs-toolbar {
@@ -157,8 +191,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 4px 2px 12px;
-    border-bottom: 1px solid var(--background-modifier-accent);
+    padding: 4px 2px 14px;
+    border-bottom: 1px solid color-mix(in srgb, var(--brand-500) 12%, var(--background-modifier-accent));
 }
 
 .bs-toolbar-actions {
@@ -171,6 +205,11 @@
 .bs-search {
     position: relative;
     width: 190px;
+}
+
+.bs-search > div {
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--background-primary) 74%, transparent);
 }
 
 .bs-search > span {
@@ -202,17 +241,14 @@
     font: inherit;
     font-size: 13px;
     font-weight: 600;
+    transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
 }
 
 .bs-secondary-button:hover {
     border-color: color-mix(in srgb, var(--brand-500) 45%, var(--background-modifier-accent));
     color: var(--interactive-hover);
     background: var(--background-modifier-hover);
-}
-
-.bs-secondary-button .bs-chevron {
-    width: 16px;
-    height: 16px;
+    transform: translateY(-1px);
 }
 
 .bs-toolbar h2,
@@ -228,8 +264,9 @@
 }
 
 .bs-stats span {
-    padding: 3px 7px;
-    border-radius: 6px;
+    padding: 4px 8px;
+    border: 1px solid color-mix(in srgb, var(--brand-500) 10%, var(--background-modifier-accent));
+    border-radius: 999px;
     color: var(--text-muted);
     background: var(--background-modifier-hover);
     font-size: 11px;
@@ -243,16 +280,17 @@
 .bs-preset-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr));
-    gap: 14px;
+    gap: 16px;
 }
 
 .bs-preset-card {
     position: relative;
     overflow: hidden;
     border: 1px solid var(--bs-card-border);
-    border-radius: 12px;
-    background: var(--background-secondary);
-    box-shadow: 0 8px 24px rgb(0 0 0 / 10%);
+    border-radius: 15px;
+    background:
+        linear-gradient(145deg, color-mix(in srgb, var(--bs-presence-color) 3%, var(--background-secondary)), var(--background-secondary));
+    box-shadow: 0 10px 28px rgb(0 0 0 / 12%), inset 0 1px 0 rgb(255 255 255 / 3%);
     transition: border-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease, transform 150ms ease;
 }
 
@@ -262,8 +300,9 @@
     top: 0;
     bottom: 0;
     left: 0;
-    width: 3px;
-    background: var(--bs-presence-color, var(--brand-500));
+    width: 4px;
+    background: linear-gradient(180deg, var(--bs-presence-color), color-mix(in srgb, var(--bs-presence-color) 45%, transparent));
+    box-shadow: 0 0 16px color-mix(in srgb, var(--bs-presence-color) 30%, transparent);
     content: "";
 }
 
@@ -273,9 +312,9 @@
 .bs-presence-invisible { --bs-presence-color: var(--interactive-muted); }
 
 .bs-preset-card:hover {
-    border-color: color-mix(in srgb, var(--brand-500) 40%, var(--background-modifier-accent));
-    box-shadow: 0 10px 28px rgb(0 0 0 / 16%);
-    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--bs-presence-color) 48%, var(--background-modifier-accent));
+    box-shadow: 0 16px 38px rgb(0 0 0 / 20%), 0 0 22px color-mix(in srgb, var(--bs-presence-color) 7%, transparent);
+    transform: translateY(-2px);
 }
 
 .bs-preset-card-disabled {
@@ -288,12 +327,13 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 14px 16px;
+    padding: 16px 18px;
 }
 
 .bs-card-header {
     border-bottom: 1px solid var(--background-modifier-accent);
-    background: var(--background-secondary-alt);
+    background:
+        linear-gradient(100deg, color-mix(in srgb, var(--bs-presence-color) 7%, var(--background-secondary-alt)), var(--background-secondary-alt));
 }
 
 .bs-preset-card-collapsed .bs-card-header {
@@ -319,13 +359,13 @@
 }
 
 .bs-presence-dot {
-    width: 10px;
-    height: 10px;
+    width: 11px;
+    height: 11px;
     flex: 0 0 auto;
     border: 2px solid color-mix(in srgb, var(--bs-presence-color) 35%, var(--background-secondary-alt));
     border-radius: 50%;
     background: var(--bs-presence-color);
-    box-shadow: 0 0 10px color-mix(in srgb, var(--bs-presence-color) 45%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--bs-presence-color) 10%, transparent), 0 0 14px color-mix(in srgb, var(--bs-presence-color) 58%, transparent);
 }
 
 .bs-card-summary {
@@ -347,9 +387,9 @@
 
 .bs-hotkey-chip {
     flex: 0 0 auto;
-    padding: 2px 6px;
+    padding: 3px 7px;
     border: 1px solid var(--background-modifier-accent);
-    border-radius: 5px;
+    border-radius: 6px;
     color: var(--header-secondary);
     background: var(--background-primary);
     font-family: var(--font-code);
@@ -372,14 +412,17 @@
 }
 
 .bs-duplicate-button {
+    height: 32px;
+    padding: 0 11px;
     border: 1px solid var(--background-modifier-accent);
     border-radius: 7px;
-    color: var(--interactive-normal);
-    background: transparent;
+    color: var(--header-secondary);
+    background: var(--background-modifier-hover);
     cursor: pointer;
     font: inherit;
     font-size: 12px;
     font-weight: 600;
+    transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
 }
 
 .bs-card-header .vc-form-switch-wrapper {
@@ -396,7 +439,7 @@
     width: 32px;
     height: 32px;
     padding: 0;
-    border: 0;
+    border: 1px solid transparent;
     border-radius: 8px;
     color: var(--interactive-normal);
     background: transparent;
@@ -406,6 +449,7 @@
 }
 
 .bs-collapse-button:hover {
+    border-color: var(--background-modifier-accent);
     color: var(--interactive-hover);
     background: var(--background-modifier-hover);
 }
@@ -426,7 +470,7 @@
 
 .bs-mode-badge {
     flex: 0 0 auto;
-    padding: 3px 7px;
+    padding: 4px 8px;
     border-radius: 999px;
     color: var(--text-muted);
     background: var(--background-modifier-accent);
@@ -445,18 +489,21 @@
 .bs-fields {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    padding: 16px;
+    gap: 15px;
+    padding: 18px;
+    background: color-mix(in srgb, var(--background-primary) 18%, transparent);
 }
 
 .bs-field {
     display: flex;
     min-width: 0;
     flex-direction: column;
-    gap: 6px;
+    gap: 7px;
     color: var(--header-secondary);
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .025em;
+    text-transform: uppercase;
 }
 
 .bs-field-status,
@@ -478,19 +525,13 @@
 
 .bs-card-footer {
     min-height: 40px;
-    border-top: 1px solid var(--background-modifier-accent);
+    border-top: 1px solid color-mix(in srgb, var(--brand-500) 8%, var(--background-modifier-accent));
+    background: color-mix(in srgb, var(--background-secondary-alt) 55%, transparent);
 }
 
 .bs-card-footer > :first-child {
     color: var(--text-muted);
     font-size: 12px;
-}
-
-.bs-duplicate-button {
-    height: 32px;
-    padding: 0 11px;
-    color: var(--header-secondary);
-    background: var(--background-modifier-hover);
 }
 
 .bs-duplicate-button:hover {
@@ -504,13 +545,14 @@
     align-items: center;
     flex-direction: column;
     gap: 8px;
-    padding: 36px 20px;
+    padding: 42px 24px;
     border: 1px dashed var(--background-modifier-accent);
-    border-radius: 12px;
+    border-radius: 15px;
+    background: radial-gradient(circle at 50% 0, color-mix(in srgb, var(--brand-500) 8%, transparent), transparent 60%);
     text-align: center;
 }
 
-@media (max-width: 620px) {
+@media (width <= 620px) {
     .bs-about {
         padding: 14px;
     }
@@ -518,6 +560,19 @@
     .bs-about-icon {
         width: 42px;
         height: 42px;
+    }
+
+    .bs-settings {
+        padding: 12px;
+        border-radius: 14px;
+    }
+
+    .bs-control-panel {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .bs-control-panel .vc-form-switch-wrapper {
+        grid-column: 1 / -1;
     }
 
     .bs-fields {
@@ -549,5 +604,14 @@
 
     .bs-search {
         width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bs-settings *,
+    .bs-about-link,
+    .bs-preset-card {
+        scroll-behavior: auto !important;
+        transition-duration: 0s !important;
     }
 }
