@@ -85,6 +85,7 @@ async function findNode() {
 
 async function fetchText(url: string) {
     const response = await fetch(url, {
+        cache: "no-store",
         headers: {
             Accept: "application/vnd.github+json",
             "User-Agent": "BetterStatus-AutoUpdater"
@@ -95,6 +96,10 @@ async function fetchText(url: string) {
         throw new Error(`Download failed (${response.status} ${response.statusText})`);
 
     return response.text();
+}
+
+function manifestUrl(channel: UpdateChannel) {
+    return `https://raw.githubusercontent.com/${REPOSITORY}/${channel}/files.json?checkedAt=${Date.now()}`;
 }
 
 async function fetchBytes(url: string) {
@@ -189,7 +194,7 @@ export async function getUpdateInfo(
 ): Promise<UpdateInfo> {
     const channel: UpdateChannel = requestedChannel === "dev" ? "dev" : "prod";
     const manifest = parseManifest(
-        JSON.parse(await fetchText(`https://raw.githubusercontent.com/${REPOSITORY}/${channel}/files.json`)),
+        JSON.parse(await fetchText(manifestUrl(channel))),
         channel
     );
     const installed = parseInstalledVersion(await readFile(VERSION_FILE, "utf8").catch(() => ""));
@@ -229,7 +234,7 @@ async function copyWithParents(source: string, destination: string) {
 
 async function performUpdate(channel: UpdateChannel): Promise<UpdateResult> {
     const manifest = parseManifest(
-        JSON.parse(await fetchText(`https://raw.githubusercontent.com/${REPOSITORY}/${channel}/files.json`)),
+        JSON.parse(await fetchText(manifestUrl(channel))),
         channel
     );
     const remoteTargets = new Set(manifest.files.map(file => file.target));
