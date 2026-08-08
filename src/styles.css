@@ -311,6 +311,84 @@
   font-weight: 600;
 }
 
+.bs-version-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px 10px;
+  margin-top: 10px;
+}
+
+.bs-version-badge {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid var(--background-modifier-accent);
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--background-primary) 72%, transparent);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.bs-version-badge i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--interactive-muted);
+}
+
+.bs-version-current {
+  color: var(--green-360);
+  border-color: color-mix(in srgb, var(--green-360) 28%, var(--background-modifier-accent));
+  background: color-mix(in srgb, var(--green-360) 8%, transparent);
+}
+
+.bs-version-current i {
+  background: var(--green-360);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--green-360) 65%, transparent);
+}
+
+.bs-version-updateAvailable {
+  color: var(--brand-360);
+  border-color: color-mix(in srgb, var(--brand-360) 30%, var(--background-modifier-accent));
+}
+
+.bs-version-updateAvailable i { background: var(--brand-360); }
+
+.bs-version-restartRequired {
+  color: var(--yellow-300);
+  border-color: color-mix(in srgb, var(--yellow-300) 30%, var(--background-modifier-accent));
+  background: color-mix(in srgb, var(--yellow-300) 8%, transparent);
+}
+
+.bs-version-restartRequired i {
+  background: var(--yellow-300);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--yellow-300) 60%, transparent);
+}
+
+.bs-version-commits {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.bs-version-commits > span,
+.bs-version-commits > a {
+  padding-left: 7px;
+  border-left: 1px solid var(--background-modifier-accent);
+}
+
+.bs-version-commits strong { color: var(--header-secondary); }
+.bs-version-commits a { color: var(--brand-360); text-decoration: none; }
+.bs-version-checked { margin-left: auto; color: var(--text-muted); font-size: 9px; }
+
 .bs-dev-channel-prompt {
     display: flex;
     flex-direction: column;

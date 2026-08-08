@@ -44,7 +44,16 @@ interface UpdateResult {
     error?: string;
 }
 
+export interface UpdateInfo {
+    channel: UpdateChannel;
+    installedChannel?: UpdateChannel;
+    installedVersion?: string;
+    latestVersion: string;
+    status: "current" | "updateAvailable" | "restartRequired";
+}
+
 let updatePromise: Promise<UpdateResult> | undefined;
+let pendingRestartVersion: string | undefined;
 
 async function exists(path: string) {
     try {
@@ -157,6 +166,48 @@ function pluginPath(relativePath: string) {
     return join(PLUGIN_SOURCE_DIR, ...relativePath.split("/"));
 }
 
+function parseInstalledVersion(marker: string) {
+    const value = marker.trim();
+    const channelVersion = /^(prod|dev):([0-9a-f]{40})$/i.exec(value);
+
+    if (channelVersion) {
+        return {
+            channel: channelVersion[1].toLowerCase() as UpdateChannel,
+            version: channelVersion[2].toLowerCase()
+        };
+    }
+
+    if (/^[0-9a-f]{40}$/i.test(value))
+        return { channel: "prod" as const, version: value.toLowerCase() };
+
+    return {};
+}
+
+export async function getUpdateInfo(
+    _event: IpcMainInvokeEvent,
+    requestedChannel: UpdateChannel = "prod"
+): Promise<UpdateInfo> {
+    const channel: UpdateChannel = requestedChannel === "dev" ? "dev" : "prod";
+    const manifest = parseManifest(
+        JSON.parse(await fetchText(`https://raw.githubusercontent.com/${REPOSITORY}/${channel}/files.json`)),
+        channel
+    );
+    const installed = parseInstalledVersion(await readFile(VERSION_FILE, "utf8").catch(() => ""));
+    const status = pendingRestartVersion === `${channel}:${manifest.commit}`
+        ? "restartRequired"
+        : installed.channel === channel && installed.version === manifest.commit
+            ? "current"
+            : "updateAvailable";
+
+    return {
+        channel,
+        installedChannel: installed.channel,
+        installedVersion: installed.version,
+        latestVersion: manifest.commit,
+        status
+    };
+}
+
 async function readPreviousTargets() {
     try {
         const value = JSON.parse(await readFile(MANIFEST_STATE_FILE, "utf8"));
@@ -259,6 +310,7 @@ async function performUpdate(channel: UpdateChannel): Promise<UpdateResult> {
 
         await writeFile(MANIFEST_STATE_FILE, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
         await writeFile(VERSION_FILE, `${channel}:${manifest.commit}\n`, "utf8");
+        pendingRestartVersion = `${channel}:${manifest.commit}`;
         return { status: "updated", version: manifest.commit, channel };
     } catch (error) {
         for (const target of [...changedFiles.map(file => file.target), ...obsoleteFiles]) {

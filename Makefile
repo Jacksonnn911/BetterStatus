@@ -45,6 +45,7 @@ sync-dev: check-dev
 	@rm -f "$(PLUGIN_DIR)/SavedStatusesProfile.tsx"
 	@for file in $(PLUGIN_FILES); do cp "$(REPO_DIR)/$$file" "$(PLUGIN_DIR)/$${file#src/}"; done
 	@cp "$(REPO_DIR)/README.md" "$(PLUGIN_DIR)/README.md"
+	@printf 'dev:%s\n' "$$(git -C "$(REPO_DIR)" rev-parse HEAD)" > "$(PLUGIN_DIR)/VERSION"
 	@echo "Synced BetterStatus to $(PLUGIN_DIR)"
 
 install-dev-deps: sync-dev

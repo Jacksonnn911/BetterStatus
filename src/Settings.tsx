@@ -39,6 +39,14 @@ const Native = VencordNative.pluginHelpers.BetterStatus as PluginNative<
   typeof import("./native")
 >;
 
+interface UpdateInfo {
+  channel: UpdateChannel;
+  installedChannel?: UpdateChannel;
+  installedVersion?: string;
+  latestVersion: string;
+  status: "current" | "updateAvailable" | "restartRequired";
+}
+
 const DEFAULT_PRESETS: StatusPreset[] = [
   {
     id: "sleeping",
@@ -214,8 +222,28 @@ export default function SettingsComponent() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [checkingForUpdates, setCheckingForUpdates] = React.useState(false);
   const [updateStatus, setUpdateStatus] = React.useState<string | null>(null);
+  const [updateInfo, setUpdateInfo] = React.useState<UpdateInfo | null>(null);
+  const [updateInfoError, setUpdateInfoError] = React.useState<string | null>(null);
+  const [lastCheckedAt, setLastCheckedAt] = React.useState<Date | null>(null);
   const selectedUpdateChannel: UpdateChannel =
     updateChannel === "dev" ? "dev" : "prod";
+
+  async function refreshUpdateInfo(channel: UpdateChannel) {
+    try {
+      const info = await Native.getUpdateInfo(channel);
+      setUpdateInfo(info);
+      setUpdateInfoError(null);
+      setLastCheckedAt(new Date());
+    } catch (error) {
+      setUpdateInfo(null);
+      setUpdateInfoError(error instanceof Error ? error.message : String(error));
+      setLastCheckedAt(new Date());
+    }
+  }
+
+  React.useEffect(() => {
+    void refreshUpdateInfo(selectedUpdateChannel);
+  }, [selectedUpdateChannel]);
 
   async function checkForUpdates() {
     if (checkingForUpdates) return;
@@ -264,6 +292,7 @@ export default function SettingsComponent() {
         body: message,
       });
     } finally {
+      await refreshUpdateInfo(selectedUpdateChannel);
       setCheckingForUpdates(false);
     }
   }
@@ -419,6 +448,49 @@ export default function SettingsComponent() {
             Follow the stable production branch by default, or opt into
             development builds. Updates build safely and apply after restart.
           </Forms.FormText>
+          <div className="bs-version-info">
+            <span
+              className={`bs-version-badge bs-version-${updateInfo?.status ?? "loading"}`}
+            >
+              <i />
+              {updateInfo?.status === "current"
+                ? "Up to date"
+                : updateInfo?.status === "restartRequired"
+                  ? "Restart required"
+                  : updateInfo?.status === "updateAvailable"
+                    ? "Update available"
+                    : updateInfoError
+                      ? "Version unavailable"
+                      : "Checking version"}
+            </span>
+            {updateInfo && (
+              <span className="bs-version-commits">
+                <strong>{updateInfo.channel === "dev" ? "Development" : "Production"}</strong>
+                <span>
+                  Installed {updateInfo.installedVersion?.slice(0, 7) ?? "unknown"}
+                  {updateInfo.installedChannel && updateInfo.installedChannel !== updateInfo.channel
+                    ? ` (${updateInfo.installedChannel})`
+                    : ""}
+                </span>
+                <span>Latest {updateInfo.latestVersion.slice(0, 7)}</span>
+                <Link
+                  href={`https://github.com/Jacksonnn911/BetterStatus/commit/${updateInfo.latestVersion}`}
+                >
+                  View commit ↗
+                </Link>
+              </span>
+            )}
+            {lastCheckedAt && (
+              <span className="bs-version-checked">
+                Checked {lastCheckedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+          </div>
+          {updateInfoError && (
+            <div className="bs-update-status" role="status">
+              Version check failed: {updateInfoError}
+            </div>
+          )}
           {updateStatus && (
             <div className="bs-update-status" role="status">
               {updateStatus}
