@@ -9,8 +9,18 @@ import "./styles.css";
 import { showNotification } from "@api/Notifications";
 import { definePluginSettings, migratePluginSettings } from "@api/Settings";
 import { FormSwitch } from "@components/FormSwitch";
+import { Link } from "@components/Link";
 import { OptionType, PluginNative } from "@utils/types";
-import { Button, Forms, React, Select, TextInput } from "@webpack/common";
+import type { RenderModalProps } from "@vencord/discord-types";
+import {
+  Button,
+  ConfirmModal,
+  Forms,
+  openModal,
+  React,
+  Select,
+  TextInput,
+} from "@webpack/common";
 
 import {
   normalizeSavedStatuses,
@@ -132,6 +142,56 @@ function ChevronIcon({ collapsed }: { collapsed: boolean }) {
         d="M6.7 8.3a1 1 0 0 1 1.4 0l3.9 3.9 3.9-3.9a1 1 0 1 1 1.4 1.4l-4.6 4.6a1 1 0 0 1-1.4 0L6.7 9.7a1 1 0 0 1 0-1.4Z"
       />
     </svg>
+  );
+}
+
+function DevelopmentChannelPrompt({
+  modalProps,
+  onAccept,
+}: {
+  modalProps: RenderModalProps;
+  onAccept(): void;
+}) {
+  const [accepted, setAccepted] = React.useState(false);
+
+  return (
+    <ConfirmModal
+      {...modalProps}
+      title="Switch to Development updates?"
+      confirmText="Use Development"
+      cancelText="Stay on Production"
+      variant="primary"
+      checkboxProps={{
+        label: "I understand and accept the development-build terms",
+        checked: accepted,
+        onChange: setAccepted,
+      }}
+      onConfirm={setError => {
+        if (!accepted) {
+          setError("Accept the development-build terms before continuing.");
+          throw new Error("Development terms were not accepted.");
+        }
+
+        onAccept();
+      }}
+    >
+      <div className="bs-dev-channel-prompt">
+        <Forms.FormText>
+          Development builds contain changes that have not reached the stable
+          Production channel. They may break, change behavior, or require a
+          manual reinstall.
+        </Forms.FormText>
+        <Forms.FormText>
+          Based on the MIT license disclaimer, development builds are provided
+          <strong> “as is”</strong>, without warranty of any kind. You accept
+          responsibility for using and testing them. Read the{" "}
+          <Link href="https://opensource.org/license/mit">MIT license terms</Link>.
+        </Forms.FormText>
+        <Forms.FormText>
+          You can return to Production at any time without another prompt.
+        </Forms.FormText>
+      </div>
+    </ConfirmModal>
   );
 }
 
@@ -356,21 +416,36 @@ export default function SettingsComponent() {
           )}
         </div>
         <div className="bs-update-actions">
-          <Select
-            options={UPDATE_CHANNEL_OPTIONS}
-            select={channel => {
-              settings.store.updateChannel = channel as UpdateChannel;
-              setUpdateStatus(null);
-            }}
-            serialize={value => value}
-            isSelected={value => value === selectedUpdateChannel}
-            closeOnSelect
-          />
+          <div className="bs-update-channel">
+            <Select
+              options={UPDATE_CHANNEL_OPTIONS}
+              select={channel => {
+                if (channel !== "dev") {
+                  settings.store.updateChannel = "prod";
+                  setUpdateStatus(null);
+                  return;
+                }
+
+                openModal(modalProps => (
+                  <DevelopmentChannelPrompt
+                    modalProps={modalProps}
+                    onAccept={() => {
+                      settings.store.updateChannel = "dev";
+                      setUpdateStatus(null);
+                    }}
+                  />
+                ));
+              }}
+              serialize={value => value}
+              isSelected={value => value === selectedUpdateChannel}
+              closeOnSelect
+            />
+          </div>
           <Button disabled={checkingForUpdates} onClick={checkForUpdates}>
             {checkingForUpdates ? "Checking…" : "Check for updates"}
           </Button>
           <FormSwitch
-            title={autoUpdate ? "Auto update on" : "Auto update off"}
+            title="Auto update"
             value={autoUpdate}
             onChange={value => (settings.store.autoUpdate = value)}
             hideBorder
@@ -547,7 +622,7 @@ export default function SettingsComponent() {
                         />
                       </div>
 
-                      <label className="bs-field">
+                      <div className="bs-field">
                         <span>Behavior</span>
                         <Select
                           options={TYPE_OPTIONS}
@@ -560,7 +635,7 @@ export default function SettingsComponent() {
                           isSelected={value => value === preset.type}
                           closeOnSelect
                         />
-                      </label>
+                      </div>
 
                       <label className="bs-field bs-field-status">
                         <span>

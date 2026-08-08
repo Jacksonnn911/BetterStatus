@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "channel": "dev",
+  "commit": "cec83fd4533a38fc5f3410218c82b0cc07885bc1",
+  "files": [
+    {
+      "source": "src/index.tsx",
+      "target": "index.tsx",
+      "sha256": "105bffc292f70551c18fc5853a55bcc134060a88f72994fe5e4a99263b41b2b4"
+    },
+    {
+      "source": "src/native.ts",
+      "target": "native.ts",
+      "sha256": "598413820c39224786f4470207a2951186a94aa0e7f4dd5482ff5cbd0b8ade25"
+    },
+    {
+      "source": "README.md",
+      "target": "README.md",
+      "sha256": "d26424d0c00ff0883ca8805c8633488a73388b20794194dd3b703656397e96d3"
+    },
+    {
+      "source": "src/savedStatuses.ts",
+      "target": "savedStatuses.ts",
+      "sha256": "dcf85d6ccb164919da6cadb38bec6ef19a324f4d35dfd1586aa33b248191f266"
+    },
+    {
+      "source": "src/Settings.tsx",
+      "target": "Settings.tsx",
+      "sha256": "68eb553af51f33938b861b9c36f002c94fa6f31892ba05732bdfa689f5492b85"
+    },
+    {
+      "source": "src/StatusSwitcher.tsx",
+      "target": "StatusSwitcher.tsx",
+      "sha256": "e98a31f744c1641d1c1f0949dee7379b98176fd13ceeded458de69384f35e5de"
+    },
+    {
+      "source": "src/styles.css",
+      "target": "styles.css",
+      "sha256": "de7207cfa7a81b78aae96d7821e789bb2e34756b7e84ef9fd2aa6b22ca63d39e"
+    },
+    {
+      "source": "src/types.ts",
+      "target": "types.ts",
+      "sha256": "dc56851dc72000b796862b7de6e92191c23814a6052d5700fecdce397a968b87"
+    }
+  ]
+}
