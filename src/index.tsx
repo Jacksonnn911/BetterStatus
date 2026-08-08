@@ -79,48 +79,55 @@ async function rememberActivePreset() {
 }
 
 function BetterStatusOverview() {
-    const { activePresetId, presets } = settings.use(["activePresetId", "presets"]);
-    const activePreset = presets.find(preset => preset.id === activePresetId && preset.enabled);
-    const activeText = activePreset
-        ? activePreset.type === "memory"
-            ? activePreset.rememberedText ?? activePreset.text
-            : activePreset.text
-        : "Activate a preset to see it here.";
-
     return (
-        <div className="bs-overview">
-            <div className="bs-overview-header">
-                <div className="bs-overview-brand">
-                    <div className="bs-overview-monogram">B</div>
-                    <div>
-                        <strong>BetterStatus</strong>
-                        <span>Presence, precisely controlled.</span>
+        <div className="bs-atelier">
+            <div className="bs-atelier-copy">
+                <div className="bs-atelier-brand">
+                    <span className="bs-atelier-glyph">
+                        <i /><i /><i /><i />
+                    </span>
+                    <span>BETTERSTATUS</span>
+                </div>
+                <div className="bs-atelier-kicker">PRESENCE, REIMAGINED</div>
+                <h2>Be exactly<br />where you are.</h2>
+                <p>Shape your Discord presence with focused presets and shortcuts that move as fast as you do.</p>
+                <div className="bs-atelier-credit">
+                    An open-source Vencord plugin by<br />
+                    <strong>nik_jandaaa27829</strong> &amp; <strong>misaliba</strong>
+                </div>
+                <div className="bs-atelier-links">
+                    <Link href="https://github.com/Jacksonnn911/BetterStatus">Explore GitHub <span>↗</span></Link>
+                    <Link href="https://github.com/Jacksonnn911/BetterStatus#usage">Read the docs <span>↗</span></Link>
+                    <Link href="https://github.com/Jacksonnn911/BetterStatus/issues/new">Get support <span>↗</span></Link>
+                </div>
+            </div>
+
+            <div className="bs-atelier-art" aria-hidden="true">
+                <div className="bs-aurora bs-aurora-one" />
+                <div className="bs-aurora bs-aurora-two" />
+                <div className="bs-aurora bs-aurora-three" />
+                <div className="bs-atelier-orb">
+                    <div className="bs-orb-core">
+                        <span className="bs-orb-mark">
+                            <i /><i /><i />
+                        </span>
                     </div>
+                    <span className="bs-orbit bs-orbit-one"><i /></span>
+                    <span className="bs-orbit bs-orbit-two"><i /></span>
                 </div>
-                <div className="bs-overview-links">
-                    <Link href="https://github.com/Jacksonnn911/BetterStatus">GitHub</Link>
-                    <Link href="https://github.com/Jacksonnn911/BetterStatus#usage">Docs</Link>
-                    <Link href="https://github.com/Jacksonnn911/BetterStatus/issues/new">Support</Link>
+                <div className="bs-presence-spectrum">
+                    <span className="bs-spectrum-online" />
+                    <span className="bs-spectrum-idle" />
+                    <span className="bs-spectrum-dnd" />
+                    <span className="bs-spectrum-memory" />
                 </div>
-            </div>
-
-            <div className={`bs-now-playing bs-now-${activePreset?.presence ?? "none"}`}>
-                <div className="bs-now-indicator"><i /></div>
-                <div className="bs-now-copy">
-                    <span>{activePreset ? "ACTIVE PRESET" : "READY WHEN YOU ARE"}</span>
-                    <strong>{activePreset?.name || "No preset active"}</strong>
-                    <small>{activeText || "No custom status"}</small>
+                <div className="bs-art-caption">
+                    <span>GLOBAL HOTKEYS</span>
+                    <i />
+                    <span>MEMORY PRESETS</span>
+                    <i />
+                    <span>SEAMLESS UPDATES</span>
                 </div>
-                <div className="bs-now-details">
-                    {activePreset && <span>{activePreset.presence === "dnd" ? "Do Not Disturb" : activePreset.presence}</span>}
-                    <kbd>{activePreset?.hotkey || "No shortcut"}</kbd>
-                </div>
-            </div>
-
-            <div className="bs-overview-footer">
-                <span><i /> {presets.filter(preset => preset.enabled).length} presets ready</span>
-                <span>Fixed + memory behavior</span>
-                <span className="bs-overview-credit">By <strong>nik_jandaaa27829</strong> &amp; <strong>misaliba</strong></span>
             </div>
         </div>
     );
