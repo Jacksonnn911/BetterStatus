@@ -1,7 +1,7 @@
 {
   "version": 1,
   "channel": "dev",
-  "commit": "d9e8a612e965d6cfca72ef098afe39408a74e9fa",
+  "commit": "ce1db80d53a6ac4ff7ab7a796b9a49e4a13b9d14",
   "files": [
     {
       "source": "src/index.tsx",
@@ -31,7 +31,7 @@
     {
       "source": "src/StatusHistory.tsx",
       "target": "StatusHistory.tsx",
-      "sha256": "80e272369fb306686d75ac3c5f0de6c61032d00a0e2dfda60928f38afd99b3cf"
+      "sha256": "bfacd62462a9be60885a17c51d8e98ab7693cb840da7a52c451e424fba6113fb"
     },
     {
       "source": "src/StatusSwitcher.tsx",
