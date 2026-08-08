@@ -217,6 +217,13 @@ export default function SettingsComponent() {
     }
 
 
+    function toggleAllCollapsed() {
+        const allCollapsed = presets.length > 0 && presets.every(preset => collapsedIds.has(preset.id));
+        setCollapsedIds(allCollapsed ? new Set() : new Set(presets.map(preset => preset.id)));
+        setRecordingId(null);
+    }
+
+
     React.useEffect(() => {
         if (!recordingId)
             return;
@@ -270,6 +277,7 @@ export default function SettingsComponent() {
 
 
     const enabledCount = presets.filter(preset => preset.enabled).length;
+    const allCollapsed = presets.length > 0 && presets.every(preset => collapsedIds.has(preset.id));
 
     return (
         <div className="bs-settings">
@@ -280,7 +288,15 @@ export default function SettingsComponent() {
                         {presets.length} total · {enabledCount} active
                     </Forms.FormText>
                 </div>
-                <Button onClick={addPreset}>Add preset</Button>
+                <div className="bs-toolbar-actions">
+                    {!!presets.length && (
+                        <button type="button" className="bs-secondary-button" onClick={toggleAllCollapsed}>
+                            <ChevronIcon collapsed={!allCollapsed} />
+                            {allCollapsed ? "Expand all" : "Collapse all"}
+                        </button>
+                    )}
+                    <Button onClick={addPreset}>+ Add preset</Button>
+                </div>
             </div>
 
             {presets.length === 0

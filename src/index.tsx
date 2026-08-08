@@ -101,10 +101,15 @@ export default definePlugin({
                     <div className="bs-about-credit">
                         Built by nik_jandaaa27829 (Jacksonnn911) &amp; misaliba (qtmisaliba)
                     </div>
+                    <div className="bs-about-features">
+                        <span>Global hotkeys</span>
+                        <span>Memory presets</span>
+                        <span>Auto updates</span>
+                    </div>
                     <div className="bs-about-links">
-                        <Link href="https://github.com/Jacksonnn911/BetterStatus">GitHub</Link>
-                        <Link href="https://github.com/Jacksonnn911/BetterStatus#usage">Documentation</Link>
-                        <Link href="https://github.com/Jacksonnn911/BetterStatus/issues/new">Report an issue</Link>
+                        <Link className="bs-about-link" href="https://github.com/Jacksonnn911/BetterStatus">GitHub ↗</Link>
+                        <Link className="bs-about-link" href="https://github.com/Jacksonnn911/BetterStatus#usage">Documentation ↗</Link>
+                        <Link className="bs-about-link" href="https://github.com/Jacksonnn911/BetterStatus/issues/new">Report an issue ↗</Link>
                     </div>
                 </div>
             </div>
