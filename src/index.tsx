@@ -92,9 +92,15 @@ export default definePlugin({
     settingsAboutComponent() {
         return (
             <div className="bs-about">
-                <div className="bs-about-icon">BS</div>
                 <div className="bs-about-content">
-                    <div className="bs-about-heading">Status switching, without the friction.</div>
+                    <div className="bs-brand-lockup">
+                        <div className="bs-about-icon">BS</div>
+                        <div>
+                            <div className="bs-about-eyebrow">BetterStatus for Vencord</div>
+                            <div className="bs-about-heading">Your presence. Your rules.</div>
+                        </div>
+                    </div>
+                    <div className="bs-about-tagline">Status switching, without the friction.</div>
                     <Paragraph>
                         Create focused status presets, assign global shortcuts, and switch without leaving your current app.
                     </Paragraph>
@@ -111,6 +117,26 @@ export default definePlugin({
                         <Link className="bs-about-link" href="https://github.com/Jacksonnn911/BetterStatus#usage">Documentation ↗</Link>
                         <Link className="bs-about-link" href="https://github.com/Jacksonnn911/BetterStatus/issues/new">Report an issue ↗</Link>
                     </div>
+                </div>
+                <div className="bs-about-preview" aria-hidden="true">
+                    <div className="bs-preview-glow" />
+                    <div className="bs-preview-card bs-preview-dnd">
+                        <span className="bs-preview-dot" />
+                        <div>
+                            <strong>Deep focus</strong>
+                            <span className="bs-preview-status">Locked in. No distractions.</span>
+                        </div>
+                        <kbd>⌘ −</kbd>
+                    </div>
+                    <div className="bs-preview-card bs-preview-online">
+                        <span className="bs-preview-dot" />
+                        <div>
+                            <strong>Available</strong>
+                            <span className="bs-preview-status">Free to chat — say hello.</span>
+                        </div>
+                        <kbd>⌘ =</kbd>
+                    </div>
+                    <div className="bs-preview-orbit"><span /></div>
                 </div>
             </div>
         );
