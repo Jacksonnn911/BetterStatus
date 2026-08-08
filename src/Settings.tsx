@@ -143,16 +143,23 @@ function ChevronIcon({ collapsed }: { collapsed: boolean; }) {
 
 
 export default function SettingsComponent() {
-    const { autoUpdate, presets } = settings.use(["autoUpdate", "presets"]);
+    const { autoUpdate, presets: storedPresets } = settings.use(["autoUpdate", "presets"]);
 
     const [recordingId, setRecordingId] =
         React.useState<string | null>(null);
     const [collapsedIds, setCollapsedIds] =
         React.useState<Set<string>>(() => new Set());
     const [searchQuery, setSearchQuery] = React.useState("");
+    const [presets, setPresets] = React.useState<StatusPreset[]>(() => [...storedPresets]);
+
+
+    React.useEffect(() => {
+        setPresets([...storedPresets]);
+    }, [storedPresets]);
 
 
     async function commit(next: StatusPreset[]) {
+        setPresets(next);
         await savePresets(next);
     }
 
