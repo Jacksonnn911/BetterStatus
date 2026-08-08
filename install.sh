@@ -4,61 +4,122 @@ set -euo pipefail
 
 REPOSITORY="Jacksonnn911/StatusHotkeys"
 PLUGIN_NAME="statusHotkeys"
-ARCHIVE_URL="https://github.com/${REPOSITORY}/releases/latest/download/status-hotkeys.tar.gz"
+PLUGIN_URL="https://github.com/${REPOSITORY}/releases/latest/download/status-hotkeys.tar.gz"
+VENCORD_URL="https://github.com/Vendicated/Vencord/archive/refs/heads/main.tar.gz"
+NODE_INDEX="https://nodejs.org/dist/latest-v24.x"
+DATA_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/status-hotkeys"
+RUNTIME_DIR="$DATA_DIR/runtime"
+TOOLS_DIR="$DATA_DIR/tools"
 
-info() {
-    printf '\033[1;34m==>\033[0m %s\n' "$1"
+info() { printf '\033[1;34m==>\033[0m %s\n' "$1"; }
+success() { printf '\033[1;32m✓\033[0m %s\n' "$1"; }
+fail() { printf '\033[1;31mError:\033[0m %s\n' "$1" >&2; exit 1; }
+
+ask() {
+    local prompt="$1" answer
+    if [ ! -r /dev/tty ]; then
+        fail "This step needs an interactive terminal. Download install.sh and run: bash install.sh"
+    fi
+    printf '%s [Y/n] ' "$prompt" >/dev/tty
+    read -r answer </dev/tty || true
+    case "${answer:-y}" in y|Y|yes|YES|Yes) return 0 ;; *) return 1 ;; esac
 }
 
-fail() {
-    printf '\033[1;31mError:\033[0m %s\n' "$1" >&2
-    exit 1
+download() {
+    local url="$1" destination="$2"
+    if command -v curl >/dev/null 2>&1; then
+        curl --fail --location --silent --show-error "$url" -o "$destination"
+    elif command -v wget >/dev/null 2>&1; then
+        wget --quiet "$url" -O "$destination"
+    else
+        fail "No download tool was found. Install curl or wget and run this installer again."
+    fi
 }
 
-for command_name in git node curl tar; do
-    command -v "$command_name" >/dev/null 2>&1 ||
-        fail "Missing '$command_name'. Install Git and Node.js, then run this command again."
-done
+printf '\nStatusHotkeys easy installer\n'
+printf 'This installs everything into your user account; administrator access is not needed.\n\n'
 
-node_major="$(node --version | sed 's/^v//' | cut -d. -f1)"
-[ "$node_major" -ge 22 ] || fail "Vencord requires Node.js 22 or newer (found $(node --version))."
+temporary_dir="$(mktemp -d)"
+trap 'rm -rf "$temporary_dir"' EXIT
+mkdir -p "$DATA_DIR" "$RUNTIME_DIR" "$TOOLS_DIR"
 
-if ! command -v pnpm >/dev/null 2>&1; then
-    if command -v bun >/dev/null 2>&1; then
-        installer_name="Bun"
-        install_command=(bun add --global pnpm@11.9.0)
-    elif command -v yarn >/dev/null 2>&1; then
-        installer_name="Yarn"
-        install_command=(yarn global add pnpm@11.9.0)
-    elif command -v corepack >/dev/null 2>&1; then
-        installer_name="Corepack"
-        install_command=(corepack install --global pnpm@11.9.0)
-    elif command -v npm >/dev/null 2>&1; then
-        installer_name="npm"
-        install_command=(npm install --global pnpm@11.9.0)
+system_node=""
+if [ -x "$RUNTIME_DIR/node/bin/node" ]; then
+    export PATH="$RUNTIME_DIR/node/bin:$PATH"
+fi
+if [ -x "$TOOLS_DIR/bin/pnpm" ]; then
+    export PATH="$TOOLS_DIR/bin:$PATH"
+fi
+if command -v node >/dev/null 2>&1; then
+    node_major="$(node --version | sed 's/^v//' | cut -d. -f1)"
+    if [ "$node_major" -ge 22 ]; then
+        system_node="$(command -v node)"
+        success "Found compatible Node.js $(node --version)"
     else
-        fail "Vencord requires pnpm, and no Bun, Yarn, Corepack, or npm installation method was found."
+        info "Found Node.js $(node --version), but Vencord requires version 22 or newer."
     fi
+else
+    info "Node.js was not found."
+fi
 
-    printf "pnpm is required by Vencord but is not installed. Install it with %s? [Y/n] " "$installer_name"
-    if [ -r /dev/tty ]; then
-        read -r answer </dev/tty
-    else
-        fail "Cannot ask for confirmation without a terminal. Install pnpm 11 manually and rerun the installer."
-    fi
+if command -v bun >/dev/null 2>&1; then
+    success "Found Bun $(bun --version)"
+    info "Bun cannot replace Node.js here because Vencord uses Node- and pnpm-specific build tools."
+fi
+if command -v yarn >/dev/null 2>&1; then
+    success "Found Yarn $(yarn --version)"
+fi
+if command -v pnpm >/dev/null 2>&1; then
+    success "Found pnpm $(pnpm --version)"
+fi
 
-    case "${answer:-y}" in
-        y|Y|yes|YES|Yes)
-            info "Installing pnpm 11 with $installer_name"
-            "${install_command[@]}"
-            ;;
-        *)
-            fail "pnpm installation declined. No changes were made."
-            ;;
+if [ -z "$system_node" ]; then
+    ask "Download a private Node.js 24 runtime for StatusHotkeys?" ||
+        fail "Node.js is required, so installation was cancelled."
+
+    case "$(uname -s)" in
+        Darwin) node_platform="darwin" ;;
+        Linux) node_platform="linux" ;;
+        *) fail "This installer supports macOS and Linux. On Windows, use install.ps1." ;;
+    esac
+    case "$(uname -m)" in
+        x86_64|amd64) node_arch="x64" ;;
+        arm64|aarch64) node_arch="arm64" ;;
+        *) fail "Unsupported CPU architecture: $(uname -m)" ;;
     esac
 
-    command -v pnpm >/dev/null 2>&1 ||
-        fail "pnpm was installed but is not available on PATH. Restart your terminal and run the installer again."
+    info "Finding the latest Node.js 24 release"
+    download "$NODE_INDEX/SHASUMS256.txt" "$temporary_dir/SHASUMS256.txt"
+    node_file="$(sed -n "s/^[a-f0-9]*  \(node-v[^ ]*-${node_platform}-${node_arch}\.tar\.gz\)$/\1/p" "$temporary_dir/SHASUMS256.txt" | head -n 1)"
+    [ -n "$node_file" ] || fail "Could not find a Node.js download for this computer."
+    expected_hash="$(awk -v file="$node_file" '$2 == file { print $1 }' "$temporary_dir/SHASUMS256.txt")"
+
+    info "Downloading $node_file"
+    download "$NODE_INDEX/$node_file" "$temporary_dir/node.tar.gz"
+    if command -v sha256sum >/dev/null 2>&1; then
+        actual_hash="$(sha256sum "$temporary_dir/node.tar.gz" | awk '{print $1}')"
+    else
+        actual_hash="$(shasum -a 256 "$temporary_dir/node.tar.gz" | awk '{print $1}')"
+    fi
+    [ "$actual_hash" = "$expected_hash" ] || fail "The Node.js download checksum did not match."
+
+    rm -rf "$RUNTIME_DIR/node"
+    mkdir -p "$RUNTIME_DIR/node"
+    tar -xzf "$temporary_dir/node.tar.gz" -C "$RUNTIME_DIR/node" --strip-components=1
+    export PATH="$RUNTIME_DIR/node/bin:$PATH"
+    success "Installed private Node.js $(node --version)"
+fi
+
+node_major="$(node --version | sed 's/^v//' | cut -d. -f1)"
+[ "$node_major" -ge 22 ] || fail "Node.js 22 or newer is required."
+
+if ! command -v pnpm >/dev/null 2>&1; then
+    ask "Install the required pnpm build tool privately?" ||
+        fail "pnpm is required, so installation was cancelled."
+    info "Installing pnpm 11 into $TOOLS_DIR"
+    npm install --global --prefix "$TOOLS_DIR" pnpm@11.9.0
+    export PATH="$TOOLS_DIR/bin:$PATH"
+    success "Installed pnpm $(pnpm --version)"
 fi
 
 if [ -n "${VENCORD_DIR:-}" ]; then
@@ -70,35 +131,52 @@ elif [ -d "${HOME}/Vencord/src" ]; then
 elif [ -d "${HOME}/Documents/Vencord/src" ]; then
     vencord_dir="${HOME}/Documents/Vencord"
 else
-    vencord_dir="${HOME}/Vencord"
-    info "No Vencord source checkout found; cloning it to $vencord_dir"
-    git clone https://github.com/Vendicated/Vencord.git "$vencord_dir"
-    info "Installing Vencord dependencies"
-    pnpm --dir "$vencord_dir" install --frozen-lockfile
+    vencord_dir="$DATA_DIR/Vencord"
+fi
+
+if [ ! -f "$vencord_dir/package.json" ] || [ ! -d "$vencord_dir/src" ]; then
+    ask "Download Vencord source code into $vencord_dir?" ||
+        fail "Vencord source code is required, so installation was cancelled."
+    info "Downloading Vencord (Git is not required)"
+    download "$VENCORD_URL" "$temporary_dir/vencord.tar.gz"
+    mkdir -p "$vencord_dir"
+    tar -xzf "$temporary_dir/vencord.tar.gz" -C "$vencord_dir" --strip-components=1
+    success "Downloaded Vencord"
 fi
 
 [ -f "$vencord_dir/package.json" ] && [ -d "$vencord_dir/src" ] ||
-    fail "'$vencord_dir' is not a Vencord source checkout. Set VENCORD_DIR to the correct directory."
-
-temporary_dir="$(mktemp -d)"
-trap 'rm -rf "$temporary_dir"' EXIT
+    fail "The selected Vencord directory is invalid: $vencord_dir"
 
 info "Downloading the latest StatusHotkeys release"
-curl --fail --location --silent --show-error "$ARCHIVE_URL" -o "$temporary_dir/status-hotkeys.tar.gz"
+download "$PLUGIN_URL" "$temporary_dir/status-hotkeys.tar.gz"
 mkdir "$temporary_dir/plugin"
 tar -xzf "$temporary_dir/status-hotkeys.tar.gz" -C "$temporary_dir/plugin"
 
 plugin_dir="$vencord_dir/src/userplugins/$PLUGIN_NAME"
 mkdir -p "$plugin_dir"
-cp "$temporary_dir/plugin/index.tsx" "$plugin_dir/index.tsx"
-cp "$temporary_dir/plugin/Settings.tsx" "$plugin_dir/Settings.tsx"
-cp "$temporary_dir/plugin/native.ts" "$plugin_dir/native.ts"
-cp "$temporary_dir/plugin/types.ts" "$plugin_dir/types.ts"
-cp "$temporary_dir/plugin/README.md" "$plugin_dir/README.md"
+for plugin_file in index.tsx Settings.tsx native.ts types.ts README.md; do
+    cp "$temporary_dir/plugin/$plugin_file" "$plugin_dir/$plugin_file"
+done
+success "Installed StatusHotkeys source files"
 
+info "Installing build dependencies (this can take a few minutes)"
+pnpm --dir "$vencord_dir" install --frozen-lockfile
 info "Building Vencord"
 pnpm --dir "$vencord_dir" build
+success "StatusHotkeys and Vencord built successfully"
 
-printf '\nStatusHotkeys is installed and Vencord was built successfully.\n'
-printf 'Discord Desktop: run  cd %q && pnpm inject  and restart Discord.\n' "$vencord_dir"
-printf 'Vesktop: select %s/dist as the Vencord Location, then restart Vesktop.\n' "$vencord_dir"
+printf '\nWhich Discord client do you use?\n  1) Discord Desktop\n  2) Vesktop\n  3) Finish without configuring a client\nChoice [1]: ' >/dev/tty
+read -r client_choice </dev/tty || true
+case "${client_choice:-1}" in
+    1)
+        info "Opening the Vencord installer. Select your Discord installation when asked."
+        pnpm --dir "$vencord_dir" inject
+        printf '\nRestart Discord, enable StatusHotkeys under Vencord > Plugins, and you are done.\n'
+        ;;
+    2)
+        printf '\nIn Vesktop, open Settings, find "Vencord Location", and select:\n%s/dist\nThen restart Vesktop and enable StatusHotkeys under Vencord > Plugins.\n' "$vencord_dir"
+        ;;
+    *)
+        printf '\nBuild complete. Vencord is located at: %s\n' "$vencord_dir"
+        ;;
+esac

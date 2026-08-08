@@ -18,9 +18,10 @@ Each preset can define:
 ## Requirements
 
 - Discord Desktop or [Vesktop](https://vesktop.vencord.dev/)
-- A [Vencord source installation](https://docs.vencord.dev/installing/)
-- Git and Node.js 22 or newer
-- pnpm 11 (the installer can install it after asking for permission)
+- An internet connection
+- `curl` on macOS/Linux, or PowerShell on Windows
+
+The easy installer handles Node.js, pnpm, Vencord source code, and the plugin for you. Existing compatible installations are reused when possible.
 
 The plugin uses Electron's native global shortcut API, so browser and userscript builds are not supported.
 
@@ -28,9 +29,16 @@ The plugin uses Electron's native global shortcut API, so browser and userscript
 
 ### One-command installation
 
-The installer finds your Vencord source checkout automatically. If one does not exist, it clones Vencord into `~/Vencord` and installs its dependencies. It then downloads the latest StatusHotkeys release and builds Vencord.
+The guided installer is designed for non-technical users. It checks the computer, explains what it needs, and asks simple yes/no questions before downloading anything. It can:
 
-You need Git and Node.js 22 or newer. If pnpm is missing, the installer detects Bun, Yarn, Corepack, or npm and asks before using the available tool to install pnpm. See the [Vencord prerequisites](https://docs.vencord.dev/installing/#prerequisites).
+- Detect Node.js, Bun, Yarn, and pnpm
+- Download a private Node.js 24 runtime when Node.js is missing or too old
+- Install pnpm privately without administrator access
+- Download Vencord without requiring Git
+- Download and build StatusHotkeys
+- Open the Discord Desktop injector or show the exact Vesktop folder to select
+
+Files managed by the installer are kept inside your user data directory, not installed system-wide.
 
 **macOS or Linux:**
 
@@ -44,10 +52,10 @@ curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/StatusHotkeys/main/ins
 irm https://raw.githubusercontent.com/Jacksonnn911/StatusHotkeys/main/install.ps1 | iex
 ```
 
-After the build finishes, follow the printed instruction for Discord Desktop or Vesktop and restart the client. Then enable the plugin as described below.
+Answer the prompts and choose Discord Desktop or Vesktop at the end. No knowledge of Node.js or package managers is required.
 
 > [!TIP]
-> If your Vencord source is in a non-standard location, set `VENCORD_DIR` first. For example: `VENCORD_DIR=/path/to/Vencord curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/StatusHotkeys/main/install.sh | bash`.
+> If your Vencord source is in a non-standard location, set `VENCORD_DIR` for the shell that runs the installer. For example: `curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/StatusHotkeys/main/install.sh | VENCORD_DIR=/path/to/Vencord bash`.
 
 > [!NOTE]
 > Piping a remote script into a shell runs code from the internet. You can [inspect `install.sh`](./install.sh) or [inspect `install.ps1`](./install.ps1) before running it.
@@ -60,11 +68,11 @@ After the build finishes, follow the printed instruction for Discord Desktop or 
 | Node.js 24 | Tested | Built in GitHub Actions on every release |
 | Node.js 20 or older | Unsupported | Current Vencord requires Node.js 22 or newer |
 | pnpm 11 | Supported | Vencord's declared package manager; used for installation and builds |
-| Bun | Bootstrap only | Detected and can install pnpm, but does not directly build Vencord |
-| Yarn | Bootstrap only | Detected and can install pnpm, but does not directly build Vencord |
-| npm/Corepack | Bootstrap only | Fallback methods for installing pnpm |
+| Bun | Detected | Reported by the installer, but cannot directly build current Vencord |
+| Yarn | Detected | Reported by the installer, but cannot directly build current Vencord |
+| npm | Bundled helper | Used from Node.js to install pnpm privately when needed |
 
-Bun is not the default build tool because Vencord currently declares `pnpm@11.9.0`, uses a pnpm workspace with patched dependencies, and calls pnpm from its own scripts. The installer prefers an existing pnpm installation. If pnpm is absent, Bun is the first bootstrap option, followed by Yarn, Corepack, and npm.
+Bun is detected correctly, but it is not used as the build runtime because Vencord currently declares `pnpm@11.9.0`, uses a pnpm workspace with patched dependencies, and calls Node and pnpm from its own scripts. When Bun exists but Node.js does not, the installer explains this and offers to download a private Node.js runtime. It does not modify the user's Bun installation.
 
 ### Manual installation
 
