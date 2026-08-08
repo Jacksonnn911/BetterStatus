@@ -105,10 +105,6 @@ New-Item -ItemType Directory -Path $TemporaryDir | Out-Null
 
 try {
     if (-not $CompatibleNode) {
-        if (-not (Confirm-Step "Download a private Node.js 24 runtime for BetterStatus?")) {
-            throw "Node.js is required, so installation was cancelled."
-        }
-
         # RuntimeInformation.OSArchitecture can be null in Windows PowerShell 5.1.
         # PROCESSOR_ARCHITEW6432 reports the native architecture when a 32-bit
         # PowerShell process is running on 64-bit Windows.
@@ -156,9 +152,6 @@ try {
     }
 
     if (-not $PnpmCommand) {
-        if (-not (Confirm-Step "Install the required pnpm build tool privately?")) {
-            throw "pnpm is required, so installation was cancelled."
-        }
         $NpmCommand = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
         if (-not $NpmCommand) {
             throw "npm.cmd was not found next to the installed Node.js runtime."
