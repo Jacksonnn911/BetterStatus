@@ -191,6 +191,25 @@ export default function SettingsComponent() {
     }
 
 
+    function duplicatePreset(preset: StatusPreset) {
+        void commit([
+            ...presets,
+            {
+                ...preset,
+                id: createId(),
+                name: `${preset.name || "Untitled preset"} copy`,
+                hotkey: "",
+                enabled: false
+            }
+        ]);
+    }
+
+
+    function activatePreset(id: string) {
+        void Native.activatePreset(id);
+    }
+
+
     function deletePreset(id: string) {
         void commit(
             presets.filter(preset =>
@@ -277,6 +296,7 @@ export default function SettingsComponent() {
 
 
     const enabledCount = presets.filter(preset => preset.enabled).length;
+    const memoryCount = presets.filter(preset => preset.type === "memory").length;
     const allCollapsed = presets.length > 0 && presets.every(preset => collapsedIds.has(preset.id));
 
     return (
@@ -284,9 +304,11 @@ export default function SettingsComponent() {
             <div className="bs-toolbar">
                 <div>
                     <Forms.FormTitle tag="h2">Status presets</Forms.FormTitle>
-                    <Forms.FormText>
-                        {presets.length} total · {enabledCount} active
-                    </Forms.FormText>
+                    <div className="bs-stats">
+                        <span><strong>{presets.length}</strong> total</span>
+                        <span><strong>{enabledCount}</strong> active</span>
+                        <span><strong>{memoryCount}</strong> memory</span>
+                    </div>
                 </div>
                 <div className="bs-toolbar-actions">
                     {!!presets.length && (
@@ -334,6 +356,15 @@ export default function SettingsComponent() {
                                         </div>
                                     </div>
                                     <div className="bs-card-actions">
+                                        <button
+                                            type="button"
+                                            className="bs-activate-button"
+                                            disabled={!preset.enabled}
+                                            title={preset.enabled ? "Activate this preset now" : "Enable this preset before activating it"}
+                                            onClick={() => activatePreset(preset.id)}
+                                        >
+                                            Activate
+                                        </button>
                                         <FormSwitch
                                             title="Enabled"
                                             value={preset.enabled}
@@ -418,12 +449,17 @@ export default function SettingsComponent() {
                                             ? "Remembers the last status used while active."
                                             : "Always applies the status saved above."}
                                     </Forms.FormText>
-                                    <Button
-                                        color={Button.Colors.RED}
-                                        onClick={() => deletePreset(preset.id)}
-                                    >
-                                        Delete
-                                    </Button>
+                                    <div className="bs-footer-actions">
+                                        <button type="button" className="bs-duplicate-button" onClick={() => duplicatePreset(preset)}>
+                                            Duplicate
+                                        </button>
+                                        <Button
+                                            color={Button.Colors.RED}
+                                            onClick={() => deletePreset(preset.id)}
+                                        >
+                                            Delete
+                                        </Button>
+                                    </div>
                                 </div>
                                 </div>}
                             </section>

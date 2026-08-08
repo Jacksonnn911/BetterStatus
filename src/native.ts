@@ -161,6 +161,10 @@ function triggerPreset(event: IpcMainInvokeEvent, presetId: string) {
     ).catch(console.error);
 }
 
+export function activatePreset(event: IpcMainInvokeEvent, presetId: string) {
+    triggerPreset(event, presetId);
+}
+
 export function unregisterAll() {
     for (const accelerator of registeredShortcuts.keys()) {
         try {

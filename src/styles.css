@@ -159,6 +159,26 @@
     margin-bottom: 4px;
 }
 
+.bs-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 7px;
+}
+
+.bs-stats span {
+    padding: 3px 7px;
+    border-radius: 6px;
+    color: var(--text-muted);
+    background: var(--background-modifier-hover);
+    font-size: 11px;
+}
+
+.bs-stats strong {
+    color: var(--header-primary);
+    font-weight: 700;
+}
+
 .bs-preset-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr));
@@ -290,6 +310,37 @@
     gap: 8px;
 }
 
+.bs-activate-button,
+.bs-duplicate-button {
+    border: 1px solid var(--background-modifier-accent);
+    border-radius: 7px;
+    color: var(--interactive-normal);
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.bs-activate-button {
+    height: 32px;
+    padding: 0 10px;
+    color: var(--brand-360);
+    border-color: color-mix(in srgb, var(--brand-500) 36%, var(--background-modifier-accent));
+    background: color-mix(in srgb, var(--brand-500) 10%, transparent);
+}
+
+.bs-activate-button:hover:not(:disabled) {
+    color: white;
+    border-color: var(--brand-500);
+    background: var(--brand-500);
+}
+
+.bs-activate-button:disabled {
+    cursor: not-allowed;
+    opacity: .45;
+}
+
 .bs-card-header .vc-form-switch-wrapper {
     flex: 0 0 auto;
 }
@@ -394,6 +445,23 @@
     font-size: 12px;
 }
 
+.bs-footer-actions {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: 8px;
+}
+
+.bs-duplicate-button {
+    height: 32px;
+    padding: 0 9px;
+}
+
+.bs-duplicate-button:hover {
+    color: var(--interactive-hover);
+    background: var(--background-modifier-hover);
+}
+
 .bs-empty {
     display: flex;
     align-items: center;
@@ -426,5 +494,9 @@
 
     .bs-card-header {
         align-items: flex-start;
+    }
+
+    .bs-activate-button {
+        display: none;
     }
 }
