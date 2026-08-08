@@ -112,6 +112,17 @@ jobs:
       - name: Generate files.json
         run: node scripts/generate-files-manifest.mjs "$GITHUB_SHA"
 
+      - name: Validate channel manifest
+        run: |
+          node -e '
+            const fs = require("fs");
+            const manifest = JSON.parse(fs.readFileSync("files.json", "utf8"));
+            if (manifest.version !== 1) throw new Error("Unexpected manifest version");
+            if (manifest.channel !== process.env.GITHUB_REF_NAME) throw new Error(`Manifest channel ${manifest.channel} does not match ${process.env.GITHUB_REF_NAME}`);
+            if (manifest.commit !== process.env.GITHUB_SHA.toLowerCase()) throw new Error(`Manifest commit ${manifest.commit} does not match ${process.env.GITHUB_SHA}`);
+            if (!Array.isArray(manifest.files) || manifest.files.length === 0) throw new Error("Manifest contains no files");
+          '
+
       - name: Commit channel manifest
         run: |
           git add files.json
