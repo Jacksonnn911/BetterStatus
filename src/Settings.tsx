@@ -356,21 +356,23 @@ export default function SettingsComponent() {
           )}
         </div>
         <div className="bs-update-actions">
-          <Select
-            options={UPDATE_CHANNEL_OPTIONS}
-            select={channel => {
-              settings.store.updateChannel = channel as UpdateChannel;
-              setUpdateStatus(null);
-            }}
-            serialize={value => value}
-            isSelected={value => value === selectedUpdateChannel}
-            closeOnSelect
-          />
+          <div className="bs-update-channel">
+            <Select
+              options={UPDATE_CHANNEL_OPTIONS}
+              select={channel => {
+                settings.store.updateChannel = channel as UpdateChannel;
+                setUpdateStatus(null);
+              }}
+              serialize={value => value}
+              isSelected={value => value === selectedUpdateChannel}
+              closeOnSelect
+            />
+          </div>
           <Button disabled={checkingForUpdates} onClick={checkForUpdates}>
             {checkingForUpdates ? "Checking…" : "Check for updates"}
           </Button>
           <FormSwitch
-            title={autoUpdate ? "Auto update on" : "Auto update off"}
+            title="Auto update"
             value={autoUpdate}
             onChange={value => (settings.store.autoUpdate = value)}
             hideBorder

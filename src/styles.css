@@ -85,7 +85,25 @@
 }
 
 .bs-update-actions .vc-form-switch-wrapper {
+    display: flex;
+    min-height: 38px;
+    align-items: center;
     flex: 0 0 auto;
+    margin: 0;
+}
+
+.bs-update-actions .vc-form-switch {
+    width: auto;
+    align-items: center;
+}
+
+.bs-update-actions .vc-form-switch > :last-child {
+    margin-left: 8px;
+}
+
+.bs-update-actions .vc-form-switch-text {
+    gap: 0;
+    white-space: nowrap;
 }
 
 .bs-update-status {
@@ -1611,6 +1629,7 @@
     position: relative;
     width: 20px;
     height: 20px;
+    box-sizing: border-box;
     flex: 0 0 auto;
     border-radius: 50%;
 }
@@ -1669,7 +1688,7 @@
 }
 
 .bs-status-indicator-invisible {
-    border: 5px solid var(--interactive-muted);
+    border: 4px solid var(--interactive-muted);
     background: transparent;
 }
 
