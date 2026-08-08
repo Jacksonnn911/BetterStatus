@@ -324,7 +324,7 @@
 
 .bs-activate-button {
     height: 32px;
-    padding: 0 10px;
+    padding: 0 12px;
     color: var(--brand-360);
     border-color: color-mix(in srgb, var(--brand-500) 36%, var(--background-modifier-accent));
     background: color-mix(in srgb, var(--brand-500) 10%, transparent);
@@ -445,21 +445,17 @@
     font-size: 12px;
 }
 
-.bs-footer-actions {
-    display: flex;
-    align-items: center;
-    flex: 0 0 auto;
-    gap: 8px;
-}
-
 .bs-duplicate-button {
     height: 32px;
-    padding: 0 9px;
+    padding: 0 11px;
+    color: var(--header-secondary);
+    background: var(--background-modifier-hover);
 }
 
 .bs-duplicate-button:hover {
-    color: var(--interactive-hover);
-    background: var(--background-modifier-hover);
+    color: var(--interactive-active);
+    border-color: var(--interactive-muted);
+    background: var(--background-modifier-selected);
 }
 
 .bs-empty {
@@ -497,6 +493,10 @@
     }
 
     .bs-activate-button {
+        display: none;
+    }
+
+    .bs-duplicate-button {
         display: none;
     }
 }

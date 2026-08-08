@@ -358,6 +358,14 @@ export default function SettingsComponent() {
                                     <div className="bs-card-actions">
                                         <button
                                             type="button"
+                                            className="bs-duplicate-button"
+                                            title="Create a disabled copy without a hotkey"
+                                            onClick={() => duplicatePreset(preset)}
+                                        >
+                                            Duplicate
+                                        </button>
+                                        <button
+                                            type="button"
                                             className="bs-activate-button"
                                             disabled={!preset.enabled}
                                             title={preset.enabled ? "Activate this preset now" : "Enable this preset before activating it"}
@@ -449,17 +457,12 @@ export default function SettingsComponent() {
                                             ? "Remembers the last status used while active."
                                             : "Always applies the status saved above."}
                                     </Forms.FormText>
-                                    <div className="bs-footer-actions">
-                                        <button type="button" className="bs-duplicate-button" onClick={() => duplicatePreset(preset)}>
-                                            Duplicate
-                                        </button>
-                                        <Button
-                                            color={Button.Colors.RED}
-                                            onClick={() => deletePreset(preset.id)}
-                                        >
-                                            Delete
-                                        </Button>
-                                    </div>
+                                    <Button
+                                        color={Button.Colors.RED}
+                                        onClick={() => deletePreset(preset.id)}
+                                    >
+                                        Delete
+                                    </Button>
                                 </div>
                                 </div>}
                             </section>
