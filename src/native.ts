@@ -15,7 +15,14 @@ const registeredShortcuts = new Map<string, string>();
 const executeFile = promisify(execFile);
 
 const REPOSITORY = "Jacksonnn911/BetterStatus";
-const UPDATE_FILES = ["index.tsx", "Settings.tsx", "native.ts", "types.ts", "styles.css", "README.md"];
+const UPDATE_FILES = [
+    { localName: "index.tsx", remotePath: "src/index.tsx" },
+    { localName: "Settings.tsx", remotePath: "src/Settings.tsx" },
+    { localName: "native.ts", remotePath: "src/native.ts" },
+    { localName: "types.ts", remotePath: "src/types.ts" },
+    { localName: "styles.css", remotePath: "src/styles.css" },
+    { localName: "README.md", remotePath: "README.md" }
+];
 const VENCORD_SOURCE_DIR = join(__dirname, "..");
 const PLUGIN_SOURCE_DIR = join(VENCORD_SOURCE_DIR, "src", "userplugins", "betterStatus");
 const VERSION_FILE = join(PLUGIN_SOURCE_DIR, "VERSION");
@@ -86,19 +93,19 @@ async function performUpdate(): Promise<UpdateResult> {
     await mkdir(backupDir, { recursive: true });
 
     try {
-        for (const file of UPDATE_FILES) {
-            const currentFile = join(PLUGIN_SOURCE_DIR, file);
+        for (const { localName, remotePath } of UPDATE_FILES) {
+            const currentFile = join(PLUGIN_SOURCE_DIR, localName);
             if (await exists(currentFile))
-                await copyFile(currentFile, join(backupDir, file));
+                await copyFile(currentFile, join(backupDir, localName));
 
-            const contents = await fetchText(`https://raw.githubusercontent.com/${REPOSITORY}/${version}/src/${file}`);
-            await writeFile(join(stagingDir, file), contents, "utf8");
+            const contents = await fetchText(`https://raw.githubusercontent.com/${REPOSITORY}/${version}/${remotePath}`);
+            await writeFile(join(stagingDir, localName), contents, "utf8");
         }
 
-        for (const file of UPDATE_FILES) {
-            const destination = join(PLUGIN_SOURCE_DIR, file);
+        for (const { localName } of UPDATE_FILES) {
+            const destination = join(PLUGIN_SOURCE_DIR, localName);
             await rm(destination, { force: true });
-            await rename(join(stagingDir, file), destination);
+            await rename(join(stagingDir, localName), destination);
         }
 
         const node = await findNode();
@@ -117,10 +124,10 @@ async function performUpdate(): Promise<UpdateResult> {
         await writeFile(VERSION_FILE, `${version}\n`, "utf8");
         return { status: "updated", version };
     } catch (error) {
-        for (const file of UPDATE_FILES) {
-            const backup = join(backupDir, file);
+        for (const { localName } of UPDATE_FILES) {
+            const backup = join(backupDir, localName);
             if (await exists(backup))
-                await copyFile(backup, join(PLUGIN_SOURCE_DIR, file));
+                await copyFile(backup, join(PLUGIN_SOURCE_DIR, localName));
         }
 
         return {

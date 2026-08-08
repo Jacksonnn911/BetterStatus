@@ -76,7 +76,11 @@ export default definePlugin({
 
     authors: [
         {
-            name: "nik_jandaaa27829",
+            name: "nik_jandaaa27829 (Jacksonnn911)",
+            id: 0n
+        },
+        {
+            name: "misaliba (qtmisaliba)",
             id: 0n
         }
     ],
@@ -87,7 +91,7 @@ export default definePlugin({
     settingsAboutComponent() {
         return (
             <Paragraph>
-                BetterStatus is an open-source Vencord user plugin by nik_jandaaa27829 (Jacksonnn911). {" "}
+                Plugin by nik_jandaaa27829 (Jacksonnn911) &amp; misaliba (qtmisaliba). {" "}
                 <a href="https://github.com/Jacksonnn911/BetterStatus" target="_blank" rel="noreferrer">GitHub</a>
                 {" · "}
                 <a href="https://github.com/Jacksonnn911/BetterStatus#usage" target="_blank" rel="noreferrer">Documentation</a>
