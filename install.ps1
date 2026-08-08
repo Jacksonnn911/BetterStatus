@@ -183,8 +183,14 @@ try {
     Expand-Archive -Path $PluginArchive -DestinationPath $ExpandedPlugin
     $PluginDir = "$VencordDir\src\userplugins\$PluginName"
     New-Item -ItemType Directory -Force -Path $PluginDir | Out-Null
-    foreach ($File in @("index.tsx", "Settings.tsx", "native.ts", "types.ts", "README.md", "VERSION")) {
+    foreach ($File in @("index.tsx", "Settings.tsx", "native.ts", "types.ts", "README.md")) {
         Copy-Item -Force "$ExpandedPlugin\$File" "$PluginDir\$File"
+    }
+    Remove-Item -Force -ErrorAction SilentlyContinue "$PluginDir\VERSION"
+    if (Test-Path "$ExpandedPlugin\VERSION") {
+        Copy-Item -Force "$ExpandedPlugin\VERSION" "$PluginDir\VERSION"
+    } else {
+        Write-Step "This release predates version markers; Auto Update will initialize it on its first check"
     }
     $LegacyPluginDir = "$VencordDir\src\userplugins\statusHotkeys"
     if (Test-Path $LegacyPluginDir) {
