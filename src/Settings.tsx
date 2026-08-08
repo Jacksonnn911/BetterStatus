@@ -298,13 +298,24 @@ export default function SettingsComponent() {
                             const contentId = `bs-preset-${preset.id}`;
 
                             return (
-                            <section className={`bs-preset-card${preset.enabled ? "" : " bs-preset-card-disabled"}${collapsed ? " bs-preset-card-collapsed" : ""}`} key={preset.id}>
+                            <section className={`bs-preset-card bs-presence-${preset.presence}${preset.enabled ? "" : " bs-preset-card-disabled"}${collapsed ? " bs-preset-card-collapsed" : ""}`} key={preset.id}>
                                 <header className="bs-card-header">
-                                    <div className="bs-card-title">
-                                        <Forms.FormTitle>{preset.name || "Untitled preset"}</Forms.FormTitle>
-                                        <span className={`bs-mode-badge bs-mode-${preset.type}`}>
-                                            {preset.type === "memory" ? "Memory" : "Fixed"}
-                                        </span>
+                                    <div className="bs-card-identity">
+                                        <span className="bs-presence-dot" />
+                                        <div>
+                                            <div className="bs-card-title">
+                                                <Forms.FormTitle>{preset.name || "Untitled preset"}</Forms.FormTitle>
+                                                <span className={`bs-mode-badge bs-mode-${preset.type}`}>
+                                                    {preset.type === "memory" ? "Memory" : "Fixed"}
+                                                </span>
+                                            </div>
+                                            {collapsed && (
+                                                <div className="bs-card-summary">
+                                                    <span>{preset.type === "memory" ? preset.rememberedText ?? preset.text : preset.text || "No custom status"}</span>
+                                                    <span className="bs-hotkey-chip">{preset.hotkey || "No hotkey"}</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="bs-card-actions">
                                         <FormSwitch

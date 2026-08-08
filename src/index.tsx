@@ -91,23 +91,23 @@ export default definePlugin({
     settings,
     settingsAboutComponent() {
         return (
-            <>
-                <Paragraph>
-                    BetterStatus provides configurable Discord status presets with system-wide hotkeys,
-                    including fixed and memory-based status behavior.
-                </Paragraph>
-                <Paragraph>
-                    Plugin by nik_jandaaa27829 (Jacksonnn911) &amp; misaliba (qtmisaliba).
-                </Paragraph>
-                <Paragraph>
-                    Project resources: {" "}
-                    <Link href="https://github.com/Jacksonnn911/BetterStatus">Source code</Link>
-                    {" · "}
-                    <Link href="https://github.com/Jacksonnn911/BetterStatus#usage">Documentation</Link>
-                    {" · "}
-                    <Link href="https://github.com/Jacksonnn911/BetterStatus/issues/new">Report an issue</Link>
-                </Paragraph>
-            </>
+            <div className="bs-about">
+                <div className="bs-about-icon">BS</div>
+                <div className="bs-about-content">
+                    <div className="bs-about-heading">Status switching, without the friction.</div>
+                    <Paragraph>
+                        Create focused status presets, assign global shortcuts, and switch without leaving your current app.
+                    </Paragraph>
+                    <div className="bs-about-credit">
+                        Built by nik_jandaaa27829 (Jacksonnn911) &amp; misaliba (qtmisaliba)
+                    </div>
+                    <div className="bs-about-links">
+                        <Link href="https://github.com/Jacksonnn911/BetterStatus">GitHub</Link>
+                        <Link href="https://github.com/Jacksonnn911/BetterStatus#usage">Documentation</Link>
+                        <Link href="https://github.com/Jacksonnn911/BetterStatus/issues/new">Report an issue</Link>
+                    </div>
+                </div>
+            </div>
         );
     },
 
