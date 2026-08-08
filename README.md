@@ -58,8 +58,9 @@ The guided installer detects your tools, reuses existing Vencord source code, bu
 | ♾️ | **Unlimited presets** | Create focused profiles for work, gaming, sleep, streaming, or anything else. |
 | 🧠 | **Fixed + Memory modes** | Apply exact text every time or remember your most recently used custom status. |
 | 🟢 | **Full presence control** | Set Online, Idle, Do Not Disturb, or Invisible alongside custom status text. |
-| 🎛️ | **Polished dashboard** | Collapse, duplicate, activate, enable, and edit presets from a responsive interface. |
-| 🔄 | **Branch-aware updates** | Stay on production by default or opt into development builds, with safe rollback on failure. |
+| 🎛️ | **Polished dashboard** | Search, collapse, duplicate, enable, and edit presets while the current preset stays clearly highlighted. |
+| 📚 | **Saved-status library** | Reuse up to 1,000 recent statuses from Discord's status dialog, with favorites pinned first. |
+| 🔄 | **Verified update channels** | Follow Production or opt into Development with SHA-256 verification, rollback, manual checks, and visible version state. |
 | 🧰 | **All-in-one installer** | Detect Node, Bun, Yarn, and pnpm; acquire missing build tools privately when needed. |
 
 <p align="center">
@@ -173,9 +174,22 @@ Changes are saved immediately. Press the shortcut from any application to activa
 
 BetterStatus remembers the last active preset and restores its custom status and presence whenever Discord starts. For a Memory preset, the current Discord status is captured before restoration so manual changes are retained across restarts.
 
+The settings dashboard also provides:
+
+- Search across preset names, status text, presence, behavior, and hotkeys
+- Live totals for all, enabled, and Memory presets
+- A **Current** indicator and highlighted card for the active preset
+- Per-preset collapse, duplicate, enable, and delete controls
+- **Expand all** and **Collapse all** controls
+- A Discord-style presence picker for Online, Idle, Do Not Disturb, and Invisible
+
 Discord's **Set your status** dialog also includes a searchable saved-status history. BetterStatus remembers up to 1,000 statuses, keeps favorites pinned above recent entries, and lets you reuse, favorite, or remove entries without returning to the plugin settings.
 
-BetterStatus checks for new releases automatically unless you opt out with **Auto Update** at the top of the plugin settings. It checks once at startup and then at the selected **Check frequency**, which defaults to every six hours and can be changed from 15 minutes through daily or limited to startup only. The update channel defaults to **Production**, which follows the `prod` branch. Users who want changes earlier can explicitly select **Development** to follow the `dev` branch. After a successful channel build, GitHub Actions publishes a `files.json` manifest containing every managed file and its SHA-256 hash. BetterStatus compares those hashes with the installed files, downloads changed or newly listed files from the manifest's immutable commit, verifies every download, and rebuilds Vencord with rollback on failure. The currently running Discord session is not interrupted by default; enable the opt-in **Auto Restart Discord** switch if Discord should relaunch immediately after an update is installed. The production one-command installer remains the manual recovery/update method.
+BetterStatus checks for new releases automatically unless you opt out with **Auto Update** at the top of the plugin settings. It checks once at startup and then at the selected **Check frequency**, which defaults to every six hours and can be changed from 15 minutes through daily or limited to startup only. The update channel defaults to **Production**, which follows the `prod` branch. Selecting **Development** opens a required confirmation explaining that early builds may be unstable and are provided without warranty; the checkbox must be accepted before the channel changes. Returning to Production never requires confirmation.
+
+The update panel includes a manual **Check for updates** button and reports the selected channel, installed commit, latest commit, last-check time, and a direct link to the exact GitHub commit. Its state badge distinguishes **Up to date**, **Update available**, **Restart required**, and **Version unavailable**. After a successful channel build, GitHub Actions publishes a `files.json` manifest containing every managed file and its SHA-256 hash. BetterStatus compares those hashes with the installed files, downloads only changed or newly listed files from the manifest's immutable commit, verifies every download, and rebuilds Vencord with rollback on failure.
+
+The currently running Discord session is not interrupted by default; enable the opt-in **Auto Restart Discord** switch if Discord should relaunch immediately after an update is installed. The production one-command installer remains the manual recovery/update method.
 
 Press `Escape` while recording to cancel. A preset can be temporarily disabled with its **Enabled** switch or permanently removed with **Delete Status**.
 
@@ -209,13 +223,17 @@ When Vencord starts the plugin, BetterStatus loads your presets and registers ev
 
 Presets are stored through Vencord's typed `definePluginSettings` API. The preset list is a custom persisted option, and the editor is an `OptionType.COMPONENT`, so it appears and updates inside Vencord's standard plugin settings modal. Old `StatusHotkeys` settings are migrated with Vencord's supported migration helper. Disabling or deleting a preset immediately rebuilds the registered shortcut list, and disabling the plugin unregisters all of its shortcuts.
 
-Discord state is read and written through Vencord's `UserSettingsAPI`; the plugin declares that dependency so Vencord enables it automatically. The small `native.ts` helper runs in Electron's main process only to register system-wide shortcuts. This follows Vencord's documented user-plugin layout: `index.tsx`, `native.ts`, and the plugin `README.md` live together in `src/userplugins/betterStatus` after installation.
+Discord state is read and written through Vencord's `UserSettingsAPI`; the plugin declares that dependency so Vencord enables it automatically. The `native.ts` helper runs in Electron's main process to register system-wide shortcuts and perform verified source updates. The saved-status history is attached to Discord's existing status modal and stores normalized history through BetterStatus's typed settings. This follows Vencord's documented user-plugin layout: the plugin source files live together in `src/userplugins/betterStatus` after installation.
 
 Vencord labels BetterStatus with the `Shortcuts` and `Utility` categories. Vencord intentionally reserves the favorite, website, and GitHub buttons in the plugin-modal header for built-in plugins, so the repository and documentation links are provided in BetterStatus's Info section instead.
 
 ## Updating
 
-Run the same one-command installer again. It downloads the current rolling release, replaces the plugin files, and rebuilds Vencord.
+For normal updates, open BetterStatus settings and click **Check for updates**. If an update is installed, either restart Discord manually or enable **Auto Restart Discord** for future updates.
+
+Production users receive the latest successfully tested `prod` build. Development users follow `dev` after accepting the development-build warning. Switching channels makes the selected channel's manifest the update target; it does not mix files from both channels.
+
+The same one-command installer can always be run again as a repair or recovery method. It downloads the current production release, replaces the managed plugin files, and rebuilds Vencord.
 
 Alternatively, repeat the manual archive command above and then rebuild from your Vencord directory:
 
@@ -257,6 +275,13 @@ Update and rerun the installer. Current versions provide Vencord's required buil
 - Open Discord's developer console and look for messages beginning with `[BetterStatus]`.
 - Discord or Vencord updates can change internal settings APIs; rebuild with an up-to-date Vencord checkout.
 
+### Update information is unavailable
+
+- Confirm GitHub is reachable and try **Check for updates** again.
+- **Installed** comes from the local `VERSION` marker; **Latest** comes from the selected channel's verified `files.json` manifest.
+- If **Restart required** remains after an update, fully quit and reopen Discord rather than only closing the settings window.
+- Run the production one-command installer if files were manually moved, partially deleted, or cannot be repaired by rollback.
+
 ### macOS permissions
 
 If ownership changes fail with `Operation not permitted`, give your terminal application **Full Disk Access**:
@@ -295,9 +320,9 @@ The main files are:
 - `src/StatusHistory.tsx` — saved-status history inside Discord's status modal
 - `src/StatusSwitcher.tsx` — Discord-style presence menu
 - `src/savedStatuses.ts` — saved-history normalization, deduplication, and retention policy
-- `src/native.ts` — Electron global shortcut registration
+- `src/native.ts` — Electron global shortcuts, manifest verification, update status, rollback, and rebuilds
 - `src/types.ts` — shared preset and presence types
 
 ## Automated releases
 
-Every push to `prod` or `dev` runs compatibility builds on Node.js 22 and 24 with pnpm 11. Only `prod` publishes: it builds headless macOS Vencord CLI binaries from the official installer source, validates the installers, creates `.tar.gz` and `.zip` plugin packages, generates SHA-256 checksums, uploads workflow artifacts, and replaces the rolling `latest` GitHub release used by the production installers. The `dev` branch remains available only to users who explicitly subscribe to the Development channel.
+Every push to `prod` or `dev` runs compatibility builds on Node.js 22 and 24 with pnpm 11. After successful compatibility tests, each channel publishes its own `files.json` manifest with immutable commit information and a SHA-256 hash for every managed file. Only `prod` also builds headless macOS Vencord CLI binaries from the official installer source, validates the installers, creates `.tar.gz` and `.zip` plugin packages, generates release checksums, uploads workflow artifacts, and replaces the rolling `latest` GitHub release used by the production installers. The `dev` branch remains available only to users who explicitly accept and select the Development channel.
