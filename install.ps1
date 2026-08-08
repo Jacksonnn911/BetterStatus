@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $Repository = "Jacksonnn911/BetterStatus"
 $PluginName = "betterStatus"
-$PluginUrl = "https://github.com/$Repository/releases/latest/download/better-status.zip"
+$PluginUrl = "https://github.com/$Repository/releases/download/latest/better-status.zip"
 $VencordUrl = "https://github.com/Vendicated/Vencord/archive/refs/heads/main.zip"
 $NodeIndex = "https://nodejs.org/dist/latest-v24.x"
 $DataDir = Join-Path $env:LOCALAPPDATA "StatusHotkeys"

@@ -4,7 +4,7 @@ set -euo pipefail
 
 REPOSITORY="Jacksonnn911/BetterStatus"
 PLUGIN_NAME="betterStatus"
-PLUGIN_URL="https://github.com/${REPOSITORY}/releases/latest/download/better-status.tar.gz"
+PLUGIN_URL="https://github.com/${REPOSITORY}/releases/download/latest/better-status.tar.gz"
 VENCORD_URL="https://github.com/Vendicated/Vencord/archive/refs/heads/main.tar.gz"
 NODE_INDEX="https://nodejs.org/dist/latest-v24.x"
 DATA_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/status-hotkeys"
@@ -255,8 +255,8 @@ case "${client_choice:-1}" in
             cli_name="vencord-installer-cli-macos-$cli_arch"
             cli_path="$temporary_dir/$cli_name"
             info "Downloading the headless Vencord installer"
-            download "https://github.com/${REPOSITORY}/releases/latest/download/$cli_name" "$cli_path"
-            download "https://github.com/${REPOSITORY}/releases/latest/download/SHA256SUMS.txt" "$temporary_dir/SHA256SUMS.txt"
+            download "https://github.com/${REPOSITORY}/releases/download/latest/$cli_name" "$cli_path"
+            download "https://github.com/${REPOSITORY}/releases/download/latest/SHA256SUMS.txt" "$temporary_dir/SHA256SUMS.txt"
             expected_cli_hash="$(awk -v file="$cli_name" '$2 == file { print $1 }' "$temporary_dir/SHA256SUMS.txt")"
             actual_cli_hash="$(shasum -a 256 "$cli_path" | awk '{print $1}')"
             [ -n "$expected_cli_hash" ] && [ "$actual_cli_hash" = "$expected_cli_hash" ] ||

@@ -91,7 +91,7 @@ From your Vencord directory, create the user plugin directory and extract the la
 
 ```sh
 mkdir -p src/userplugins/betterStatus
-curl -fsSL https://github.com/Jacksonnn911/BetterStatus/releases/latest/download/better-status.tar.gz \
+curl -fsSL https://github.com/Jacksonnn911/BetterStatus/releases/download/latest/better-status.tar.gz \
     | tar -xz -C src/userplugins/betterStatus
 ```
 
