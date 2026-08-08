@@ -271,11 +271,21 @@ If global shortcuts are not detected after installation, check **System Settings
 
 ## Development
 
-Clone this repository anywhere convenient, then copy or symlink its `src` directory to `Vencord/src/userplugins/betterStatus`. Run a development watcher from the Vencord root:
+Build the current checkout for the locally installed Discord client with:
 
 ```sh
-pnpm build --dev --watch
+make dev
 ```
+
+By default, this uses the Vencord source installed by BetterStatus at `~/.local/share/status-hotkeys/Vencord`. The command syncs the plugin sources, installs Vencord's locked dependencies, and creates a development build. Fully quit Discord with <kbd>Cmd</kbd>+<kbd>Q</kbd> and reopen it after the build completes.
+
+To use another Vencord checkout, pass its path explicitly:
+
+```sh
+make dev VENCORD_DIR=/path/to/Vencord
+```
+
+That checkout must already be injected into the Discord client you want to test.
 
 The main files are:
 
