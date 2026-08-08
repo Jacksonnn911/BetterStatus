@@ -1,7 +1,7 @@
 {
   "version": 1,
   "channel": "dev",
-  "commit": "d1aaf65c4a0824c24ec6a9fd0d5f2344cacbb0a3",
+  "commit": "d694371062ebb18254289d0cbd9af1c256a73cd6",
   "files": [
     {
       "source": "src/index.tsx",
@@ -36,7 +36,7 @@
     {
       "source": "src/styles.css",
       "target": "styles.css",
-      "sha256": "87eea0894f2195f5e7ba375af8fe3906ebc96d722e91b2c017192496c0317f4d"
+      "sha256": "5ec330e413e26d9bc4b5ac3a494bd888f41a50ebc78ffc9f5dee9ce86a1c1f6c"
     },
     {
       "source": "src/types.ts",
