@@ -215,7 +215,7 @@ Discord's **Set your status** dialog also includes a searchable saved-status his
 
 BetterStatus checks for new releases automatically unless you opt out with **Auto Update** at the top of the plugin settings. It checks once at startup and then at the selected **Check frequency**, which defaults to every six hours and can be changed from 15 minutes through daily or limited to startup only. The update channel defaults to **Production**, which follows the `prod` branch. Selecting **Development** opens a required confirmation explaining that early builds may be unstable and are provided without warranty; the checkbox must be accepted before the channel changes. Returning to Production never requires confirmation.
 
-The update panel includes a manual **Check for updates** button and reports the selected channel, installed commit, latest commit, last-check time, and a direct link to the exact GitHub commit. Its state badge distinguishes **Up to date**, **Update available**, **Restart required**, and **Version unavailable**. After a successful channel build, GitHub Actions publishes a `files.json` manifest containing every managed file and its SHA-256 hash. BetterStatus compares those hashes with the installed files, downloads only changed or newly listed files from the manifest's immutable commit, verifies every download, and rebuilds Vencord with rollback on failure.
+The update panel includes a manual **Check for updates** button and reports the selected channel, installed commit, latest commit, last-check time, and a direct link to the exact GitHub commit. Its state badge distinguishes **Up to date**, **Update available**, **Restart required**, and **Version unavailable**. After a successful development build, GitHub Actions publishes a channel-neutral `files.json` manifest containing every managed file and its SHA-256 hash. BetterStatus compares those hashes with the installed files, downloads only changed or newly listed files from the manifest's immutable commit, verifies every download, and rebuilds Vencord with rollback on failure.
 
 The currently running Discord session is not interrupted by default; enable the opt-in **Auto Restart Discord** switch if Discord should relaunch immediately after an update is installed. The production one-command installer remains the manual recovery/update method.
 
@@ -259,7 +259,7 @@ Vencord labels BetterStatus with the `Shortcuts` and `Utility` categories. Venco
 
 For normal updates, open BetterStatus settings and click **Check for updates**. If an update is installed, either restart Discord manually or enable **Auto Restart Discord** for future updates.
 
-Production users receive the latest successfully tested `prod` build. Development users follow `dev` after accepting the development-build warning. Switching channels makes the selected channel's manifest the update target; it does not mix files from both channels.
+Production users receive the latest successfully tested `prod` build. Development users follow `dev` after accepting the development-build warning. The `dev` branch owns and refreshes `files.json`; production receives that tested manifest only when development is promoted, so `prod` never generates or rewrites it independently.
 
 The same one-command installer can always be run again as a repair or recovery method. It downloads the current production release, replaces the managed plugin files, and rebuilds Vencord.
 
@@ -306,7 +306,7 @@ Update and rerun the installer. Current versions provide Vencord's required buil
 ### Update information is unavailable
 
 - Confirm GitHub is reachable and try **Check for updates** again.
-- **Installed** comes from the local `VERSION` marker; **Latest** comes from the selected channel's verified `files.json` manifest.
+- **Installed** comes from the local `VERSION` marker; **Latest** comes from the verified `files.json` promoted with the selected branch.
 - If **Restart required** remains after an update, fully quit and reopen Discord rather than only closing the settings window.
 - Run the production one-command installer if files were manually moved, partially deleted, or cannot be repaired by rollback.
 
@@ -353,4 +353,4 @@ The main files are:
 
 ## Automated releases
 
-Every push to `prod` or `dev` runs compatibility builds on Node.js 22 and 24 with pnpm 11. After successful compatibility tests, each channel publishes its own `files.json` manifest with immutable commit information and a SHA-256 hash for every managed file. Only `prod` also builds headless macOS Vencord CLI binaries from the official installer source, validates the installers, creates `.tar.gz` and `.zip` plugin packages, generates release checksums, uploads workflow artifacts, and replaces the rolling `latest` GitHub release used by the production installers. The `dev` branch remains available only to users who explicitly accept and select the Development channel.
+Every push to `prod` or `dev` runs compatibility builds on Node.js 22 and 24 with pnpm 11. After successful development compatibility tests, only `dev` publishes the channel-neutral `files.json` manifest with immutable commit information and a SHA-256 hash for every managed file. Production receives the tested dev manifest during promotion and never regenerates it. Only `prod` also builds headless macOS Vencord CLI binaries from the official installer source, validates the installers, creates `.tar.gz` and `.zip` plugin packages, generates release checksums, uploads workflow artifacts, and replaces the rolling `latest` GitHub release used by the production installers. The `dev` branch remains available only to users who explicitly accept and select the Development channel.

@@ -1,7 +1,6 @@
 {
   "version": 1,
-  "channel": "dev",
-  "commit": "08576b04041738caa4a8549d0bb08d9e902cb632",
+  "commit": "5d3f05de1b502159078374a9c3e2b6de0f855587",
   "files": [
     {
       "source": "src/index.tsx",
@@ -11,12 +10,12 @@
     {
       "source": "src/native.ts",
       "target": "native.ts",
-      "sha256": "1b7ca79d63f42dba8c901f1d4117d844e409c19814cc7043a4b1b2b0fe439331"
+      "sha256": "708d5b8ada50855b2a56b53c7593f1d1b2877eb79ccf54f803f05e8a9248b24f"
     },
     {
       "source": "README.md",
       "target": "README.md",
-      "sha256": "730ee83f8fab79c7388e17e2f2d0fd4d988bdecbc25ccc2c7b9f61b44ad5de46"
+      "sha256": "b8a18e868bf1a684d1af32bb77067682991d7a706a1b10029ddd87f1a1e492f5"
     },
     {
       "source": "src/savedStatuses.ts",

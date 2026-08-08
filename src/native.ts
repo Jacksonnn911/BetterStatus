@@ -32,7 +32,6 @@ interface ManifestFile {
 
 interface UpdateManifest {
     version: 1;
-    channel: UpdateChannel;
     commit: string;
     files: ManifestFile[];
 }
@@ -116,8 +115,7 @@ async function fetchManifest(channel: UpdateChannel) {
     return parseManifest(
         JSON.parse(await fetchText(
             `https://raw.githubusercontent.com/${REPOSITORY}/${head}/files.json`
-        )),
-        channel
+        ))
     );
 }
 
@@ -143,13 +141,13 @@ function isSafeRelativePath(path: unknown): path is string {
     return path.split("/").every(part => part !== "" && part !== "." && part !== "..");
 }
 
-function parseManifest(value: unknown, expectedChannel: UpdateChannel): UpdateManifest {
+function parseManifest(value: unknown): UpdateManifest {
     if (!value || typeof value !== "object")
         throw new Error("The update manifest is not an object.");
 
     const candidate = value as Partial<UpdateManifest>;
-    if (candidate.version !== 1 || candidate.channel !== expectedChannel)
-        throw new Error(`The update manifest does not describe the ${expectedChannel} channel.`);
+    if (candidate.version !== 1)
+        throw new Error("The update manifest uses an unsupported version.");
     if (typeof candidate.commit !== "string" || !/^[0-9a-f]{40}$/i.test(candidate.commit))
         throw new Error("The update manifest contains an invalid commit SHA.");
     if (!Array.isArray(candidate.files) || candidate.files.length === 0)
@@ -180,7 +178,6 @@ function parseManifest(value: unknown, expectedChannel: UpdateChannel): UpdateMa
 
     return {
         version: 1,
-        channel: expectedChannel,
         commit: candidate.commit.toLowerCase(),
         files
     };

@@ -97,6 +97,7 @@ jobs:
           pnpm build
 
   publish-manifest:
+    if: github.ref_name == 'dev'
     name: Publish file manifest
     needs:
       - compatibility-test
@@ -109,7 +110,7 @@ jobs:
           ref: ${{ github.sha }}
 
       - name: Generate files.json
-        run: node scripts/generate-files-manifest.mjs "$GITHUB_REF_NAME" "$GITHUB_SHA"
+        run: node scripts/generate-files-manifest.mjs "$GITHUB_SHA"
 
       - name: Commit channel manifest
         run: |
@@ -119,8 +120,8 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update $GITHUB_REF_NAME file manifest [skip ci]"
-          git push origin "HEAD:$GITHUB_REF_NAME"
+          git commit -m "Update dev file manifest [skip ci]"
+          git push origin "HEAD:dev"
 
   release:
     if: github.ref_name == 'prod'
