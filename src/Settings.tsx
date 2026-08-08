@@ -6,6 +6,7 @@
 
 import "./styles.css";
 
+import { showNotification } from "@api/Notifications";
 import { definePluginSettings, migratePluginSettings } from "@api/Settings";
 import { FormSwitch } from "@components/FormSwitch";
 import { OptionType, PluginNative } from "@utils/types";
@@ -132,6 +133,49 @@ export default function SettingsComponent() {
     () => new Set(presets.map(preset => preset.id)),
   );
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [checkingForUpdates, setCheckingForUpdates] = React.useState(false);
+  const [updateStatus, setUpdateStatus] = React.useState<string | null>(null);
+
+  async function checkForUpdates() {
+    if (checkingForUpdates) return;
+
+    setCheckingForUpdates(true);
+    setUpdateStatus("Checking the latest successful release…");
+
+    try {
+      const result = await Native.checkForUpdates(true);
+
+      if (result.status === "updated") {
+        setUpdateStatus("Update installed — restart Discord to apply it.");
+        showNotification({
+          title: "BetterStatus updated",
+          body: "Restart Discord to use the new version.",
+        });
+      } else if (result.status === "current") {
+        setUpdateStatus("You already have the latest successful release.");
+        showNotification({
+          title: "BetterStatus is up to date",
+          body: "No update is currently available.",
+        });
+      } else {
+        const message = result.error ?? "The update could not be completed.";
+        setUpdateStatus(`Update failed: ${message}`);
+        showNotification({
+          title: "BetterStatus update failed",
+          body: message,
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setUpdateStatus(`Update failed: ${message}`);
+      showNotification({
+        title: "BetterStatus update failed",
+        body: message,
+      });
+    } finally {
+      setCheckingForUpdates(false);
+    }
+  }
 
   async function commit(next: StatusPreset[]) {
     setPresets(next);
@@ -288,13 +332,23 @@ export default function SettingsComponent() {
             Keep BetterStatus current with verified rolling releases. Updates
             build safely and apply after restart.
           </Forms.FormText>
+          {updateStatus && (
+            <div className="bs-update-status" role="status">
+              {updateStatus}
+            </div>
+          )}
         </div>
-        <FormSwitch
-          title={autoUpdate ? "On" : "Off"}
-          value={autoUpdate}
-          onChange={value => (settings.store.autoUpdate = value)}
-          hideBorder
-        />
+        <div className="bs-update-actions">
+          <Button disabled={checkingForUpdates} onClick={checkForUpdates}>
+            {checkingForUpdates ? "Checking…" : "Check for updates"}
+          </Button>
+          <FormSwitch
+            title={autoUpdate ? "Auto update on" : "Auto update off"}
+            value={autoUpdate}
+            onChange={value => (settings.store.autoUpdate = value)}
+            hideBorder
+          />
+        </div>
       </div>
 
       <div className="bs-toolbar">
