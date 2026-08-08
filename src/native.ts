@@ -47,6 +47,7 @@ interface UpdateResult {
     version?: string;
     channel?: UpdateChannel;
     error?: string;
+    retryAt?: number;
 }
 
 export interface UpdateInfo {
@@ -59,6 +60,70 @@ export interface UpdateInfo {
 
 let updatePromise: Promise<UpdateResult> | undefined;
 let pendingRestartVersion: string | undefined;
+let githubRetryAt = 0;
+
+class GitHubRateLimitError extends Error {
+    constructor(public readonly retryAt: number) {
+        const remaining = formatRetryDuration(retryAt - Date.now());
+        const deadline = new Date(retryAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit"
+        });
+
+        super(`GitHub returned HTTP 403. Update checks are unavailable for ${remaining}, until ${deadline}.`);
+        this.name = "GitHubRateLimitError";
+    }
+}
+
+function formatRetryDuration(milliseconds: number) {
+    const seconds = Math.max(1, Math.ceil(milliseconds / 1000));
+    if (seconds < 60)
+        return `${seconds} ${seconds === 1 ? "second" : "seconds"}`;
+
+    const minutes = Math.ceil(seconds / 60);
+    if (minutes < 60)
+        return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes === 0
+        ? `${hours} ${hours === 1 ? "hour" : "hours"}`
+        : `${hours} ${hours === 1 ? "hour" : "hours"} ${remainingMinutes} minutes`;
+}
+
+function rateLimitDeadline(response: Response) {
+    const retryAfter = Number(response.headers.get("retry-after"));
+    if (Number.isFinite(retryAfter) && retryAfter > 0)
+        return Date.now() + retryAfter * 1000;
+
+    const rateLimitReset = Number(response.headers.get("x-ratelimit-reset"));
+    if (Number.isFinite(rateLimitReset) && rateLimitReset > 0)
+        return Math.max(Date.now() + 1000, rateLimitReset * 1000);
+
+    return Date.now() + 15 * 60_000;
+}
+
+function throwIfGitHubRateLimited() {
+    if (githubRetryAt > Date.now())
+        throw new GitHubRateLimitError(githubRetryAt);
+}
+
+function handleFetchFailure(response: Response): never {
+    if (response.status === 403) {
+        githubRetryAt = rateLimitDeadline(response);
+        throw new GitHubRateLimitError(githubRetryAt);
+    }
+
+    throw new Error(`Download failed (${response.status} ${response.statusText})`);
+}
+
+function updateFailure(error: unknown): UpdateResult {
+    return {
+        status: "failed",
+        error: error instanceof Error ? error.message : String(error),
+        ...(error instanceof GitHubRateLimitError ? { retryAt: error.retryAt } : {})
+    };
+}
 
 async function exists(path: string) {
     try {
@@ -89,6 +154,7 @@ async function findNode() {
 }
 
 async function fetchText(url: string) {
+    throwIfGitHubRateLimited();
     const response = await fetch(url, {
         cache: "no-store",
         headers: {
@@ -98,7 +164,7 @@ async function fetchText(url: string) {
     });
 
     if (!response.ok)
-        throw new Error(`Download failed (${response.status} ${response.statusText})`);
+        handleFetchFailure(response);
 
     return response.text();
 }
@@ -120,12 +186,13 @@ async function fetchManifest(channel: UpdateChannel) {
 }
 
 async function fetchBytes(url: string) {
+    throwIfGitHubRateLimited();
     const response = await fetch(url, {
         headers: { "User-Agent": "BetterStatus-AutoUpdater" }
     });
 
     if (!response.ok)
-        throw new Error(`Download failed (${response.status} ${response.statusText})`);
+        handleFetchFailure(response);
 
     return Buffer.from(await response.arrayBuffer());
 }
@@ -336,10 +403,7 @@ async function performUpdate(channel: UpdateChannel): Promise<UpdateResult> {
                 await rm(pluginPath(target), { force: true });
         }
 
-        return {
-            status: "failed",
-            error: error instanceof Error ? error.message : String(error)
-        };
+        return updateFailure(error);
     } finally {
         await rm(stagingDir, { recursive: true, force: true });
     }
@@ -356,10 +420,7 @@ export function checkForUpdates(
     const channel: UpdateChannel = requestedChannel === "dev" ? "dev" : "prod";
 
     return updatePromise ??= performUpdate(channel)
-        .catch(error => ({
-            status: "failed" as const,
-            error: error instanceof Error ? error.message : String(error)
-        }))
+        .catch(updateFailure)
         .finally(() => {
             updatePromise = undefined;
         });

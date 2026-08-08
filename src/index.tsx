@@ -39,17 +39,22 @@ function clearScheduledUpdateCheck() {
     updateCheckTimer = undefined;
 }
 
-function scheduleNextUpdateCheck() {
+function scheduleNextUpdateCheck(retryAt?: number) {
     clearScheduledUpdateCheck();
 
     const frequency = getUpdateCheckFrequency();
-    if (!updateSchedulerActive || !settings.store.autoUpdate || frequency === 0)
+    if (
+        !updateSchedulerActive ||
+        !settings.store.autoUpdate ||
+        (frequency === 0 && retryAt === undefined)
+    )
         return;
 
-    updateCheckTimer = window.setTimeout(
-        runAutomaticUpdateCheck,
-        frequency * 60_000
-    );
+    const delay = retryAt === undefined
+        ? frequency * 60_000
+        : Math.max(1000, retryAt - Date.now());
+
+    updateCheckTimer = window.setTimeout(runAutomaticUpdateCheck, delay);
 }
 
 function runAutomaticUpdateCheck() {
@@ -60,6 +65,7 @@ function runAutomaticUpdateCheck() {
     if (automaticUpdateCheck)
         return;
 
+    let retryAt: number | undefined;
     automaticUpdateCheck = VencordNative.pluginHelpers.BetterStatus.checkForUpdates(
         true,
         getUpdateChannel()
@@ -75,15 +81,18 @@ function runAutomaticUpdateCheck() {
                 if (settings.store.autoRestart)
                     window.setTimeout(relaunch, 1_500);
             } else if (result.status === "failed") {
+                retryAt = result.retryAt;
                 showNotification({
-                    title: "BetterStatus update failed",
+                    title: result.retryAt
+                        ? "BetterStatus update checks paused"
+                        : "BetterStatus update failed",
                     body: result.error ?? "Run the BetterStatus installer to update manually."
                 });
             }
         })
         .finally(() => {
             automaticUpdateCheck = undefined;
-            scheduleNextUpdateCheck();
+            scheduleNextUpdateCheck(retryAt);
         });
 }
 
@@ -289,13 +298,15 @@ export default definePlugin({
         );
     },
 
-    configureUpdateChecks(checkNow = false) {
+    configureUpdateChecks(checkNow = false, retryAt?: number) {
         clearScheduledUpdateCheck();
 
         if (!updateSchedulerActive || !settings.store.autoUpdate)
             return;
 
-        if (checkNow)
+        if (retryAt !== undefined)
+            scheduleNextUpdateCheck(retryAt);
+        else if (checkNow)
             runAutomaticUpdateCheck();
         else
             scheduleNextUpdateCheck();

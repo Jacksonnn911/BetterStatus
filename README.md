@@ -219,6 +219,8 @@ The update panel includes a manual **Check for updates** button and reports the 
 
 The currently running Discord session is not interrupted by default; enable the opt-in **Auto Restart Discord** switch if Discord should relaunch immediately after an update is installed. The production one-command installer remains the manual recovery/update method.
 
+If GitHub responds with HTTP 403, BetterStatus reads GitHub's retry deadline, reports how long update information will remain unavailable, and pauses automatic checks until that deadline instead of repeatedly retrying.
+
 Press `Escape` while recording to cancel. A preset can be temporarily disabled with its **Enabled** switch or permanently removed with **Delete Status**.
 
 ### Presence

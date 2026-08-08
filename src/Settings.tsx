@@ -387,6 +387,7 @@ export default function SettingsComponent() {
   async function checkForUpdates() {
     if (checkingForUpdates) return;
 
+    let retryAt: number | undefined;
     setCheckingForUpdates(true);
     setUpdateStatus(
       `Checking the ${selectedUpdateChannel === "dev" ? "development" : "production"} channel…`,
@@ -416,9 +417,14 @@ export default function SettingsComponent() {
         });
       } else {
         const message = result.error ?? "The update could not be completed.";
+        retryAt = result.retryAt;
+        if (retryAt !== undefined)
+          Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(false, retryAt);
         setUpdateStatus(`Update failed: ${message}`);
         showNotification({
-          title: "BetterStatus update failed",
+          title: retryAt !== undefined
+            ? "BetterStatus update checks paused"
+            : "BetterStatus update failed",
           body: message,
         });
       }
@@ -430,7 +436,8 @@ export default function SettingsComponent() {
         body: message,
       });
     } finally {
-      await refreshUpdateInfo(selectedUpdateChannel);
+      if (retryAt === undefined)
+        await refreshUpdateInfo(selectedUpdateChannel);
       setCheckingForUpdates(false);
     }
   }
