@@ -9,7 +9,7 @@ import { getUserSettingLazy } from "@api/UserSettings";
 import { Link } from "@components/Link";
 import definePlugin from "@utils/types";
 
-import { getPresets, rememberSavedStatus, savePresets, settings } from "./Settings";
+import { getPresets, getUpdateChannel, rememberSavedStatus, savePresets, settings } from "./Settings";
 import type { StatusPreset } from "./types";
 
 interface CustomStatus {
@@ -69,6 +69,33 @@ async function rememberActivePreset() {
             ? { ...preset, rememberedText }
             : preset
     ));
+}
+
+async function restoreActivePreset() {
+    const { activePresetId } = settings.store;
+
+    if (!activePresetId)
+        return undefined;
+
+    let activePreset = getPresets().find(
+        preset => preset.id === activePresetId && preset.enabled
+    );
+
+    if (!activePreset) {
+        settings.store.activePresetId = undefined;
+        return undefined;
+    }
+
+    if (activePreset.type === "memory") {
+        await rememberActivePreset();
+        activePreset = getPresets().find(preset => preset.id === activePresetId);
+    }
+
+    if (!activePreset)
+        return undefined;
+
+    await setDiscordState(activePreset);
+    return activePreset;
 }
 
 function BetterStatusOverview() {
@@ -182,9 +209,17 @@ export default definePlugin({
         const presets = getPresets();
         await savePresets(presets);
 
+        try {
+            const restoredPreset = await restoreActivePreset();
+            if (restoredPreset)
+                console.log(`[BetterStatus] Restored last active preset "${restoredPreset.name}"`);
+        } catch (error) {
+            console.error("[BetterStatus] Failed to restore the last active preset", error);
+        }
+
         void VencordNative.pluginHelpers.BetterStatus.checkForUpdates(
             settings.store.autoUpdate,
-            settings.store.updateChannel
+            getUpdateChannel()
         )
             .then(result => {
                 if (result.status === "updated") {

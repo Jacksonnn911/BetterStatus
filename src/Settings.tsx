@@ -63,7 +63,7 @@ const TYPE_OPTIONS = [
 const UPDATE_CHANNEL_OPTIONS = [
   {
     label: "Production (recommended)",
-    value: "prod",
+    value: "production",
   },
   {
     label: "Development",
@@ -152,17 +152,19 @@ export default function SettingsComponent() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [checkingForUpdates, setCheckingForUpdates] = React.useState(false);
   const [updateStatus, setUpdateStatus] = React.useState<string | null>(null);
+  const selectedUpdateChannel: UpdateChannel =
+    updateChannel === "dev" ? "dev" : "production";
 
   async function checkForUpdates() {
     if (checkingForUpdates) return;
 
     setCheckingForUpdates(true);
     setUpdateStatus(
-      `Checking the ${updateChannel === "dev" ? "development" : "production"} channel…`,
+      `Checking the ${selectedUpdateChannel === "dev" ? "development" : "production"} channel…`,
     );
 
     try {
-      const result = await Native.checkForUpdates(true, updateChannel);
+      const result = await Native.checkForUpdates(true, selectedUpdateChannel);
 
       if (result.status === "updated") {
         setUpdateStatus("Update installed — restart Discord to apply it.");
@@ -174,7 +176,7 @@ export default function SettingsComponent() {
         setUpdateStatus("You already have the latest channel build.");
         showNotification({
           title: "BetterStatus is up to date",
-          body: `No newer ${updateChannel === "dev" ? "development" : "production"} build is available.`,
+          body: `No newer ${selectedUpdateChannel === "dev" ? "development" : "production"} build is available.`,
         });
       } else {
         const message = result.error ?? "The update could not be completed.";
@@ -361,7 +363,7 @@ export default function SettingsComponent() {
               setUpdateStatus(null);
             }}
             serialize={value => value}
-            isSelected={value => value === updateChannel}
+            isSelected={value => value === selectedUpdateChannel}
             closeOnSelect
           />
           <Button disabled={checkingForUpdates} onClick={checkForUpdates}>
@@ -643,7 +645,7 @@ export const settings = definePluginSettings({
   },
   updateChannel: {
     type: OptionType.CUSTOM,
-    default: "prod" as UpdateChannel,
+    default: "production" as UpdateChannel,
   },
   presets: {
     type: OptionType.CUSTOM,
@@ -691,6 +693,15 @@ export function getSavedStatuses(): SavedStatus[] {
 export function rememberSavedStatus(text: string) {
   const next = rememberStatusInLibrary(getSavedStatuses(), text);
   settings.store.savedStatuses = next;
+}
+
+export function getUpdateChannel(): UpdateChannel {
+  const channel = settings.store.updateChannel === "dev" ? "dev" : "production";
+
+  if (settings.store.updateChannel !== channel)
+    settings.store.updateChannel = channel;
+
+  return channel;
 }
 
 export async function savePresets(presets: StatusPreset[]) {

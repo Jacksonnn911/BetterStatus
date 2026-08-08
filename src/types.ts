@@ -6,7 +6,7 @@
 
 export type PresenceStatus = "online" | "idle" | "dnd" | "invisible";
 export type PresetType = "fixed" | "memory";
-export type UpdateChannel = "prod" | "dev";
+export type UpdateChannel = "production" | "dev";
 
 export interface StatusPreset {
     id: string;

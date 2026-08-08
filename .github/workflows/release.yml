@@ -3,7 +3,7 @@ name: Build update channels
 on:
   push:
     branches:
-      - prod
+      - production
       - dev
   workflow_dispatch:
 
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   build-macos-cli:
-    if: github.ref_name == 'prod'
+    if: github.ref_name == 'production'
     name: Build headless macOS installer
     runs-on: macos-latest
 
@@ -97,7 +97,7 @@ jobs:
           pnpm build
 
   release:
-    if: github.ref_name == 'prod'
+    if: github.ref_name == 'production'
     needs:
       - compatibility-test
       - build-macos-cli
@@ -129,7 +129,7 @@ jobs:
         run: |
           mkdir -p package
           cp src/index.tsx src/Settings.tsx src/StatusSwitcher.tsx src/savedStatuses.ts src/native.ts src/types.ts src/styles.css README.md package/
-          printf 'prod:%s\n' "$GITHUB_SHA" > package/VERSION
+          printf 'production:%s\n' "$GITHUB_SHA" > package/VERSION
           tar -C package -czf better-status.tar.gz .
           (cd package && zip -qr ../better-status.zip .)
           cp macos-cli/vencord-installer-cli-macos-* .
@@ -163,5 +163,5 @@ jobs:
             vencord-installer-cli-macos-arm64 \
             --target "$GITHUB_SHA" \
             --title "Latest BetterStatus build" \
-            --notes "Automated production build from commit $GITHUB_SHA. This rolling release is replaced after every push to prod." \
+            --notes "Automated production build from commit $GITHUB_SHA. This rolling release is replaced after every push to production." \
             --latest
