@@ -17,6 +17,19 @@ function Write-Success([string]$Message) {
     Write-Host "OK  $Message" -ForegroundColor Green
 }
 
+function Start-DetachedProcess([string]$FilePath) {
+    # Ask the desktop shell to launch the application so it is owned by
+    # Explorer instead of remaining a child of this PowerShell installer.
+    $Shell = New-Object -ComObject "Shell.Application"
+    try {
+        $Shell.ShellExecute($FilePath, "", (Split-Path -Parent $FilePath), "open", 1)
+    } finally {
+        if ([System.Runtime.InteropServices.Marshal]::IsComObject($Shell)) {
+            [System.Runtime.InteropServices.Marshal]::FinalReleaseComObject($Shell) | Out-Null
+        }
+    }
+}
+
 function Test-VencordSource([string]$Path) {
     if (-not ((Test-Path "$Path\package.json") -and (Test-Path "$Path\src\plugins"))) {
         return $false
@@ -255,7 +268,7 @@ try {
             & $NodeCommand $InstallerScript -- --install --branch auto
             if ($DiscordWasRunning -and $DiscordLaunchPath) {
                 Write-Step "Relaunching Discord"
-                Start-Process -FilePath $DiscordLaunchPath
+                Start-DetachedProcess $DiscordLaunchPath
             }
             Write-Host "`nEnable BetterStatus under Vencord > Plugins, and you are done." -ForegroundColor Green
         }
