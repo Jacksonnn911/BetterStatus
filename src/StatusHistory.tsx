@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { getUserSettingLazy } from "@api/UserSettings";
 import { createRoot, React, TextInput } from "@webpack/common";
 
 import { normalizeSavedStatuses } from "./savedStatuses";
@@ -12,10 +13,19 @@ import type { SavedStatus } from "./types";
 
 interface MountedHistory {
     host: HTMLElement;
+    initialText: string;
     modal: Element;
+    recordedText?: string;
     root: ReturnType<typeof createRoot>;
     saveListener: (event: Event) => void;
 }
+
+interface CustomStatus {
+    text?: string;
+}
+
+const CustomStatusSettings =
+    getUserSettingLazy<CustomStatus>("status", "customStatus")!;
 
 const mountedHistories = new Map<HTMLTextAreaElement, MountedHistory>();
 let modalObserver: MutationObserver | undefined;
@@ -176,6 +186,14 @@ function cleanupRemovedHistories() {
         if (mounted.host.isConnected)
             continue;
 
+        const draft = textarea.value.trim();
+        if (draft && draft !== mounted.initialText && draft !== mounted.recordedText) {
+            window.setTimeout(() => {
+                if (CustomStatusSettings.getSetting()?.text?.trim() === draft)
+                    rememberSavedStatus(draft);
+            }, 300);
+        }
+
         mounted.modal.removeEventListener("click", mounted.saveListener, true);
         mounted.root.unmount();
         mountedHistories.delete(textarea);
@@ -202,14 +220,26 @@ function mountHistory(textarea: HTMLTextAreaElement) {
             return;
 
         const button = target.closest("button");
-        if (button?.closest("footer"))
-            rememberSavedStatus(textarea.value);
+        if (button?.closest("footer")) {
+            const text = textarea.value.trim();
+            rememberSavedStatus(text);
+            const mounted = mountedHistories.get(textarea);
+            if (mounted)
+                mounted.recordedText = text;
+        }
     };
 
     modal.addEventListener("click", saveListener, true);
 
     const root = createRoot(host);
-    mountedHistories.set(textarea, { host, modal, root, saveListener });
+    const mounted: MountedHistory = {
+        host,
+        initialText: textarea.value.trim(),
+        modal,
+        root,
+        saveListener
+    };
+    mountedHistories.set(textarea, mounted);
     root.render(<StatusHistory textarea={textarea} />);
 }
 
