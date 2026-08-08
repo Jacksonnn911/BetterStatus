@@ -9,7 +9,9 @@ import { getUserSettingLazy } from "@api/UserSettings";
 import { Link } from "@components/Link";
 import { Paragraph } from "@components/Paragraph";
 import definePlugin from "@utils/types";
+import type { User } from "@vencord/discord-types";
 
+import { SavedStatusesProfileRow } from "./SavedStatusesProfile";
 import { getPresets, rememberSavedStatus, savePresets, settings } from "./Settings";
 import type { StatusPreset } from "./types";
 
@@ -28,11 +30,7 @@ const CustomStatusSettings =
     getUserSettingLazy<CustomStatus>("status", "customStatus")!;
 
 
-async function setDiscordState(preset: StatusPreset) {
-    const text = preset.type === "memory"
-        ? preset.rememberedText ?? preset.text
-        : preset.text;
-
+async function setCustomStatusText(text: string) {
     await CustomStatusSettings.updateSetting({
         text,
         emojiId: "0",
@@ -40,7 +38,19 @@ async function setDiscordState(preset: StatusPreset) {
         expiresAtMs: "0",
         createdAtMs: Date.now().toString()
     });
+}
 
+async function applySavedStatusText(text: string) {
+    await setCustomStatusText(text);
+    rememberSavedStatus(text);
+}
+
+async function setDiscordState(preset: StatusPreset) {
+    const text = preset.type === "memory"
+        ? preset.rememberedText ?? preset.text
+        : preset.text;
+
+    await setCustomStatusText(text);
     await StatusSettings.updateSetting(preset.presence);
     rememberSavedStatus(text);
 }
@@ -89,6 +99,16 @@ export default definePlugin({
     ],
 
     dependencies: ["UserSettingsAPI"],
+
+    patches: [
+        {
+            find: '"UserProfilePopout");',
+            replacement: {
+                match: /userId:\i\.id,guild:\i\}\)/,
+                replace: "$&,$self.renderSavedStatusesProfile(arguments[0])"
+            }
+        }
+    ],
 
     settings,
     settingsAboutComponent() {
@@ -145,6 +165,10 @@ export default definePlugin({
                 </div>
             </div>
         );
+    },
+
+    renderSavedStatusesProfile(props: { user: User; }) {
+        return <SavedStatusesProfileRow user={props.user} onApply={applySavedStatusText} />;
     },
 
 

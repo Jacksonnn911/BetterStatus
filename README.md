@@ -178,7 +178,7 @@ Press `Escape` while recording to cancel. A preset can be temporarily disabled w
 
 ### Presence and saved statuses
 
-The presence field uses a Discord-style switcher with the familiar Online, Idle, Do Not Disturb, and Invisible indicators and descriptions. Open **Saved statuses** at the bottom of that switcher to search your history, apply a saved status to the current preset, mark favorites, or delete entries.
+The presence field uses a Discord-style switcher with the familiar Online, Idle, Do Not Disturb, and Invisible indicators and descriptions. **Saved statuses** is also available from your own Discord profile popout alongside the native presence controls. Open it there—or from the preset switcher—to search your history, apply a status immediately, mark favorites, or delete entries.
 
 BetterStatus remembers non-empty custom statuses when a preset is activated. Exact duplicates update their usage count and recency instead of creating another entry. Favorites are always listed before recent statuses. The library stores at most 1,000 entries; once full, the oldest non-favorite is replaced. If all 1,000 entries are favorites, BetterStatus keeps them and does not add another status until one is unfavorited or deleted.
 
@@ -281,6 +281,7 @@ The main files are:
 
 - `src/index.tsx` — plugin lifecycle, preset storage, and Discord setting updates
 - `src/Settings.tsx` — preset editor and shortcut recorder
+- `src/SavedStatusesProfile.tsx` — account-popout entry and saved-status manager
 - `src/StatusSwitcher.tsx` — Discord-style presence menu and saved-status library
 - `src/savedStatuses.ts` — saved-history normalization, deduplication, and retention policy
 - `src/native.ts` — Electron global shortcut registration

@@ -18,6 +18,7 @@ const REPOSITORY = "Jacksonnn911/BetterStatus";
 const UPDATE_FILES = [
     { localName: "index.tsx", remotePath: "src/index.tsx" },
     { localName: "Settings.tsx", remotePath: "src/Settings.tsx" },
+    { localName: "SavedStatusesProfile.tsx", remotePath: "src/SavedStatusesProfile.tsx" },
     { localName: "StatusSwitcher.tsx", remotePath: "src/StatusSwitcher.tsx" },
     { localName: "savedStatuses.ts", remotePath: "src/savedStatuses.ts" },
     { localName: "native.ts", remotePath: "src/native.ts" },

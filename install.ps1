@@ -183,7 +183,7 @@ try {
     Expand-Archive -Path $PluginArchive -DestinationPath $ExpandedPlugin
     $PluginDir = "$VencordDir\src\userplugins\$PluginName"
     New-Item -ItemType Directory -Force -Path $PluginDir | Out-Null
-    foreach ($File in @("index.tsx", "Settings.tsx", "StatusSwitcher.tsx", "savedStatuses.ts", "native.ts", "types.ts", "README.md")) {
+    foreach ($File in @("index.tsx", "Settings.tsx", "SavedStatusesProfile.tsx", "StatusSwitcher.tsx", "savedStatuses.ts", "native.ts", "types.ts", "README.md")) {
         Copy-Item -Force "$ExpandedPlugin\$File" "$PluginDir\$File"
     }
     Remove-Item -Force -ErrorAction SilentlyContinue "$PluginDir\styles.css"

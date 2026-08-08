@@ -772,7 +772,16 @@
 }
 
 .bs-preset-card-disabled {
-    opacity: .72;
+    border-color: color-mix(in srgb, var(--interactive-muted) 55%, var(--background-modifier-accent));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 2%);
+}
+
+.bs-preset-card-disabled::before {
+    opacity: .42;
+}
+
+.bs-preset-card-disabled .bs-mode-badge {
+    opacity: .7;
 }
 
 .bs-card-header,
@@ -1116,8 +1125,17 @@
     border: 1px solid var(--background-modifier-accent);
     border-radius: 12px;
     color: var(--interactive-normal);
-    background: var(--background-floating);
+    background:
+        linear-gradient(var(--background-floating), var(--background-floating)),
+        #111214;
+    backdrop-filter: none;
     box-shadow: 0 16px 40px rgb(0 0 0 / 40%), 0 0 0 1px rgb(0 0 0 / 12%);
+}
+
+.theme-light .bs-status-menu {
+    background:
+        linear-gradient(var(--background-floating), var(--background-floating)),
+        #fff;
 }
 
 .bs-status-menu-label {
@@ -1375,6 +1393,85 @@
 .bs-saved-empty span,
 .bs-saved-limit {
     font-size: 11px;
+}
+
+/* Entry injected into Discord's own-user profile popout. */
+.bs-profile-saved-row {
+    display: grid;
+    width: 100%;
+    min-height: 58px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+    padding: 11px 14px;
+    border: 0;
+    border-radius: 8px;
+    color: var(--interactive-normal);
+    background: var(--background-modifier-hover);
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    transition: color 140ms ease, background-color 140ms ease;
+}
+
+.bs-profile-saved-row:hover,
+.bs-profile-saved-row:focus-visible {
+    color: var(--interactive-hover);
+    background: var(--background-modifier-selected);
+    outline: none;
+}
+
+.bs-profile-saved-icon {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    color: var(--brand-360);
+    place-items: center;
+}
+
+.bs-profile-saved-copy {
+    display: flex;
+    overflow: hidden;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.bs-profile-saved-copy strong {
+    overflow: hidden;
+    color: var(--header-primary);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bs-profile-saved-copy small {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.bs-profile-saved-row > svg {
+    color: var(--interactive-normal);
+}
+
+.bs-profile-saved-modal {
+    padding: 16px;
+    background:
+        linear-gradient(var(--modal-background, var(--background-primary)), var(--modal-background, var(--background-primary))),
+        #111214;
+}
+
+.theme-light .bs-profile-saved-modal {
+    background:
+        linear-gradient(var(--modal-background, var(--background-primary)), var(--modal-background, var(--background-primary))),
+        #fff;
+}
+
+.bs-profile-saved-list {
+    max-height: min(55vh, 440px);
 }
 
 .bs-saved-limit {

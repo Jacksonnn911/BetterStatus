@@ -82,7 +82,7 @@ jobs:
       - name: Add plugin to Vencord
         run: |
           mkdir -p Vencord/src/userplugins/betterStatus
-          cp betterStatus/src/index.tsx betterStatus/src/Settings.tsx betterStatus/src/StatusSwitcher.tsx betterStatus/src/savedStatuses.ts betterStatus/src/native.ts betterStatus/src/types.ts betterStatus/src/styles.css Vencord/src/userplugins/betterStatus/
+          cp betterStatus/src/index.tsx betterStatus/src/Settings.tsx betterStatus/src/SavedStatusesProfile.tsx betterStatus/src/StatusSwitcher.tsx betterStatus/src/savedStatuses.ts betterStatus/src/native.ts betterStatus/src/types.ts betterStatus/src/styles.css Vencord/src/userplugins/betterStatus/
 
       - name: Install dependencies and build
         working-directory: Vencord
@@ -108,6 +108,7 @@ jobs:
         run: |
           test -f src/index.tsx
           test -f src/Settings.tsx
+          test -f src/SavedStatusesProfile.tsx
           test -f src/StatusSwitcher.tsx
           test -f src/savedStatuses.ts
           test -f src/native.ts
@@ -125,7 +126,7 @@ jobs:
       - name: Create release packages
         run: |
           mkdir -p package
-          cp src/index.tsx src/Settings.tsx src/StatusSwitcher.tsx src/savedStatuses.ts src/native.ts src/types.ts src/styles.css README.md package/
+          cp src/index.tsx src/Settings.tsx src/SavedStatusesProfile.tsx src/StatusSwitcher.tsx src/savedStatuses.ts src/native.ts src/types.ts src/styles.css README.md package/
           printf '%s\n' "$GITHUB_SHA" > package/VERSION
           tar -C package -czf better-status.tar.gz .
           (cd package && zip -qr ../better-status.zip .)
