@@ -10,6 +10,7 @@ import { showNotification } from "@api/Notifications";
 import { definePluginSettings, migratePluginSettings } from "@api/Settings";
 import { FormSwitch } from "@components/FormSwitch";
 import { Link } from "@components/Link";
+import { relaunch } from "@utils/native";
 import { OptionType, PluginNative } from "@utils/types";
 import type { RenderModalProps } from "@vencord/discord-types";
 import {
@@ -32,11 +33,20 @@ import type {
   SavedStatus,
   StatusPreset,
   UpdateChannel,
+  UpdateCheckFrequency,
 } from "./types";
 
 const Native = VencordNative.pluginHelpers.BetterStatus as PluginNative<
   typeof import("./native")
 >;
+
+interface UpdateInfo {
+  channel: UpdateChannel;
+  installedChannel?: UpdateChannel;
+  installedVersion?: string;
+  latestVersion: string;
+  status: "current" | "updateAvailable" | "restartRequired";
+}
 
 const DEFAULT_PRESETS: StatusPreset[] = [
   {
@@ -79,6 +89,20 @@ const UPDATE_CHANNEL_OPTIONS = [
     label: "Development",
     value: "dev",
   },
+];
+
+const UPDATE_FREQUENCY_OPTIONS: Array<{
+  label: string;
+  value: UpdateCheckFrequency;
+}> = [
+  { label: "Every 15 minutes", value: 15 },
+  { label: "Every 30 minutes", value: 30 },
+  { label: "Every hour", value: 60 },
+  { label: "Every 3 hours", value: 180 },
+  { label: "Every 6 hours (recommended)", value: 360 },
+  { label: "Every 12 hours", value: 720 },
+  { label: "Every day", value: 1440 },
+  { label: "On startup only", value: 0 },
 ];
 
 function createId() {
@@ -196,8 +220,10 @@ function DevelopmentChannelPrompt({
 }
 
 export default function SettingsComponent() {
-  const { autoUpdate, updateChannel, activePresetId } = settings.use([
+  const { autoUpdate, autoRestart, updateCheckFrequency, updateChannel, activePresetId } = settings.use([
     "autoUpdate",
+    "autoRestart",
+    "updateCheckFrequency",
     "updateChannel",
     "activePresetId",
   ]);
@@ -212,8 +238,29 @@ export default function SettingsComponent() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [checkingForUpdates, setCheckingForUpdates] = React.useState(false);
   const [updateStatus, setUpdateStatus] = React.useState<string | null>(null);
+  const [updateInfo, setUpdateInfo] = React.useState<UpdateInfo | null>(null);
+  const [updateInfoError, setUpdateInfoError] = React.useState<string | null>(null);
+  const [lastCheckedAt, setLastCheckedAt] = React.useState<Date | null>(null);
   const selectedUpdateChannel: UpdateChannel =
     updateChannel === "dev" ? "dev" : "prod";
+  const selectedUpdateFrequency = normalizeUpdateCheckFrequency(updateCheckFrequency);
+
+  async function refreshUpdateInfo(channel: UpdateChannel) {
+    try {
+      const info = await Native.getUpdateInfo(channel);
+      setUpdateInfo(info);
+      setUpdateInfoError(null);
+      setLastCheckedAt(new Date());
+    } catch (error) {
+      setUpdateInfo(null);
+      setUpdateInfoError(error instanceof Error ? error.message : String(error));
+      setLastCheckedAt(new Date());
+    }
+  }
+
+  React.useEffect(() => {
+    void refreshUpdateInfo(selectedUpdateChannel);
+  }, [selectedUpdateChannel]);
 
   async function checkForUpdates() {
     if (checkingForUpdates) return;
@@ -227,11 +274,19 @@ export default function SettingsComponent() {
       const result = await Native.checkForUpdates(true, selectedUpdateChannel);
 
       if (result.status === "updated") {
-        setUpdateStatus("Update installed — restart Discord to apply it.");
+        setUpdateStatus(
+          autoRestart
+            ? "Update installed — restarting Discord…"
+            : "Update installed — restart Discord to apply it.",
+        );
         showNotification({
           title: "BetterStatus updated",
-          body: "Restart Discord to use the new version.",
+          body: autoRestart
+            ? "Discord will restart automatically."
+            : "Restart Discord to use the new version.",
         });
+        if (autoRestart)
+          window.setTimeout(relaunch, 1_500);
       } else if (result.status === "current") {
         setUpdateStatus("You already have the latest channel build.");
         showNotification({
@@ -254,6 +309,7 @@ export default function SettingsComponent() {
         body: message,
       });
     } finally {
+      await refreshUpdateInfo(selectedUpdateChannel);
       setCheckingForUpdates(false);
     }
   }
@@ -409,6 +465,49 @@ export default function SettingsComponent() {
             Follow the stable production branch by default, or opt into
             development builds. Updates build safely and apply after restart.
           </Forms.FormText>
+          <div className="bs-version-info">
+            <span
+              className={`bs-version-badge bs-version-${updateInfo?.status ?? "loading"}`}
+            >
+              <i />
+              {updateInfo?.status === "current"
+                ? "Up to date"
+                : updateInfo?.status === "restartRequired"
+                  ? "Restart required"
+                  : updateInfo?.status === "updateAvailable"
+                    ? "Update available"
+                    : updateInfoError
+                      ? "Version unavailable"
+                      : "Checking version"}
+            </span>
+            {updateInfo && (
+              <span className="bs-version-commits">
+                <strong>{updateInfo.channel === "dev" ? "Development" : "Production"}</strong>
+                <span>
+                  Installed {updateInfo.installedVersion?.slice(0, 7) ?? "unknown"}
+                  {updateInfo.installedChannel && updateInfo.installedChannel !== updateInfo.channel
+                    ? ` (${updateInfo.installedChannel})`
+                    : ""}
+                </span>
+                <span>Latest {updateInfo.latestVersion.slice(0, 7)}</span>
+                <Link
+                  href={`https://github.com/Jacksonnn911/BetterStatus/commit/${updateInfo.latestVersion}`}
+                >
+                  View commit ↗
+                </Link>
+              </span>
+            )}
+            {lastCheckedAt && (
+              <span className="bs-version-checked">
+                Checked {lastCheckedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+          </div>
+          {updateInfoError && (
+            <div className="bs-update-status" role="status">
+              Version check failed: {updateInfoError}
+            </div>
+          )}
           {updateStatus && (
             <div className="bs-update-status" role="status">
               {updateStatus}
@@ -444,12 +543,37 @@ export default function SettingsComponent() {
           <Button disabled={checkingForUpdates} onClick={checkForUpdates}>
             {checkingForUpdates ? "Checking…" : "Check for updates"}
           </Button>
-          <FormSwitch
-            title="Auto update"
-            value={autoUpdate}
-            onChange={value => (settings.store.autoUpdate = value)}
-            hideBorder
-          />
+          <div className="bs-update-switches">
+            <FormSwitch
+              title="Auto update"
+              value={autoUpdate}
+              onChange={value => {
+                settings.store.autoUpdate = value;
+                Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(value);
+              }}
+              hideBorder
+            />
+            <div className="bs-update-frequency">
+              <span>Check frequency</span>
+              <Select
+                options={UPDATE_FREQUENCY_OPTIONS}
+                select={frequency => {
+                  settings.store.updateCheckFrequency = normalizeUpdateCheckFrequency(frequency);
+                  Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(false);
+                }}
+                serialize={value => String(value)}
+                isSelected={value => value === selectedUpdateFrequency}
+                isDisabled={!autoUpdate}
+                closeOnSelect
+              />
+            </div>
+            <FormSwitch
+              title="Auto restart Discord"
+              value={autoRestart}
+              onChange={value => (settings.store.autoRestart = value)}
+              hideBorder
+            />
+          </div>
         </div>
       </div>
 
@@ -716,7 +840,15 @@ migratePluginSettings("BetterStatus", "StatusHotkeys");
 export const settings = definePluginSettings({
   autoUpdate: {
     type: OptionType.CUSTOM,
+    default: true,
+  },
+  autoRestart: {
+    type: OptionType.CUSTOM,
     default: false,
+  },
+  updateCheckFrequency: {
+    type: OptionType.CUSTOM,
+    default: 360 as UpdateCheckFrequency,
   },
   updateChannel: {
     type: OptionType.CUSTOM,
@@ -777,6 +909,24 @@ export function getUpdateChannel(): UpdateChannel {
     settings.store.updateChannel = channel;
 
   return channel;
+}
+
+export function normalizeUpdateCheckFrequency(value: unknown): UpdateCheckFrequency {
+  const frequency = Number(value);
+  const validFrequencies: UpdateCheckFrequency[] = [0, 15, 30, 60, 180, 360, 720, 1440];
+
+  return validFrequencies.includes(frequency as UpdateCheckFrequency)
+    ? frequency as UpdateCheckFrequency
+    : 360;
+}
+
+export function getUpdateCheckFrequency(): UpdateCheckFrequency {
+  const frequency = normalizeUpdateCheckFrequency(settings.store.updateCheckFrequency);
+
+  if (settings.store.updateCheckFrequency !== frequency)
+    settings.store.updateCheckFrequency = frequency;
+
+  return frequency;
 }
 
 export async function savePresets(presets: StatusPreset[]) {

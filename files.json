@@ -1,22 +1,22 @@
 {
   "version": 1,
-  "channel": "prod",
-  "commit": "e8d485a1efd8215c4057677ba6207fafaac8c3fb",
+  "channel": "dev",
+  "commit": "d403075a72e137ad8af5749092dc129bc7770762",
   "files": [
     {
       "source": "src/index.tsx",
       "target": "index.tsx",
-      "sha256": "105bffc292f70551c18fc5853a55bcc134060a88f72994fe5e4a99263b41b2b4"
+      "sha256": "c5f263adb48536e60a841180b841d5b2937c8f4f168ca473ea4c1bef661fa227"
     },
     {
       "source": "src/native.ts",
       "target": "native.ts",
-      "sha256": "598413820c39224786f4470207a2951186a94aa0e7f4dd5482ff5cbd0b8ade25"
+      "sha256": "1b7ca79d63f42dba8c901f1d4117d844e409c19814cc7043a4b1b2b0fe439331"
     },
     {
       "source": "README.md",
       "target": "README.md",
-      "sha256": "d26424d0c00ff0883ca8805c8633488a73388b20794194dd3b703656397e96d3"
+      "sha256": "06e741b541b0969c5f9b9973a0bcf0d1cab1d967c3d0eb1d067f7fd66ad056d9"
     },
     {
       "source": "src/savedStatuses.ts",
@@ -26,7 +26,12 @@
     {
       "source": "src/Settings.tsx",
       "target": "Settings.tsx",
-      "sha256": "68eb553af51f33938b861b9c36f002c94fa6f31892ba05732bdfa689f5492b85"
+      "sha256": "5c6800e23715465bd817761a5bad4c741e18641340a0d9b2c85fdea9c9068c03"
+    },
+    {
+      "source": "src/StatusHistory.tsx",
+      "target": "StatusHistory.tsx",
+      "sha256": "7ae009c4f7f54ef708ab13d961483b88b12bec3a41223cefa7683eb8ba155363"
     },
     {
       "source": "src/StatusSwitcher.tsx",
@@ -36,12 +41,12 @@
     {
       "source": "src/styles.css",
       "target": "styles.css",
-      "sha256": "de7207cfa7a81b78aae96d7821e789bb2e34756b7e84ef9fd2aa6b22ca63d39e"
+      "sha256": "85fb479389a8052a9214d5a78eaceb8663f7c049558bb02d2504fe6428e3fefa"
     },
     {
       "source": "src/types.ts",
       "target": "types.ts",
-      "sha256": "dc56851dc72000b796862b7de6e92191c23814a6052d5700fecdce397a968b87"
+      "sha256": "3be08aded2e40bc26aecdd76e93dfd503c42712432c8f244e6a20b48a1634b47"
     }
   ]
 }

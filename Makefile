@@ -10,6 +10,7 @@ DISCORD_APP ?= Discord
 PLUGIN_FILES := \
 	src/index.tsx \
 	src/Settings.tsx \
+	src/StatusHistory.tsx \
 	src/StatusSwitcher.tsx \
 	src/savedStatuses.ts \
 	src/native.ts \
@@ -44,6 +45,11 @@ sync-dev: check-dev
 	@rm -f "$(PLUGIN_DIR)/SavedStatusesProfile.tsx"
 	@for file in $(PLUGIN_FILES); do cp "$(REPO_DIR)/$$file" "$(PLUGIN_DIR)/$${file#src/}"; done
 	@cp "$(REPO_DIR)/README.md" "$(PLUGIN_DIR)/README.md"
+	@version_commit="$$(git -C "$(REPO_DIR)" rev-parse HEAD)"; \
+	if [[ "$$(git -C "$(REPO_DIR)" log -1 --pretty=%s)" == "Update dev file manifest [skip ci]" ]]; then \
+		version_commit="$$(PATH="$(DEV_PATH)" node -e 'const fs = require("fs"); process.stdout.write(JSON.parse(fs.readFileSync(process.argv[1], "utf8")).commit)' "$(REPO_DIR)/files.json")"; \
+	fi; \
+	printf 'dev:%s\n' "$$version_commit" > "$(PLUGIN_DIR)/VERSION"
 	@echo "Synced BetterStatus to $(PLUGIN_DIR)"
 
 install-dev-deps: sync-dev
