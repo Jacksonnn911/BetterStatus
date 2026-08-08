@@ -2,7 +2,7 @@
 
 BetterStatus is a custom [Vencord](https://vencord.dev/) plugin that lets you create Discord status presets and activate them with system-wide keyboard shortcuts—even while Discord is in the background.
 
-Created by [Jacksonnn911](https://github.com/Jacksonnn911).
+Created by [Jacksonnn911](https://github.com/Jacksonnn911) — Discord: `nik_jandaaa27829`.
 
 Each preset can define:
 

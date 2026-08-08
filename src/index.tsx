@@ -68,7 +68,7 @@ async function rememberActivePreset() {
 function AboutComponent() {
     return (
         <Forms.FormText>
-            BetterStatus is an open-source Vencord user plugin by Jacksonnn911. {" "}
+            BetterStatus is an open-source Vencord user plugin by nik_jandaaa27829 (Jacksonnn911). {" "}
             <a href="https://github.com/Jacksonnn911/BetterStatus" target="_blank" rel="noreferrer">GitHub</a>
             {" · "}
             <a href="https://github.com/Jacksonnn911/BetterStatus#usage" target="_blank" rel="noreferrer">Documentation</a>
@@ -87,7 +87,7 @@ export default definePlugin({
 
     authors: [
         {
-            name: "Jacksonnn911",
+            name: "nik_jandaaa27829",
             id: 0n
         }
     ],
