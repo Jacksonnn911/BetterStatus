@@ -85,6 +85,8 @@ export default definePlugin({
     description:
         "Create unlimited custom Discord statuses and activate them using global hotkeys.",
 
+    tags: ["Shortcuts", "Utility"],
+
     authors: [
         {
             name: "nik_jandaaa27829",

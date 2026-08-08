@@ -163,6 +163,8 @@ Presets are stored through Vencord's typed `definePluginSettings` API. The prese
 
 Discord state is read and written through Vencord's `UserSettingsAPI`; the plugin declares that dependency so Vencord enables it automatically. The small `native.ts` helper runs in Electron's main process only to register system-wide shortcuts. This follows Vencord's documented user-plugin layout: `index.tsx`, `native.ts`, and the plugin `README.md` live together in `src/userplugins/betterStatus` after installation.
 
+Vencord labels BetterStatus with the `Shortcuts` and `Utility` categories. Vencord intentionally reserves the favorite, website, and GitHub buttons in the plugin-modal header for built-in plugins, so the repository and documentation links are provided in BetterStatus's Info section instead.
+
 ## Updating
 
 Run the same one-command installer again. It downloads the current rolling release, replaces the plugin files, and rebuilds Vencord.
