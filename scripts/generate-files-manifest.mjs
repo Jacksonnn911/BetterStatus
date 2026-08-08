@@ -7,10 +7,14 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const sourceRoot = resolve(repositoryRoot, "src");
-const commit = process.argv[2] ?? process.env.GITHUB_SHA;
+const channel = process.argv[2];
+const commit = process.argv[3] ?? process.env.GITHUB_SHA;
+
+if (!new Set(["prod", "dev"]).has(channel))
+    throw new Error("Usage: generate-files-manifest.mjs <prod|dev> <commit-sha>");
 
 if (!commit || !/^[0-9a-f]{40}$/i.test(commit))
-    throw new Error("Usage: generate-files-manifest.mjs <commit-sha>");
+    throw new Error("A full 40-character commit SHA is required.");
 
 async function listFiles(directory) {
     const entries = await readdir(directory, { withFileTypes: true });
@@ -55,6 +59,6 @@ files.sort((first, second) => first.target.localeCompare(second.target));
 
 await writeFile(
     resolve(repositoryRoot, "files.json"),
-    `${JSON.stringify({ version: 1, commit: commit.toLowerCase(), files }, null, 2)}\n`,
+    `${JSON.stringify({ version: 1, channel, commit: commit.toLowerCase(), files }, null, 2)}\n`,
     "utf8"
 );
