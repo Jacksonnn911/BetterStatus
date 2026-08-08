@@ -7,9 +7,11 @@
 import { showNotification } from "@api/Notifications";
 import { getUserSettingLazy } from "@api/UserSettings";
 import { Link } from "@components/Link";
+import { relaunch } from "@utils/native";
 import definePlugin from "@utils/types";
 
 import { getPresets, getUpdateChannel, rememberSavedStatus, savePresets, settings } from "./Settings";
+import { startStatusHistoryModalObserver, stopStatusHistoryModalObserver } from "./StatusHistory";
 import type { StatusPreset } from "./types";
 
 interface CustomStatus {
@@ -208,6 +210,7 @@ export default definePlugin({
     async start() {
         const presets = getPresets();
         await savePresets(presets);
+        startStatusHistoryModalObserver();
 
         try {
             const restoredPreset = await restoreActivePreset();
@@ -225,8 +228,12 @@ export default definePlugin({
                 if (result.status === "updated") {
                     showNotification({
                         title: "BetterStatus updated",
-                        body: "Restart Discord to use the new version."
+                        body: settings.store.autoRestart
+                            ? "Discord will restart automatically."
+                            : "Restart Discord to use the new version."
                     });
+                    if (settings.store.autoRestart)
+                        window.setTimeout(relaunch, 1_500);
                 } else if (result.status === "failed") {
                     showNotification({
                         title: "BetterStatus update failed",
@@ -242,6 +249,7 @@ export default definePlugin({
 
 
     stop() {
+        stopStatusHistoryModalObserver();
         VencordNative.pluginHelpers.BetterStatus.unregisterAll();
     }
 });

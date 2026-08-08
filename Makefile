@@ -10,6 +10,7 @@ DISCORD_APP ?= Discord
 PLUGIN_FILES := \
 	src/index.tsx \
 	src/Settings.tsx \
+	src/StatusHistory.tsx \
 	src/StatusSwitcher.tsx \
 	src/savedStatuses.ts \
 	src/native.ts \

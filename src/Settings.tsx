@@ -10,6 +10,7 @@ import { showNotification } from "@api/Notifications";
 import { definePluginSettings, migratePluginSettings } from "@api/Settings";
 import { FormSwitch } from "@components/FormSwitch";
 import { Link } from "@components/Link";
+import { relaunch } from "@utils/native";
 import { OptionType, PluginNative } from "@utils/types";
 import type { RenderModalProps } from "@vencord/discord-types";
 import {
@@ -196,8 +197,9 @@ function DevelopmentChannelPrompt({
 }
 
 export default function SettingsComponent() {
-  const { autoUpdate, updateChannel, activePresetId } = settings.use([
+  const { autoUpdate, autoRestart, updateChannel, activePresetId } = settings.use([
     "autoUpdate",
+    "autoRestart",
     "updateChannel",
     "activePresetId",
   ]);
@@ -227,11 +229,19 @@ export default function SettingsComponent() {
       const result = await Native.checkForUpdates(true, selectedUpdateChannel);
 
       if (result.status === "updated") {
-        setUpdateStatus("Update installed — restart Discord to apply it.");
+        setUpdateStatus(
+          autoRestart
+            ? "Update installed — restarting Discord…"
+            : "Update installed — restart Discord to apply it.",
+        );
         showNotification({
           title: "BetterStatus updated",
-          body: "Restart Discord to use the new version.",
+          body: autoRestart
+            ? "Discord will restart automatically."
+            : "Restart Discord to use the new version.",
         });
+        if (autoRestart)
+          window.setTimeout(relaunch, 1_500);
       } else if (result.status === "current") {
         setUpdateStatus("You already have the latest channel build.");
         showNotification({
@@ -444,12 +454,20 @@ export default function SettingsComponent() {
           <Button disabled={checkingForUpdates} onClick={checkForUpdates}>
             {checkingForUpdates ? "Checking…" : "Check for updates"}
           </Button>
-          <FormSwitch
-            title="Auto update"
-            value={autoUpdate}
-            onChange={value => (settings.store.autoUpdate = value)}
-            hideBorder
-          />
+          <div className="bs-update-switches">
+            <FormSwitch
+              title="Auto update"
+              value={autoUpdate}
+              onChange={value => (settings.store.autoUpdate = value)}
+              hideBorder
+            />
+            <FormSwitch
+              title="Auto restart Discord"
+              value={autoRestart}
+              onChange={value => (settings.store.autoRestart = value)}
+              hideBorder
+            />
+          </div>
         </div>
       </div>
 
@@ -715,6 +733,10 @@ migratePluginSettings("BetterStatus", "StatusHotkeys");
 
 export const settings = definePluginSettings({
   autoUpdate: {
+    type: OptionType.CUSTOM,
+    default: true,
+  },
+  autoRestart: {
     type: OptionType.CUSTOM,
     default: false,
   },

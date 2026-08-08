@@ -104,6 +104,14 @@
     flex: 0 0 auto;
 }
 
+.bs-update-switches {
+  display: flex;
+  align-items: flex-start;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .bs-update-actions .vc-form-switch-wrapper {
   display: flex;
   min-height: 38px;
@@ -124,6 +132,176 @@
 .bs-update-actions .vc-form-switch-text {
   gap: 0;
   white-space: nowrap;
+}
+
+/* Saved statuses inside Discord's Set your status modal */
+.bs-status-history {
+  margin-top: 20px;
+}
+
+.bs-history-card {
+  overflow: hidden;
+  border: 1px solid var(--border-subtle, var(--background-modifier-accent));
+  border-radius: 12px;
+  background: var(--background-base-lower, var(--card-background-default));
+}
+
+.bs-history-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px 12px;
+}
+
+.bs-history-heading h2 {
+  margin: 0;
+  color: var(--text-strong, var(--header-primary, var(--text-default)));
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.bs-history-heading p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.bs-history-count {
+  display: grid;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 12px;
+  color: var(--text-default);
+  background: var(--background-mod-strong, var(--background-modifier-accent));
+  font-size: 12px;
+  font-weight: 600;
+  place-items: center;
+}
+
+.bs-history-search {
+  padding: 0 12px 12px;
+}
+
+.bs-history-search > div {
+  border-radius: 8px;
+  background: var(--background-base-lowest, var(--input-background));
+}
+
+.bs-history-list {
+  max-height: 244px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border-subtle, var(--background-modifier-accent));
+  scrollbar-color: var(--scrollbar-thin-thumb) transparent;
+  scrollbar-width: thin;
+}
+
+.bs-history-row {
+  display: grid;
+  min-height: 54px;
+  grid-template-columns: minmax(0, 1fr) 34px 34px;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px 5px 12px;
+  border-bottom: 1px solid var(--border-subtle, var(--background-modifier-accent));
+}
+
+.bs-history-row:last-child {
+  border-bottom: 0;
+}
+
+.bs-history-row:hover {
+  background: var(--interactive-background-hover, var(--background-modifier-hover));
+}
+
+.bs-history-status,
+.bs-history-icon-button {
+  border: 0;
+  color: var(--interactive-icon-default, var(--interactive-normal, var(--text-default)));
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.bs-history-status {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  flex-direction: column;
+  padding: 6px 4px;
+  text-align: left;
+}
+
+.bs-history-status span {
+  width: 100%;
+  overflow: hidden;
+  color: var(--text-default);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bs-history-status small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.bs-history-icon-button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
+  place-items: center;
+}
+
+.bs-history-status:hover span,
+.bs-history-status:focus-visible span,
+.bs-history-icon-button:hover,
+.bs-history-icon-button:focus-visible {
+  color: var(--interactive-text-hover, var(--interactive-hover, var(--text-default)));
+}
+
+.bs-history-status:focus-visible,
+.bs-history-icon-button:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: -2px;
+}
+
+.bs-history-icon-button:hover {
+  background: var(--interactive-background-active, var(--background-modifier-active));
+}
+
+.bs-history-favorite {
+  color: var(--yellow-300);
+}
+
+.bs-history-delete:hover,
+.bs-history-delete:focus-visible {
+  color: var(--red-400);
+}
+
+.bs-history-empty,
+.bs-history-more {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.bs-history-empty {
+  padding: 18px 16px;
+  border-top: 1px solid var(--border-subtle, var(--background-modifier-accent));
+}
+
+.bs-history-more {
+  padding: 10px 14px;
 }
 
 .bs-update-status {
@@ -2154,6 +2332,10 @@
   }
 
   .bs-update-actions > button {
+    width: 100%;
+  }
+
+  .bs-update-switches {
     width: 100%;
   }
 

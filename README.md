@@ -173,7 +173,9 @@ Changes are saved immediately. Press the shortcut from any application to activa
 
 BetterStatus remembers the last active preset and restores its custom status and presence whenever Discord starts. For a Memory preset, the current Discord status is captured before restoration so manual changes are retained across restarts.
 
-To receive new BetterStatus releases automatically, enable **Auto Update** at the top of the plugin settings. The update channel defaults to **Production**, which follows the `prod` branch. Users who want changes earlier can explicitly select **Development** to follow the `dev` branch. After a successful channel build, GitHub Actions publishes a `files.json` manifest containing every managed file and its SHA-256 hash. BetterStatus compares those hashes with the installed files, downloads changed or newly listed files from the manifest's immutable commit, verifies every download, and rebuilds Vencord with rollback on failure. The currently running Discord session is not interrupted; restart Discord when the update notification appears. Auto Update is off by default, and the production one-command installer remains the manual recovery/update method.
+Discord's **Set your status** dialog also includes a searchable saved-status history. BetterStatus remembers up to 1,000 statuses, keeps favorites pinned above recent entries, and lets you reuse, favorite, or remove entries without returning to the plugin settings.
+
+BetterStatus checks for new releases automatically unless you opt out with **Auto Update** at the top of the plugin settings. The update channel defaults to **Production**, which follows the `prod` branch. Users who want changes earlier can explicitly select **Development** to follow the `dev` branch. After a successful channel build, GitHub Actions publishes a `files.json` manifest containing every managed file and its SHA-256 hash. BetterStatus compares those hashes with the installed files, downloads changed or newly listed files from the manifest's immutable commit, verifies every download, and rebuilds Vencord with rollback on failure. The currently running Discord session is not interrupted by default; enable the opt-in **Auto Restart Discord** switch if Discord should relaunch immediately after an update is installed. The production one-command installer remains the manual recovery/update method.
 
 Press `Escape` while recording to cancel. A preset can be temporarily disabled with its **Enabled** switch or permanently removed with **Delete Status**.
 
@@ -290,6 +292,7 @@ The main files are:
 
 - `src/index.tsx` — plugin lifecycle, preset storage, and Discord setting updates
 - `src/Settings.tsx` — preset editor and shortcut recorder
+- `src/StatusHistory.tsx` — saved-status history inside Discord's status modal
 - `src/StatusSwitcher.tsx` — Discord-style presence menu
 - `src/savedStatuses.ts` — saved-history normalization, deduplication, and retention policy
 - `src/native.ts` — Electron global shortcut registration
