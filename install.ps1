@@ -102,10 +102,20 @@ try {
             throw "Node.js is required, so installation was cancelled."
         }
 
-        $Architecture = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()) {
-            "X64" { "x64" }
-            "Arm64" { "arm64" }
-            default { throw "Unsupported CPU architecture: $_" }
+        # RuntimeInformation.OSArchitecture can be null in Windows PowerShell 5.1.
+        # PROCESSOR_ARCHITEW6432 reports the native architecture when a 32-bit
+        # PowerShell process is running on 64-bit Windows.
+        $WindowsArchitecture = $env:PROCESSOR_ARCHITEW6432
+        if (-not $WindowsArchitecture) {
+            $WindowsArchitecture = $env:PROCESSOR_ARCHITECTURE
+        }
+        $Architecture = switch ($WindowsArchitecture) {
+            "AMD64" { "x64" }
+            "ARM64" { "arm64" }
+            default {
+                $DetectedArchitecture = if ($WindowsArchitecture) { $WindowsArchitecture } else { "unknown" }
+                throw "Unsupported or undetected CPU architecture: $DetectedArchitecture"
+            }
         }
 
         Write-Step "Finding the latest Node.js 24 release"
