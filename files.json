@@ -1,7 +1,7 @@
 {
   "version": 1,
   "channel": "dev",
-  "commit": "2949ebb216fd603a6dce31b1b807189782473354",
+  "commit": "08576b04041738caa4a8549d0bb08d9e902cb632",
   "files": [
     {
       "source": "src/index.tsx",
