@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/assets/hero.svg?v=685c6dd" alt="BetterStatus — Your Discord presence, one shortcut away" width="100%">
+  <img src="https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/prod/assets/hero.svg?v=685c6dd" alt="BetterStatus — Your Discord presence, one shortcut away" width="100%">
 </p>
 
 <p align="center">
-  <a href="https://github.com/Jacksonnn911/BetterStatus/actions/workflows/release.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/Jacksonnn911/BetterStatus/release.yml?branch=main&amp;style=for-the-badge&amp;logo=githubactions&amp;logoColor=white&amp;label=Build"></a>
+  <a href="https://github.com/Jacksonnn911/BetterStatus/actions/workflows/release.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/Jacksonnn911/BetterStatus/release.yml?branch=prod&amp;style=for-the-badge&amp;logo=githubactions&amp;logoColor=white&amp;label=Build"></a>
   <a href="https://github.com/Jacksonnn911/BetterStatus/releases/tag/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Jacksonnn911/BetterStatus?display_name=tag&amp;style=for-the-badge&amp;logo=github&amp;label=Release"></a>
   <img alt="Node 22 and 24" src="https://img.shields.io/badge/Node-22%20%7C%2024-5FA04E?style=for-the-badge&amp;logo=nodedotjs&amp;logoColor=white">
   <img alt="macOS, Linux and Windows" src="https://img.shields.io/badge/macOS%20%7C%20Linux%20%7C%20Windows-5865F2?style=for-the-badge&amp;logo=discord&amp;logoColor=white">
@@ -11,7 +11,7 @@
 
 <p align="center">
   <strong>A polished Vencord plugin for switching Discord custom statuses and presence from anywhere.</strong><br>
-  Build unlimited presets, bind global shortcuts, remember changing statuses, and stay updated automatically.<br><br>
+  Build unlimited presets, bind global shortcuts, remember changing statuses, and choose your update channel.<br><br>
   Made with care by <a href="https://github.com/Jacksonnn911"><strong>Jacksonnn911</strong></a> (<code>nik_jandaaa27829</code>) &amp; <a href="https://github.com/qtmisaliba"><strong>qtmisaliba</strong></a> (<code>qtmisaliba</code>).
 </p>
 
@@ -34,7 +34,7 @@ No Node.js knowledge, Git setup, or manual Vencord patching required.
 Open **Terminal**, paste this command, and press Enter:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/prod/install.sh | bash
 ```
 
 ### 🪟 Windows
@@ -42,7 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/inst
 Open **PowerShell**, paste this command, and press Enter:
 
 ```powershell
-irm https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/prod/install.ps1 | iex
 ```
 
 The guided installer detects your tools, reuses existing Vencord source code, builds BetterStatus, and patches Discord with simple prompts.
@@ -58,9 +58,8 @@ The guided installer detects your tools, reuses existing Vencord source code, bu
 | ♾️ | **Unlimited presets** | Create focused profiles for work, gaming, sleep, streaming, or anything else. |
 | 🧠 | **Fixed + Memory modes** | Apply exact text every time or remember your most recently used custom status. |
 | 🟢 | **Full presence control** | Set Online, Idle, Do Not Disturb, or Invisible alongside custom status text. |
-| ⭐ | **Saved status library** | Recall up to 1,000 previously applied statuses and pin favorites above recent history. |
 | 🎛️ | **Polished dashboard** | Collapse, duplicate, activate, enable, and edit presets from a responsive interface. |
-| 🔄 | **Optional auto updates** | Download successful releases, rebuild safely, and roll back automatically on failure. |
+| 🔄 | **Branch-aware updates** | Stay on production by default or opt into development builds, with safe rollback on failure. |
 | 🧰 | **All-in-one installer** | Detect Node, Bun, Yarn, and pnpm; acquire missing build tools privately when needed. |
 
 <p align="center">
@@ -103,7 +102,7 @@ Because Vencord does not publish a macOS CLI executable, each BetterStatus relea
 On macOS, Discord must be installed at `/Applications/Discord.app`. Immediately before patching, the installer runs `sudo chown -R "$USER":wheel /Applications/Discord.app` and asks for the account password. This gives the current user ownership of the Discord application bundle so it can be patched.
 
 > [!TIP]
-> If your Vencord source is in a non-standard location, set `VENCORD_DIR` for the shell that runs the installer. For example: `curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/install.sh | VENCORD_DIR=/path/to/Vencord bash`.
+> If your Vencord source is in a non-standard location, set `VENCORD_DIR` for the shell that runs the installer. For example: `curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/prod/install.sh | VENCORD_DIR=/path/to/Vencord bash`.
 
 > [!NOTE]
 > Piping a remote script into a shell runs code from the internet. You can [inspect `install.sh`](./install.sh) or [inspect `install.ps1`](./install.ps1) before running it.
@@ -172,15 +171,13 @@ To create a preset:
 
 Changes are saved immediately. Press the shortcut from any application to activate the preset.
 
-To receive new BetterStatus releases automatically, enable **Auto Update** at the top of the plugin settings. BetterStatus checks GitHub when Discord starts, downloads only files from the latest successful rolling release, and rebuilds the existing Vencord source installation. The currently running Discord session is not interrupted; restart Discord when the update notification appears. Auto Update is off by default, and the one-command installer remains the manual recovery/update method.
+To receive new BetterStatus releases automatically, enable **Auto Update** at the top of the plugin settings. The update channel defaults to **Production**, which follows the `prod` branch. Users who want changes earlier can explicitly select **Development** to follow the `dev` branch. BetterStatus checks the selected branch when Discord starts, downloads that branch's latest commit, and rebuilds the existing Vencord source installation with rollback on failure. The currently running Discord session is not interrupted; restart Discord when the update notification appears. Auto Update is off by default, and the production one-command installer remains the manual recovery/update method.
 
 Press `Escape` while recording to cancel. A preset can be temporarily disabled with its **Enabled** switch or permanently removed with **Delete Status**.
 
-### Presence and saved statuses
+### Presence
 
-The presence field uses a Discord-style switcher with the familiar Online, Idle, Do Not Disturb, and Invisible indicators and descriptions. **Saved statuses** is also available from your own Discord profile popout alongside the native presence controls. Open it there—or from the preset switcher—to search your history, apply a status immediately, mark favorites, or delete entries.
-
-BetterStatus remembers non-empty custom statuses when a preset is activated. Exact duplicates update their usage count and recency instead of creating another entry. Favorites are always listed before recent statuses. The library stores at most 1,000 entries; once full, the oldest non-favorite is replaced. If all 1,000 entries are favorites, BetterStatus keeps them and does not add another status until one is unfavorited or deleted.
+The presence field uses a Discord-style switcher with the familiar Online, Idle, Do Not Disturb, and Invisible indicators and descriptions.
 
 ### Fixed and Memory presets
 
@@ -206,7 +203,7 @@ These defaults are designed for macOS. On Windows or Linux—or if the combinati
 
 When Vencord starts the plugin, BetterStatus loads your presets and registers every enabled shortcut through Electron's `globalShortcut` API. When a shortcut is pressed, the native process tells the Vencord renderer which preset to activate. Before switching, the plugin saves the current text for the active Memory preset. It then updates Discord's custom-status and presence settings through Vencord's `UserSettingsAPI`.
 
-Presets and saved-status history are stored through Vencord's typed `definePluginSettings` API. The preset list and capped saved library are custom persisted options, and the editor is an `OptionType.COMPONENT`, so it appears and updates inside Vencord's standard plugin settings modal. Old `StatusHotkeys` settings are migrated with Vencord's supported migration helper. Disabling or deleting a preset immediately rebuilds the registered shortcut list, and disabling the plugin unregisters all of its shortcuts.
+Presets are stored through Vencord's typed `definePluginSettings` API. The preset list is a custom persisted option, and the editor is an `OptionType.COMPONENT`, so it appears and updates inside Vencord's standard plugin settings modal. Old `StatusHotkeys` settings are migrated with Vencord's supported migration helper. Disabling or deleting a preset immediately rebuilds the registered shortcut list, and disabling the plugin unregisters all of its shortcuts.
 
 Discord state is read and written through Vencord's `UserSettingsAPI`; the plugin declares that dependency so Vencord enables it automatically. The small `native.ts` helper runs in Electron's main process only to register system-wide shortcuts. This follows Vencord's documented user-plugin layout: `index.tsx`, `native.ts`, and the plugin `README.md` live together in `src/userplugins/betterStatus` after installation.
 
@@ -291,12 +288,11 @@ The main files are:
 
 - `src/index.tsx` — plugin lifecycle, preset storage, and Discord setting updates
 - `src/Settings.tsx` — preset editor and shortcut recorder
-- `src/SavedStatusesProfile.tsx` — account-popout entry and saved-status manager
-- `src/StatusSwitcher.tsx` — Discord-style presence menu and saved-status library
+- `src/StatusSwitcher.tsx` — Discord-style presence menu
 - `src/savedStatuses.ts` — saved-history normalization, deduplication, and retention policy
 - `src/native.ts` — Electron global shortcut registration
 - `src/types.ts` — shared preset and presence types
 
 ## Automated releases
 
-Every push to `main` runs the GitHub Actions release workflow. Before publishing, it installs the plugin into a clean Vencord checkout and builds it on Node.js 22 and 24 with pnpm 11. It also builds headless macOS Vencord CLI binaries from the official installer source for Intel and Apple Silicon. It then validates the installers, creates `.tar.gz` and `.zip` plugin packages, generates SHA-256 checksums, uploads workflow artifacts, and replaces the rolling `latest` GitHub release used by the installers.
+Every push to `prod` or `dev` runs compatibility builds on Node.js 22 and 24 with pnpm 11. Only `prod` publishes: it builds headless macOS Vencord CLI binaries from the official installer source, validates the installers, creates `.tar.gz` and `.zip` plugin packages, generates SHA-256 checksums, uploads workflow artifacts, and replaces the rolling `latest` GitHub release used by the production installers. The `dev` branch remains available only to users who explicitly subscribe to the Development channel.

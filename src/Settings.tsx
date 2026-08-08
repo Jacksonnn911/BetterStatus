@@ -17,7 +17,12 @@ import {
   rememberStatusInLibrary,
 } from "./savedStatuses";
 import { StatusSwitcher } from "./StatusSwitcher";
-import type { PresetType, SavedStatus, StatusPreset } from "./types";
+import type {
+  PresetType,
+  SavedStatus,
+  StatusPreset,
+  UpdateChannel,
+} from "./types";
 
 const Native = VencordNative.pluginHelpers.BetterStatus as PluginNative<
   typeof import("./native")
@@ -52,6 +57,17 @@ const TYPE_OPTIONS = [
   {
     label: "Memory",
     value: "memory",
+  },
+];
+
+const UPDATE_CHANNEL_OPTIONS = [
+  {
+    label: "Production (recommended)",
+    value: "prod",
+  },
+  {
+    label: "Development",
+    value: "dev",
   },
 ];
 
@@ -120,8 +136,9 @@ function ChevronIcon({ collapsed }: { collapsed: boolean }) {
 }
 
 export default function SettingsComponent() {
-  const { autoUpdate, activePresetId } = settings.use([
+  const { autoUpdate, updateChannel, activePresetId } = settings.use([
     "autoUpdate",
+    "updateChannel",
     "activePresetId",
   ]);
 
@@ -129,9 +146,6 @@ export default function SettingsComponent() {
   const [presets, setPresets] = React.useState<StatusPreset[]>(() => [
     ...getPresets(),
   ]);
-  const [savedStatuses, setSavedStatuses] = React.useState<SavedStatus[]>(
-    () => [...getSavedStatuses()],
-  );
   const [collapsedIds, setCollapsedIds] = React.useState<Set<string>>(
     () => new Set(presets.map(preset => preset.id)),
   );
@@ -143,10 +157,12 @@ export default function SettingsComponent() {
     if (checkingForUpdates) return;
 
     setCheckingForUpdates(true);
-    setUpdateStatus("Checking the latest successful release…");
+    setUpdateStatus(
+      `Checking the ${updateChannel === "dev" ? "development" : "production"} channel…`,
+    );
 
     try {
-      const result = await Native.checkForUpdates(true);
+      const result = await Native.checkForUpdates(true, updateChannel);
 
       if (result.status === "updated") {
         setUpdateStatus("Update installed — restart Discord to apply it.");
@@ -155,10 +171,10 @@ export default function SettingsComponent() {
           body: "Restart Discord to use the new version.",
         });
       } else if (result.status === "current") {
-        setUpdateStatus("You already have the latest successful release.");
+        setUpdateStatus("You already have the latest channel build.");
         showNotification({
           title: "BetterStatus is up to date",
-          body: "No update is currently available.",
+          body: `No newer ${updateChannel === "dev" ? "development" : "production"} build is available.`,
         });
       } else {
         const message = result.error ?? "The update could not be completed.";
@@ -183,28 +199,6 @@ export default function SettingsComponent() {
   async function commit(next: StatusPreset[]) {
     setPresets(next);
     await savePresets(next);
-  }
-
-  function commitSavedStatuses(next: SavedStatus[]) {
-    const normalized = normalizeSavedStatuses(next);
-    setSavedStatuses(normalized);
-    settings.store.savedStatuses = normalized;
-  }
-
-  function saveStatus(value: string) {
-    commitSavedStatuses(rememberStatusInLibrary(savedStatuses, value));
-  }
-
-  function toggleFavorite(id: string) {
-    commitSavedStatuses(
-      savedStatuses.map(status =>
-        status.id === id ? { ...status, favorite: !status.favorite } : status,
-      ),
-    );
-  }
-
-  function deleteSavedStatus(id: string) {
-    commitSavedStatuses(savedStatuses.filter(status => status.id !== id));
   }
 
   function updatePreset(id: string, patch: Partial<StatusPreset>) {
@@ -350,8 +344,8 @@ export default function SettingsComponent() {
         <div className="bs-control-copy">
           <Forms.FormTitle>Automatic updates</Forms.FormTitle>
           <Forms.FormText>
-            Keep BetterStatus current with verified rolling releases. Updates
-            build safely and apply after restart.
+            Follow the stable production branch by default, or opt into
+            development builds. Updates build safely and apply after restart.
           </Forms.FormText>
           {updateStatus && (
             <div className="bs-update-status" role="status">
@@ -360,6 +354,16 @@ export default function SettingsComponent() {
           )}
         </div>
         <div className="bs-update-actions">
+          <Select
+            options={UPDATE_CHANNEL_OPTIONS}
+            select={channel => {
+              settings.store.updateChannel = channel as UpdateChannel;
+              setUpdateStatus(null);
+            }}
+            serialize={value => value}
+            isSelected={value => value === updateChannel}
+            closeOnSelect
+          />
           <Button disabled={checkingForUpdates} onClick={checkForUpdates}>
             {checkingForUpdates ? "Checking…" : "Check for updates"}
           </Button>
@@ -535,36 +539,9 @@ export default function SettingsComponent() {
                         <span>Presence</span>
                         <StatusSwitcher
                           presence={preset.presence}
-                          statusText={
-                            preset.type === "memory"
-                              ? (preset.rememberedText ?? preset.text)
-                              : preset.text
-                          }
-                          savedStatuses={savedStatuses}
                           onPresenceChange={presence =>
                             updatePreset(preset.id, { presence })
                           }
-                          onSaveCurrentStatus={() =>
-                            saveStatus(
-                              preset.type === "memory"
-                                ? (preset.rememberedText ?? preset.text)
-                                : preset.text,
-                            )
-                          }
-                          onSelectSavedStatus={status => {
-                            updatePreset(
-                              preset.id,
-                              preset.type === "memory"
-                                ? {
-                                    text: status.text,
-                                    rememberedText: status.text,
-                                  }
-                                : { text: status.text },
-                            );
-                            saveStatus(status.text);
-                          }}
-                          onToggleFavorite={toggleFavorite}
-                          onDeleteSavedStatus={deleteSavedStatus}
                         />
                       </div>
 
@@ -663,6 +640,10 @@ export const settings = definePluginSettings({
   autoUpdate: {
     type: OptionType.CUSTOM,
     default: false,
+  },
+  updateChannel: {
+    type: OptionType.CUSTOM,
+    default: "prod" as UpdateChannel,
   },
   presets: {
     type: OptionType.CUSTOM,

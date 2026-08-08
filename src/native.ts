@@ -11,6 +11,8 @@ import { homedir } from "os";
 import { join } from "path";
 import { promisify } from "util";
 
+import type { UpdateChannel } from "./types";
+
 const registeredShortcuts = new Map<string, string>();
 const executeFile = promisify(execFile);
 
@@ -18,7 +20,6 @@ const REPOSITORY = "Jacksonnn911/BetterStatus";
 const UPDATE_FILES = [
     { localName: "index.tsx", remotePath: "src/index.tsx" },
     { localName: "Settings.tsx", remotePath: "src/Settings.tsx" },
-    { localName: "SavedStatusesProfile.tsx", remotePath: "src/SavedStatusesProfile.tsx" },
     { localName: "StatusSwitcher.tsx", remotePath: "src/StatusSwitcher.tsx" },
     { localName: "savedStatuses.ts", remotePath: "src/savedStatuses.ts" },
     { localName: "native.ts", remotePath: "src/native.ts" },
@@ -26,6 +27,7 @@ const UPDATE_FILES = [
     { localName: "styles.css", remotePath: "src/styles.css" },
     { localName: "README.md", remotePath: "README.md" }
 ];
+const OBSOLETE_FILES = ["SavedStatusesProfile.tsx"];
 const VENCORD_SOURCE_DIR = join(__dirname, "..");
 const PLUGIN_SOURCE_DIR = join(VENCORD_SOURCE_DIR, "src", "userplugins", "betterStatus");
 const VERSION_FILE = join(PLUGIN_SOURCE_DIR, "VERSION");
@@ -33,6 +35,7 @@ const VERSION_FILE = join(PLUGIN_SOURCE_DIR, "VERSION");
 interface UpdateResult {
     status: "disabled" | "current" | "updated" | "failed";
     version?: string;
+    channel?: UpdateChannel;
     error?: string;
 }
 
@@ -80,16 +83,16 @@ async function fetchText(url: string) {
     return response.text();
 }
 
-async function performUpdate(): Promise<UpdateResult> {
-    const release = JSON.parse(await fetchText(`https://api.github.com/repos/${REPOSITORY}/releases/latest`));
-    const version = String(release.target_commitish ?? "");
+async function performUpdate(channel: UpdateChannel): Promise<UpdateResult> {
+    const branch = JSON.parse(await fetchText(`https://api.github.com/repos/${REPOSITORY}/commits/${channel}`));
+    const version = String(branch.sha ?? "");
 
     if (!/^[0-9a-f]{40}$/i.test(version))
-        throw new Error("The latest BetterStatus release does not contain a valid commit version.");
+        throw new Error(`The BetterStatus ${channel} branch did not return a valid commit version.`);
 
     const installedVersion = await readFile(VERSION_FILE, "utf8").catch(() => "");
-    if (installedVersion.trim() === version)
-        return { status: "current", version };
+    if ([version, `${channel}:${version}`].includes(installedVersion.trim()))
+        return { status: "current", version, channel };
 
     const stagingDir = join(PLUGIN_SOURCE_DIR, `.update-${Date.now()}`);
     const backupDir = join(stagingDir, "backup");
@@ -108,11 +111,21 @@ async function performUpdate(): Promise<UpdateResult> {
             await writeFile(join(stagingDir, localName), contents, "utf8");
         }
 
+        for (const localName of OBSOLETE_FILES) {
+            const currentFile = join(PLUGIN_SOURCE_DIR, localName);
+            if (await exists(currentFile)) {
+                originalFiles.add(localName);
+                await copyFile(currentFile, join(backupDir, localName));
+            }
+        }
+
         for (const { localName } of UPDATE_FILES) {
             const destination = join(PLUGIN_SOURCE_DIR, localName);
             await rm(destination, { force: true });
             await rename(join(stagingDir, localName), destination);
         }
+        for (const localName of OBSOLETE_FILES)
+            await rm(join(PLUGIN_SOURCE_DIR, localName), { force: true });
 
         const node = await findNode();
         const environment = { ...process.env };
@@ -127,10 +140,10 @@ async function performUpdate(): Promise<UpdateResult> {
             timeout: 10 * 60 * 1000
         });
 
-        await writeFile(VERSION_FILE, `${version}\n`, "utf8");
-        return { status: "updated", version };
+        await writeFile(VERSION_FILE, `${channel}:${version}\n`, "utf8");
+        return { status: "updated", version, channel };
     } catch (error) {
-        for (const { localName } of UPDATE_FILES) {
+        for (const localName of [...UPDATE_FILES.map(file => file.localName), ...OBSOLETE_FILES]) {
             const backup = join(backupDir, localName);
             if (await exists(backup))
                 await copyFile(backup, join(PLUGIN_SOURCE_DIR, localName));
@@ -147,11 +160,17 @@ async function performUpdate(): Promise<UpdateResult> {
     }
 }
 
-export function checkForUpdates(_event: IpcMainInvokeEvent, enabled: boolean) {
+export function checkForUpdates(
+    _event: IpcMainInvokeEvent,
+    enabled: boolean,
+    requestedChannel: UpdateChannel = "prod"
+) {
     if (!enabled)
         return Promise.resolve<UpdateResult>({ status: "disabled" });
 
-    return updatePromise ??= performUpdate()
+    const channel: UpdateChannel = requestedChannel === "dev" ? "dev" : "prod";
+
+    return updatePromise ??= performUpdate(channel)
         .catch(error => ({
             status: "failed" as const,
             error: error instanceof Error ? error.message : String(error)

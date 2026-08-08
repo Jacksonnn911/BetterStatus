@@ -8,9 +8,7 @@ import { showNotification } from "@api/Notifications";
 import { getUserSettingLazy } from "@api/UserSettings";
 import { Link } from "@components/Link";
 import definePlugin from "@utils/types";
-import type { User } from "@vencord/discord-types";
 
-import { SavedStatusesProfileRow } from "./SavedStatusesProfile";
 import { getPresets, rememberSavedStatus, savePresets, settings } from "./Settings";
 import type { StatusPreset } from "./types";
 
@@ -37,11 +35,6 @@ async function setCustomStatusText(text: string) {
         expiresAtMs: "0",
         createdAtMs: Date.now().toString()
     });
-}
-
-async function applySavedStatusText(text: string) {
-    await setCustomStatusText(text);
-    rememberSavedStatus(text);
 }
 
 async function setDiscordState(preset: StatusPreset) {
@@ -154,25 +147,10 @@ export default definePlugin({
 
     dependencies: ["UserSettingsAPI"],
 
-    patches: [
-        {
-            find: '"UserProfilePopout");',
-            replacement: {
-                match: /userId:\i\.id,guild:\i\}\)/,
-                replace: "$&,$self.renderSavedStatusesProfile(arguments[0])"
-            }
-        }
-    ],
-
     settings,
     settingsAboutComponent() {
         return <BetterStatusOverview />;
     },
-
-    renderSavedStatusesProfile(props: { user: User; }) {
-        return <SavedStatusesProfileRow user={props.user} onApply={applySavedStatusText} />;
-    },
-
 
     async triggerPreset(id: string) {
         const preset = getPresets().find(
@@ -204,7 +182,10 @@ export default definePlugin({
         const presets = getPresets();
         await savePresets(presets);
 
-        void VencordNative.pluginHelpers.BetterStatus.checkForUpdates(settings.store.autoUpdate)
+        void VencordNative.pluginHelpers.BetterStatus.checkForUpdates(
+            settings.store.autoUpdate,
+            settings.store.updateChannel
+        )
             .then(result => {
                 if (result.status === "updated") {
                     showNotification({

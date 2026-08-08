@@ -10,7 +10,6 @@ DISCORD_APP ?= Discord
 PLUGIN_FILES := \
 	src/index.tsx \
 	src/Settings.tsx \
-	src/SavedStatusesProfile.tsx \
 	src/StatusSwitcher.tsx \
 	src/savedStatuses.ts \
 	src/native.ts \
@@ -42,6 +41,7 @@ check-dev:
 
 sync-dev: check-dev
 	@mkdir -p "$(PLUGIN_DIR)"
+	@rm -f "$(PLUGIN_DIR)/SavedStatusesProfile.tsx"
 	@for file in $(PLUGIN_FILES); do cp "$(REPO_DIR)/$$file" "$(PLUGIN_DIR)/$${file#src/}"; done
 	@cp "$(REPO_DIR)/README.md" "$(PLUGIN_DIR)/README.md"
 	@echo "Synced BetterStatus to $(PLUGIN_DIR)"
