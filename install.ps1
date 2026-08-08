@@ -69,8 +69,9 @@ if (Test-Path "$ToolsDir\pnpm.cmd") {
 }
 
 $CompatibleNode = $false
-if (Get-Command node -ErrorAction SilentlyContinue) {
-    $NodeVersion = (node --version).Trim()
+$NodeCommand = (Get-Command node.exe -ErrorAction SilentlyContinue).Source
+if ($NodeCommand) {
+    $NodeVersion = ((& $NodeCommand --version) | Out-String).Trim()
     $NodeMajor = [int]($NodeVersion.TrimStart("v").Split(".")[0])
     if ($NodeMajor -ge 22) {
         $CompatibleNode = $true
@@ -82,15 +83,21 @@ if (Get-Command node -ErrorAction SilentlyContinue) {
     Write-Step "Node.js was not found."
 }
 
-if (Get-Command bun -ErrorAction SilentlyContinue) {
-    Write-Success "Found Bun $(bun --version)"
+$BunCommand = (Get-Command bun.exe -ErrorAction SilentlyContinue).Source
+if ($BunCommand) {
+    $BunVersion = ((& $BunCommand --version) | Out-String).Trim()
+    Write-Success "Found Bun $BunVersion"
     Write-Step "Bun cannot replace Node.js here because Vencord uses Node- and pnpm-specific build tools."
 }
-if (Get-Command yarn -ErrorAction SilentlyContinue) {
-    Write-Success "Found Yarn $(yarn --version)"
+$YarnCommand = (Get-Command yarn.cmd -ErrorAction SilentlyContinue).Source
+if ($YarnCommand) {
+    $YarnVersion = ((& $YarnCommand --version) | Out-String).Trim()
+    Write-Success "Found Yarn $YarnVersion"
 }
-if (Get-Command pnpm -ErrorAction SilentlyContinue) {
-    Write-Success "Found pnpm $(pnpm --version)"
+$PnpmCommand = (Get-Command pnpm.cmd -ErrorAction SilentlyContinue).Source
+if ($PnpmCommand) {
+    $PnpmVersion = ((& $PnpmCommand --version) | Out-String).Trim()
+    Write-Success "Found pnpm $PnpmVersion"
 }
 
 $TemporaryDir = Join-Path ([System.IO.Path]::GetTempPath()) ("status-hotkeys-" + [guid]::NewGuid())
@@ -143,17 +150,25 @@ try {
         New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
         Copy-Item -Recurse -Force "$($NodeRoot.FullName)\*" $RuntimeDir
         $env:Path = "$RuntimeDir;$env:Path"
-        Write-Success "Installed private Node.js $(node --version)"
+        $NodeCommand = "$RuntimeDir\node.exe"
+        $NodeVersion = ((& $NodeCommand --version) | Out-String).Trim()
+        Write-Success "Installed private Node.js $NodeVersion"
     }
 
-    if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
+    if (-not $PnpmCommand) {
         if (-not (Confirm-Step "Install the required pnpm build tool privately?")) {
             throw "pnpm is required, so installation was cancelled."
         }
+        $NpmCommand = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
+        if (-not $NpmCommand) {
+            throw "npm.cmd was not found next to the installed Node.js runtime."
+        }
         Write-Step "Installing pnpm 11 into $ToolsDir"
-        npm install --global --prefix $ToolsDir pnpm@11.9.0
+        & $NpmCommand install --global --prefix $ToolsDir pnpm@11.9.0
         $env:Path = "$ToolsDir;$env:Path"
-        Write-Success "Installed pnpm $(pnpm --version)"
+        $PnpmCommand = "$ToolsDir\pnpm.cmd"
+        $PnpmVersion = ((& $PnpmCommand --version) | Out-String).Trim()
+        Write-Success "Installed pnpm $PnpmVersion"
     }
 
     if ($env:VENCORD_DIR) {
@@ -222,9 +237,9 @@ try {
     }
 
     Write-Step "Installing build dependencies (this can take a few minutes)"
-    pnpm --dir $VencordDir install --frozen-lockfile
+    & $PnpmCommand --dir $VencordDir install --frozen-lockfile
     Write-Step "Building Vencord"
-    pnpm --dir $VencordDir build
+    & $PnpmCommand --dir $VencordDir build
     Write-Success "BetterStatus and Vencord built successfully"
 
     Write-Host "`nWhich Discord client do you use?"
@@ -254,7 +269,7 @@ try {
                 $DiscordProcesses | Wait-Process -ErrorAction SilentlyContinue
             }
             Write-Step "Installing the custom Vencord build into Discord without opening the installer GUI"
-            node $InstallerScript -- --install --branch auto
+            & $NodeCommand $InstallerScript -- --install --branch auto
             if ($DiscordWasRunning -and $DiscordLaunchPath) {
                 Write-Step "Relaunching Discord"
                 Start-Process -FilePath $DiscordLaunchPath
