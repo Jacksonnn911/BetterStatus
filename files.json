@@ -1,7 +1,7 @@
 {
   "version": 1,
   "channel": "dev",
-  "commit": "d694371062ebb18254289d0cbd9af1c256a73cd6",
+  "commit": "35b26b68c8ce790219310965a7b1da599f8dbe67",
   "files": [
     {
       "source": "src/index.tsx",
@@ -26,7 +26,7 @@
     {
       "source": "src/Settings.tsx",
       "target": "Settings.tsx",
-      "sha256": "e680b50120e4dd6a0d6aae07d69651cad9ce4e67f08f6d630f072cdd848b0da9"
+      "sha256": "f6ca5d2f6b5ae305ea56aefd01225ac8c75547d10a265596b8f159d67e42938a"
     },
     {
       "source": "src/StatusSwitcher.tsx",
