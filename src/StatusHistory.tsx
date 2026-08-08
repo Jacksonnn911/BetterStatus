@@ -29,6 +29,7 @@ const CustomStatusSettings =
 
 const mountedHistories = new Map<HTMLTextAreaElement, MountedHistory>();
 let modalObserver: MutationObserver | undefined;
+const STATUSES_PER_PAGE = 10;
 
 function StarIcon({ filled }: { filled: boolean; }) {
     return (
@@ -81,6 +82,7 @@ function removeSavedStatus(id: string) {
 function StatusHistory({ textarea }: { textarea: HTMLTextAreaElement; }) {
     const { savedStatuses } = settings.use(["savedStatuses"]);
     const [query, setQuery] = React.useState("");
+    const [page, setPage] = React.useState(0);
     const normalizedQuery = query.trim().toLocaleLowerCase();
     const statuses = React.useMemo(
         () => normalizeSavedStatuses(savedStatuses),
@@ -92,7 +94,21 @@ function StatusHistory({ textarea }: { textarea: HTMLTextAreaElement; }) {
             : statuses,
         [normalizedQuery, statuses]
     );
-    const visible = filtered.slice(0, 100);
+    const pageCount = Math.max(1, Math.ceil(filtered.length / STATUSES_PER_PAGE));
+    const currentPage = Math.min(page, pageCount - 1);
+    const visible = filtered.slice(
+        currentPage * STATUSES_PER_PAGE,
+        (currentPage + 1) * STATUSES_PER_PAGE
+    );
+
+    React.useEffect(() => {
+        setPage(0);
+    }, [normalizedQuery]);
+
+    React.useEffect(() => {
+        if (page >= pageCount)
+            setPage(pageCount - 1);
+    }, [page, pageCount]);
 
     return (
         <div className="bs-history-card">
@@ -152,11 +168,6 @@ function StatusHistory({ textarea }: { textarea: HTMLTextAreaElement; }) {
                             </button>
                         </div>
                     ))}
-                    {filtered.length > visible.length && (
-                        <div className="bs-history-more">
-                            {filtered.length - visible.length} more — refine your search to find them
-                        </div>
-                    )}
                 </div>
             ) : (
                 <div className="bs-history-empty">
@@ -164,6 +175,28 @@ function StatusHistory({ textarea }: { textarea: HTMLTextAreaElement; }) {
                         ? "Statuses you save in this dialog will appear here."
                         : "No saved statuses match your search."}
                 </div>
+            )}
+
+            {filtered.length > STATUSES_PER_PAGE && (
+                <nav className="bs-history-pagination" aria-label="Saved status pages">
+                    <button
+                        type="button"
+                        disabled={currentPage === 0}
+                        aria-label="Previous saved statuses page"
+                        onClick={() => setPage(currentPage - 1)}
+                    >
+                        ‹
+                    </button>
+                    <span>Page {currentPage + 1} of {pageCount}</span>
+                    <button
+                        type="button"
+                        disabled={currentPage === pageCount - 1}
+                        aria-label="Next saved statuses page"
+                        onClick={() => setPage(currentPage + 1)}
+                    >
+                        ›
+                    </button>
+                </nav>
             )}
         </div>
     );
@@ -183,7 +216,7 @@ function findModalSection(textarea: HTMLTextAreaElement) {
 
 function cleanupRemovedHistories() {
     for (const [textarea, mounted] of mountedHistories) {
-        if (mounted.host.isConnected)
+        if (textarea.isConnected && mounted.host.isConnected && mounted.modal.isConnected)
             continue;
 
         const draft = textarea.value.trim();
@@ -209,6 +242,20 @@ function mountHistory(textarea: HTMLTextAreaElement) {
     if (!section || !modal)
         return;
 
+    let initialText = textarea.value.trim();
+    let recordedText: string | undefined;
+    for (const [oldTextarea, mounted] of mountedHistories) {
+        if (mounted.modal !== modal)
+            continue;
+
+        initialText = mounted.initialText;
+        recordedText = mounted.recordedText;
+        mounted.modal.removeEventListener("click", mounted.saveListener, true);
+        mounted.root.unmount();
+        mounted.host.remove();
+        mountedHistories.delete(oldTextarea);
+    }
+
     const host = document.createElement("section");
     host.className = "bs-status-history";
     host.setAttribute("aria-label", "Saved statuses");
@@ -222,10 +269,12 @@ function mountHistory(textarea: HTMLTextAreaElement) {
         const button = target.closest("button");
         if (button?.closest("footer")) {
             const text = textarea.value.trim();
-            rememberSavedStatus(text);
             const mounted = mountedHistories.get(textarea);
-            if (mounted)
+            if (mounted) {
+                if (text && text !== mounted.initialText && text !== mounted.recordedText)
+                    rememberSavedStatus(text);
                 mounted.recordedText = text;
+            }
         }
     };
 
@@ -234,8 +283,9 @@ function mountHistory(textarea: HTMLTextAreaElement) {
     const root = createRoot(host);
     const mounted: MountedHistory = {
         host,
-        initialText: textarea.value.trim(),
+        initialText,
         modal,
+        recordedText,
         root,
         saveListener
     };

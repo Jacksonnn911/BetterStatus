@@ -183,7 +183,7 @@ The settings dashboard also provides:
 - **Expand all** and **Collapse all** controls
 - A Discord-style presence picker for Online, Idle, Do Not Disturb, and Invisible
 
-Discord's **Set your status** dialog also includes a searchable saved-status history. BetterStatus remembers up to 1,000 statuses, keeps favorites pinned above recent entries, and lets you reuse, favorite, or remove entries without returning to the plugin settings.
+Discord's **Set your status** dialog also includes a searchable saved-status history. BetterStatus remembers up to 1,000 statuses, keeps favorites pinned above recent entries, and lets you reuse, favorite, or remove entries without returning to the plugin settings. Results are paginated in groups of 10 so the history never adds a nested scrollbar to Discord's modal.
 
 BetterStatus checks for new releases automatically unless you opt out with **Auto Update** at the top of the plugin settings. It checks once at startup and then at the selected **Check frequency**, which defaults to every six hours and can be changed from 15 minutes through daily or limited to startup only. The update channel defaults to **Production**, which follows the `prod` branch. Selecting **Development** opens a required confirmation explaining that early builds may be unstable and are provided without warranty; the checkbox must be accepted before the channel changes. Returning to Production never requires confirmation.
 

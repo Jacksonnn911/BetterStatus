@@ -102,10 +102,13 @@ async function setDiscordState(preset: StatusPreset) {
     const text = preset.type === "memory"
         ? preset.rememberedText ?? preset.text
         : preset.text;
+    const previousText = CustomStatusSettings.getSetting()?.text?.trim() ?? "";
+    const previousPresence = StatusSettings.getSetting();
 
     await setCustomStatusText(text);
     await StatusSettings.updateSetting(preset.presence);
-    rememberSavedStatus(text);
+    if (text.trim() !== previousText || preset.presence !== previousPresence)
+        rememberSavedStatus(text);
 }
 
 
@@ -124,7 +127,6 @@ async function rememberActivePreset() {
     const currentStatus = CustomStatusSettings.getSetting();
     const rememberedText = currentStatus?.text ?? "";
 
-    rememberSavedStatus(rememberedText);
     await savePresets(presets.map(preset =>
         preset.id === activePresetId
             ? { ...preset, rememberedText }

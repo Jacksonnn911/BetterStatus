@@ -206,11 +206,7 @@
 }
 
 .bs-history-list {
-  max-height: 244px;
-  overflow-y: auto;
   border-top: 1px solid var(--border-subtle, var(--background-modifier-accent));
-  scrollbar-color: var(--scrollbar-thin-thumb) transparent;
-  scrollbar-width: thin;
 }
 
 .bs-history-row {
@@ -302,8 +298,7 @@
   color: var(--red-400);
 }
 
-.bs-history-empty,
-.bs-history-more {
+.bs-history-empty {
   color: var(--text-muted);
   font-size: 13px;
   text-align: center;
@@ -314,8 +309,48 @@
   border-top: 1px solid var(--border-subtle, var(--background-modifier-accent));
 }
 
-.bs-history-more {
-  padding: 10px 14px;
+.bs-history-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-subtle, var(--background-modifier-accent));
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.bs-history-pagination button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--interactive-icon-default, var(--interactive-normal, var(--text-default)));
+  background: var(--background-mod-strong, var(--background-modifier-accent));
+  cursor: pointer;
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  place-items: center;
+}
+
+.bs-history-pagination button:hover:not(:disabled),
+.bs-history-pagination button:focus-visible {
+  color: var(--interactive-text-hover, var(--interactive-hover, var(--text-default)));
+  background: var(--interactive-background-active, var(--background-modifier-active));
+}
+
+.bs-history-pagination button:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: -2px;
+}
+
+.bs-history-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
 }
 
 .bs-update-status {
