@@ -16,9 +16,10 @@
 
 .bs-control-panel {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    gap: 15px;
+    column-gap: 15px;
+    row-gap: 13px;
     padding: 16px 18px;
     border: 1px solid color-mix(in srgb, var(--brand-500) 24%, var(--background-modifier-accent));
     border-radius: 14px;
@@ -29,6 +30,7 @@
 }
 
 .bs-control-icon {
+    grid-row: 1 / 3;
     display: grid;
     width: 42px;
     height: 42px;
@@ -44,6 +46,9 @@
 
 .bs-control-copy {
     min-width: 0;
+    max-width: 760px;
+    overflow-wrap: normal;
+    word-break: normal;
 }
 
 .bs-control-copy h5 {
@@ -63,8 +68,24 @@
 .bs-update-actions {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    min-width: 0;
+    grid-column: 2;
+    flex-wrap: wrap;
+    justify-content: flex-start;
     gap: 12px;
+}
+
+.bs-update-actions > :first-child {
+    width: min(280px, 100%);
+    flex: 0 1 280px;
+}
+
+.bs-update-actions > button {
+    flex: 0 0 auto;
+}
+
+.bs-update-actions .vc-form-switch-wrapper {
+    flex: 0 0 auto;
 }
 
 .bs-update-status {
@@ -1795,13 +1816,28 @@
         grid-template-columns: auto minmax(0, 1fr);
     }
 
-    .bs-control-panel .vc-form-switch-wrapper {
-        grid-column: 1 / -1;
+    .bs-control-icon {
+        align-self: start;
+        grid-row: 1;
     }
 
     .bs-update-actions {
         grid-column: 1 / -1;
-        justify-content: space-between;
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .bs-update-actions > :first-child {
+        width: 100%;
+        flex-basis: auto;
+    }
+
+    .bs-update-actions > button {
+        width: 100%;
+    }
+
+    .bs-update-actions .vc-form-switch-wrapper {
+        width: 100%;
     }
 
     .bs-fields {
