@@ -1,21 +1,21 @@
 {
   "version": 1,
-  "commit": "780d43ab412c577b78f5925c6d8863c8b0046436",
+  "commit": "38ace5f1426229aff7330a472eb678b6ec43d5c9",
   "files": [
     {
       "source": "src/index.tsx",
       "target": "index.tsx",
-      "sha256": "c5f263adb48536e60a841180b841d5b2937c8f4f168ca473ea4c1bef661fa227"
+      "sha256": "f588357f8b4e4c78f3edf5a65f8633380ecc47e79208110159c87db5804ea51f"
     },
     {
       "source": "src/native.ts",
       "target": "native.ts",
-      "sha256": "708d5b8ada50855b2a56b53c7593f1d1b2877eb79ccf54f803f05e8a9248b24f"
+      "sha256": "096e3b339ebeb1b0ca8f781cccb43cf8e9e10df1e0298b432a437bd92c1fa9d0"
     },
     {
       "source": "README.md",
       "target": "README.md",
-      "sha256": "b8a18e868bf1a684d1af32bb77067682991d7a706a1b10029ddd87f1a1e492f5"
+      "sha256": "915acafa6c59cc5796bbbe1dd5682fe216984f348d5223a711007e796a8beed7"
     },
     {
       "source": "src/savedStatuses.ts",
@@ -25,7 +25,7 @@
     {
       "source": "src/Settings.tsx",
       "target": "Settings.tsx",
-      "sha256": "56ae46a7de8120a3ecb69d6716a249bdf79a219adfcf68cb0077ca151ca09782"
+      "sha256": "a34beb21c97135daa09a4ffd3e1bbc2ce7e0c72570bcb524a1aeea6f148023dc"
     },
     {
       "source": "src/StatusHistory.tsx",
