@@ -17,17 +17,17 @@ import {
   Button,
   ConfirmModal,
   Forms,
-  openModal,
   React,
   Select,
   TextInput,
+  openModal,
 } from "@webpack/common";
 
+import { StatusSwitcher } from "./StatusSwitcher";
 import {
   normalizeSavedStatuses,
   rememberStatusInLibrary,
 } from "./savedStatuses";
-import { StatusSwitcher } from "./StatusSwitcher";
 import type {
   PresetType,
   SavedStatus,
@@ -46,6 +46,113 @@ interface UpdateInfo {
   installedVersion?: string;
   latestVersion: string;
   status: "current" | "updateAvailable" | "restartRequired";
+}
+
+type BackupPlatform = "macos" | "windows" | "linux" | "unknown";
+
+interface BetterStatusBackup {
+  format: "betterstatus-backup";
+  version: 1;
+  exportedAt: string;
+  platform: BackupPlatform;
+  settings: {
+    presets: StatusPreset[];
+    savedStatuses: SavedStatus[];
+    activePresetId?: string;
+    autoUpdate: boolean;
+    autoRestart: boolean;
+    updateCheckFrequency: UpdateCheckFrequency;
+    updateChannel: UpdateChannel;
+  };
+}
+
+const MAX_BACKUP_BYTES = 2 * 1024 * 1024;
+const PRESENCE_VALUES = new Set(["online", "idle", "dnd", "invisible"]);
+
+function currentPlatform(): BackupPlatform {
+  const platform = navigator.platform.toLowerCase();
+
+  if (platform.includes("mac")) return "macos";
+  if (platform.includes("win")) return "windows";
+  if (platform.includes("linux")) return "linux";
+
+  return "unknown";
+}
+
+function validateBackup(value: unknown): BetterStatusBackup {
+  if (!value || typeof value !== "object")
+    throw new Error("This file does not contain a BetterStatus backup.");
+
+  const backup = value as Partial<BetterStatusBackup>;
+  if (backup.format !== "betterstatus-backup" || backup.version !== 1)
+    throw new Error("This BetterStatus backup format is not supported.");
+  if (!backup.settings || typeof backup.settings !== "object")
+    throw new Error("The backup does not contain settings.");
+
+  const source = backup.settings as Partial<BetterStatusBackup["settings"]>;
+  if (!Array.isArray(source.presets) || !Array.isArray(source.savedStatuses))
+    throw new Error("The backup is missing presets or saved statuses.");
+  if (source.presets.length > 10_000)
+    throw new Error("The backup contains too many presets.");
+
+  const ids = new Set<string>();
+  const presets = source.presets.map((value, index): StatusPreset => {
+    if (!value || typeof value !== "object")
+      throw new Error(`Preset ${index + 1} is invalid.`);
+
+    const preset = value as Partial<StatusPreset>;
+    if (typeof preset.id !== "string" || !preset.id || preset.id.length > 200 || ids.has(preset.id))
+      throw new Error(`Preset ${index + 1} has an invalid or duplicate ID.`);
+    if (typeof preset.name !== "string" || typeof preset.text !== "string" || typeof preset.hotkey !== "string")
+      throw new Error(`Preset ${index + 1} contains invalid text fields.`);
+    if (preset.name.length > 500 || preset.text.length > 10_000 || preset.hotkey.length > 200)
+      throw new Error(`Preset ${index + 1} contains an oversized field.`);
+    if (preset.type !== "fixed" && preset.type !== "memory")
+      throw new Error(`Preset ${index + 1} has an invalid behavior.`);
+    if (!PRESENCE_VALUES.has(preset.presence ?? ""))
+      throw new Error(`Preset ${index + 1} has an invalid presence.`);
+    if (typeof preset.enabled !== "boolean")
+      throw new Error(`Preset ${index + 1} has an invalid enabled state.`);
+    if (preset.rememberedText !== undefined && typeof preset.rememberedText !== "string")
+      throw new Error(`Preset ${index + 1} has invalid Memory text.`);
+
+    ids.add(preset.id);
+    return {
+      id: preset.id,
+      name: preset.name,
+      text: preset.text,
+      type: preset.type,
+      rememberedText: preset.rememberedText,
+      presence: preset.presence as StatusPreset["presence"],
+      hotkey: preset.hotkey,
+      enabled: preset.enabled,
+    };
+  });
+
+  const savedStatuses = normalizeSavedStatuses(source.savedStatuses);
+  const updateChannel: UpdateChannel = source.updateChannel === "dev" ? "dev" : "prod";
+  const updateCheckFrequency = normalizeUpdateCheckFrequency(source.updateCheckFrequency);
+  const activePresetId = typeof source.activePresetId === "string" && ids.has(source.activePresetId)
+    ? source.activePresetId
+    : undefined;
+
+  return {
+    format: "betterstatus-backup",
+    version: 1,
+    exportedAt: typeof backup.exportedAt === "string" ? backup.exportedAt : new Date(0).toISOString(),
+    platform: ["macos", "windows", "linux"].includes(backup.platform ?? "")
+      ? backup.platform as BackupPlatform
+      : "unknown",
+    settings: {
+      presets,
+      savedStatuses,
+      activePresetId,
+      autoUpdate: source.autoUpdate !== false,
+      autoRestart: source.autoRestart === true,
+      updateCheckFrequency,
+      updateChannel,
+    },
+  };
 }
 
 const DEFAULT_PRESETS: StatusPreset[] = [
@@ -190,7 +297,7 @@ function DevelopmentChannelPrompt({
         checked: accepted,
         onChange: setAccepted,
       }}
-      onConfirm={setError => {
+      onConfirm={(setError) => {
         if (!accepted) {
           setError("Accept the development-build terms before continuing.");
           throw new Error("Development terms were not accepted.");
@@ -209,7 +316,10 @@ function DevelopmentChannelPrompt({
           Based on the MIT license disclaimer, development builds are provided
           <strong> “as is”</strong>, without warranty of any kind. You accept
           responsibility for using and testing them. Read the{" "}
-          <Link href="https://opensource.org/license/mit">MIT license terms</Link>.
+          <Link href="https://opensource.org/license/mit">
+            MIT license terms
+          </Link>
+          .
         </Forms.FormText>
         <Forms.FormText>
           You can return to Production at any time without another prompt.
@@ -220,7 +330,13 @@ function DevelopmentChannelPrompt({
 }
 
 export default function SettingsComponent() {
-  const { autoUpdate, autoRestart, updateCheckFrequency, updateChannel, activePresetId } = settings.use([
+  const {
+    autoUpdate,
+    autoRestart,
+    updateCheckFrequency,
+    updateChannel,
+    activePresetId,
+  } = settings.use([
     "autoUpdate",
     "autoRestart",
     "updateCheckFrequency",
@@ -233,17 +349,21 @@ export default function SettingsComponent() {
     ...getPresets(),
   ]);
   const [collapsedIds, setCollapsedIds] = React.useState<Set<string>>(
-    () => new Set(presets.map(preset => preset.id)),
+    () => new Set(presets.map((preset) => preset.id)),
   );
   const [searchQuery, setSearchQuery] = React.useState("");
   const [checkingForUpdates, setCheckingForUpdates] = React.useState(false);
   const [updateStatus, setUpdateStatus] = React.useState<string | null>(null);
   const [updateInfo, setUpdateInfo] = React.useState<UpdateInfo | null>(null);
-  const [updateInfoError, setUpdateInfoError] = React.useState<string | null>(null);
+  const [updateInfoError, setUpdateInfoError] = React.useState<string | null>(
+    null,
+  );
   const [lastCheckedAt, setLastCheckedAt] = React.useState<Date | null>(null);
+  const [backupStatus, setBackupStatus] = React.useState<string | null>(null);
   const selectedUpdateChannel: UpdateChannel =
     updateChannel === "dev" ? "dev" : "prod";
-  const selectedUpdateFrequency = normalizeUpdateCheckFrequency(updateCheckFrequency);
+  const selectedUpdateFrequency =
+    normalizeUpdateCheckFrequency(updateCheckFrequency);
 
   async function refreshUpdateInfo(channel: UpdateChannel) {
     try {
@@ -253,7 +373,9 @@ export default function SettingsComponent() {
       setLastCheckedAt(new Date());
     } catch (error) {
       setUpdateInfo(null);
-      setUpdateInfoError(error instanceof Error ? error.message : String(error));
+      setUpdateInfoError(
+        error instanceof Error ? error.message : String(error),
+      );
       setLastCheckedAt(new Date());
     }
   }
@@ -285,8 +407,7 @@ export default function SettingsComponent() {
             ? "Discord will restart automatically."
             : "Restart Discord to use the new version.",
         });
-        if (autoRestart)
-          window.setTimeout(relaunch, 1_500);
+        if (autoRestart) window.setTimeout(relaunch, 1_500);
       } else if (result.status === "current") {
         setUpdateStatus("You already have the latest channel build.");
         showNotification({
@@ -319,8 +440,124 @@ export default function SettingsComponent() {
     await savePresets(next);
   }
 
+  function exportSettings() {
+    const backup: BetterStatusBackup = {
+      format: "betterstatus-backup",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      platform: currentPlatform(),
+      settings: {
+        presets: getPresets(),
+        savedStatuses: getSavedStatuses(),
+        activePresetId: settings.store.activePresetId,
+        autoUpdate: settings.store.autoUpdate,
+        autoRestart: settings.store.autoRestart,
+        updateCheckFrequency: getUpdateCheckFrequency(),
+        updateChannel: getUpdateChannel(),
+      },
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10);
+
+    anchor.href = url;
+    anchor.download = `betterstatus-backup-${date}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setBackupStatus(`Exported ${backup.settings.presets.length} presets and ${backup.settings.savedStatuses.length} saved statuses.`);
+  }
+
+  async function applyBackup(backup: BetterStatusBackup) {
+    const convertMacHotkeys = backup.platform === "macos" && currentPlatform() === "windows";
+    const importedPresets = backup.settings.presets.map(preset => ({
+      ...preset,
+      hotkey: convertMacHotkeys
+        ? preset.hotkey.replace(/(^|\+)Command(?=\+|$)/g, "$1Control")
+        : preset.hotkey,
+    }));
+
+    settings.store.savedStatuses = backup.settings.savedStatuses;
+    settings.store.autoUpdate = backup.settings.autoUpdate;
+    settings.store.autoRestart = backup.settings.autoRestart;
+    settings.store.updateCheckFrequency = backup.settings.updateCheckFrequency;
+    settings.store.updateChannel = backup.settings.updateChannel;
+    settings.store.activePresetId = importedPresets.some(
+      preset => preset.id === backup.settings.activePresetId && preset.enabled,
+    )
+      ? backup.settings.activePresetId
+      : undefined;
+
+    await commit(importedPresets);
+    setCollapsedIds(new Set(importedPresets.map(preset => preset.id)));
+    setSearchQuery("");
+    setRecordingId(null);
+    Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(false);
+
+    const message = `Imported ${importedPresets.length} presets and ${backup.settings.savedStatuses.length} saved statuses${convertMacHotkeys ? "; Command shortcuts were converted to Control" : ""}.`;
+    setBackupStatus(message);
+    showNotification({ title: "BetterStatus backup imported", body: message });
+  }
+
+  function confirmBackupImport(backup: BetterStatusBackup) {
+    const convertsHotkeys = backup.platform === "macos" && currentPlatform() === "windows";
+
+    openModal(modalProps => (
+      <ConfirmModal
+        {...modalProps}
+        title="Replace all BetterStatus settings?"
+        confirmText="Import backup"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={() => void applyBackup(backup)}
+      >
+        <div className="bs-import-confirmation">
+          <Forms.FormText>
+            This replaces every BetterStatus preset, saved status, active preset,
+            and update preference currently stored on this computer.
+          </Forms.FormText>
+          <div className="bs-import-summary">
+            <span><strong>{backup.settings.presets.length}</strong> presets</span>
+            <span><strong>{backup.settings.savedStatuses.length}</strong> saved statuses</span>
+            <span><strong>{backup.settings.updateChannel === "dev" ? "Development" : "Production"}</strong> updates</span>
+          </div>
+          {convertsHotkeys && (
+            <Forms.FormText>
+              macOS <strong>Command</strong> shortcuts will be converted to Windows <strong>Control</strong> shortcuts.
+            </Forms.FormText>
+          )}
+          <Forms.FormText>Your current setup will not be recoverable unless you export it first.</Forms.FormText>
+        </div>
+      </ConfirmModal>
+    ));
+  }
+
+  function importSettings() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      try {
+        if (file.size > MAX_BACKUP_BYTES)
+          throw new Error("The selected backup is larger than 2 MB.");
+
+        const backup = validateBackup(JSON.parse(await file.text()));
+        setBackupStatus(null);
+        confirmBackupImport(backup);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setBackupStatus(`Import failed: ${message}`);
+        showNotification({ title: "BetterStatus import failed", body: message });
+      }
+    };
+    input.click();
+  }
+
   function updatePreset(id: string, patch: Partial<StatusPreset>) {
-    const next = presets.map(preset =>
+    const next = presets.map((preset) =>
       preset.id === id
         ? {
             ...preset,
@@ -369,11 +606,11 @@ export default function SettingsComponent() {
   function deletePreset(id: string) {
     if (id === activePresetId) settings.store.activePresetId = undefined;
 
-    void commit(presets.filter(preset => preset.id !== id));
+    void commit(presets.filter((preset) => preset.id !== id));
   }
 
   function toggleCollapsed(id: string) {
-    setCollapsedIds(current => {
+    setCollapsedIds((current) => {
       const next = new Set(current);
 
       if (next.has(id)) next.delete(id);
@@ -388,9 +625,9 @@ export default function SettingsComponent() {
   function toggleAllCollapsed() {
     const allCollapsed =
       presets.length > 0 &&
-      presets.every(preset => collapsedIds.has(preset.id));
+      presets.every((preset) => collapsedIds.has(preset.id));
     setCollapsedIds(
-      allCollapsed ? new Set() : new Set(presets.map(preset => preset.id)),
+      allCollapsed ? new Set() : new Set(presets.map((preset) => preset.id)),
     );
     setRecordingId(null);
   }
@@ -426,33 +663,33 @@ export default function SettingsComponent() {
   React.useEffect(() => {
     if (
       activePresetId &&
-      !presets.some(preset => preset.id === activePresetId && preset.enabled)
+      !presets.some((preset) => preset.id === activePresetId && preset.enabled)
     ) {
       settings.store.activePresetId = undefined;
     }
   }, [activePresetId, presets]);
 
-  const enabledCount = presets.filter(preset => preset.enabled).length;
+  const enabledCount = presets.filter((preset) => preset.enabled).length;
   const memoryCount = presets.filter(
-    preset => preset.type === "memory",
+    (preset) => preset.type === "memory",
   ).length;
   const allCollapsed =
     presets.length > 0 &&
-    presets.every(preset => collapsedIds.has(preset.id));
+    presets.every((preset) => collapsedIds.has(preset.id));
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const visiblePresets = normalizedQuery
-    ? presets.filter(preset =>
+    ? presets.filter((preset) =>
         [
           preset.name,
           preset.text,
           preset.hotkey,
           preset.presence,
           preset.type,
-        ].some(value => value.toLowerCase().includes(normalizedQuery)),
+        ].some((value) => value.toLowerCase().includes(normalizedQuery)),
       )
     : presets;
   const activePreset = presets.find(
-    preset => preset.id === activePresetId && preset.enabled,
+    (preset) => preset.id === activePresetId && preset.enabled,
   );
 
   return (
@@ -482,14 +719,15 @@ export default function SettingsComponent() {
             </span>
             {updateInfo && (
               <span className="bs-version-commits">
-                <strong>{updateInfo.channel === "dev" ? "Development" : "Production"}</strong>
                 <span>
-                  Installed {updateInfo.installedVersion?.slice(0, 7) ?? "unknown"}
-                  {updateInfo.installedChannel && updateInfo.installedChannel !== updateInfo.channel
+                  Installed:{" "}
+                  {updateInfo.installedVersion?.slice(0, 7) ?? "unknown"}
+                  {updateInfo.installedChannel &&
+                  updateInfo.installedChannel !== updateInfo.channel
                     ? ` (${updateInfo.installedChannel})`
                     : ""}
                 </span>
-                <span>Latest {updateInfo.latestVersion.slice(0, 7)}</span>
+                <span>Latest: {updateInfo.latestVersion.slice(0, 7)}</span>
                 <Link
                   href={`https://github.com/Jacksonnn911/BetterStatus/commit/${updateInfo.latestVersion}`}
                 >
@@ -499,7 +737,11 @@ export default function SettingsComponent() {
             )}
             {lastCheckedAt && (
               <span className="bs-version-checked">
-                Checked {lastCheckedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                Checked{" "}
+                {lastCheckedAt.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </span>
             )}
           </div>
@@ -518,14 +760,14 @@ export default function SettingsComponent() {
           <div className="bs-update-channel">
             <Select
               options={UPDATE_CHANNEL_OPTIONS}
-              select={channel => {
+              select={(channel) => {
                 if (channel !== "dev") {
                   settings.store.updateChannel = "prod";
                   setUpdateStatus(null);
                   return;
                 }
 
-                openModal(modalProps => (
+                openModal((modalProps) => (
                   <DevelopmentChannelPrompt
                     modalProps={modalProps}
                     onAccept={() => {
@@ -535,8 +777,8 @@ export default function SettingsComponent() {
                   />
                 ));
               }}
-              serialize={value => value}
-              isSelected={value => value === selectedUpdateChannel}
+              serialize={(value) => value}
+              isSelected={(value) => value === selectedUpdateChannel}
               closeOnSelect
             />
           </div>
@@ -547,9 +789,11 @@ export default function SettingsComponent() {
             <FormSwitch
               title="Auto update"
               value={autoUpdate}
-              onChange={value => {
+              onChange={(value) => {
                 settings.store.autoUpdate = value;
-                Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(value);
+                Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(
+                  value,
+                );
               }}
               hideBorder
             />
@@ -557,12 +801,15 @@ export default function SettingsComponent() {
               <span>Check frequency</span>
               <Select
                 options={UPDATE_FREQUENCY_OPTIONS}
-                select={frequency => {
-                  settings.store.updateCheckFrequency = normalizeUpdateCheckFrequency(frequency);
-                  Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(false);
+                select={(frequency) => {
+                  settings.store.updateCheckFrequency =
+                    normalizeUpdateCheckFrequency(frequency);
+                  Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(
+                    false,
+                  );
                 }}
-                serialize={value => String(value)}
-                isSelected={value => value === selectedUpdateFrequency}
+                serialize={(value) => String(value)}
+                isSelected={(value) => value === selectedUpdateFrequency}
                 isDisabled={!autoUpdate}
                 closeOnSelect
               />
@@ -570,12 +817,31 @@ export default function SettingsComponent() {
             <FormSwitch
               title="Auto restart Discord"
               value={autoRestart}
-              onChange={value => (settings.store.autoRestart = value)}
+              onChange={(value) => (settings.store.autoRestart = value)}
               hideBorder
             />
           </div>
         </div>
       </div>
+
+      <section className="bs-backup-panel">
+        <div className="bs-backup-mark" aria-hidden="true">⇅</div>
+        <div className="bs-backup-copy">
+          <Forms.FormTitle>Backup & sharing</Forms.FormTitle>
+          <Forms.FormText>
+            Move your complete BetterStatus setup between computers or keep a
+            personal backup. Presets, Memory values, saved statuses, favorites,
+            and update preferences are all included.
+          </Forms.FormText>
+          {backupStatus && <div className="bs-backup-status" role="status">{backupStatus}</div>}
+        </div>
+        <div className="bs-backup-actions">
+          <button type="button" className="bs-secondary-button" onClick={importSettings}>
+            Import backup
+          </button>
+          <Button onClick={exportSettings}>Export everything</Button>
+        </div>
+      </section>
 
       <div className="bs-toolbar">
         <div>
@@ -596,7 +862,8 @@ export default function SettingsComponent() {
               <i />
               {activePreset ? (
                 <>
-                  Current: <strong>{activePreset.name || "Untitled preset"}</strong>
+                  Current:{" "}
+                  <strong>{activePreset.name || "Untitled preset"}</strong>
                 </>
               ) : (
                 "No active preset"
@@ -651,7 +918,7 @@ export default function SettingsComponent() {
         </div>
       ) : (
         <div className="bs-preset-grid">
-          {visiblePresets.map(preset => {
+          {visiblePresets.map((preset) => {
             const collapsed = collapsedIds.has(preset.id);
             const contentId = `bs-preset-${preset.id}`;
 
@@ -705,7 +972,7 @@ export default function SettingsComponent() {
                     <FormSwitch
                       title="Enabled"
                       value={preset.enabled}
-                      onChange={enabled =>
+                      onChange={(enabled) =>
                         updatePreset(preset.id, { enabled })
                       }
                       hideBorder
@@ -732,7 +999,7 @@ export default function SettingsComponent() {
                         <TextInput
                           value={preset.name}
                           placeholder="Work, gaming, sleeping…"
-                          onChange={name => updatePreset(preset.id, { name })}
+                          onChange={(name) => updatePreset(preset.id, { name })}
                         />
                       </label>
 
@@ -740,7 +1007,7 @@ export default function SettingsComponent() {
                         <span>Presence</span>
                         <StatusSwitcher
                           presence={preset.presence}
-                          onPresenceChange={presence =>
+                          onPresenceChange={(presence) =>
                             updatePreset(preset.id, { presence })
                           }
                         />
@@ -750,13 +1017,13 @@ export default function SettingsComponent() {
                         <span>Behavior</span>
                         <Select
                           options={TYPE_OPTIONS}
-                          select={type =>
+                          select={(type) =>
                             updatePreset(preset.id, {
                               type: type as PresetType,
                             })
                           }
-                          serialize={value => value}
-                          isSelected={value => value === preset.type}
+                          serialize={(value) => value}
+                          isSelected={(value) => value === preset.type}
                           closeOnSelect
                         />
                       </div>
@@ -774,7 +1041,7 @@ export default function SettingsComponent() {
                               : preset.text
                           }
                           placeholder="What are you doing?"
-                          onChange={text =>
+                          onChange={(text) =>
                             updatePreset(
                               preset.id,
                               preset.type === "memory"
@@ -871,7 +1138,7 @@ export const settings = definePluginSettings({
 }>();
 
 export function getPresets(): StatusPreset[] {
-  const normalized = settings.store.presets.map(preset => ({
+  const normalized = settings.store.presets.map((preset) => ({
     ...preset,
     type: preset.type === "memory" ? ("memory" as const) : ("fixed" as const),
   }));
@@ -911,17 +1178,23 @@ export function getUpdateChannel(): UpdateChannel {
   return channel;
 }
 
-export function normalizeUpdateCheckFrequency(value: unknown): UpdateCheckFrequency {
+export function normalizeUpdateCheckFrequency(
+  value: unknown,
+): UpdateCheckFrequency {
   const frequency = Number(value);
-  const validFrequencies: UpdateCheckFrequency[] = [0, 15, 30, 60, 180, 360, 720, 1440];
+  const validFrequencies: UpdateCheckFrequency[] = [
+    0, 15, 30, 60, 180, 360, 720, 1440,
+  ];
 
   return validFrequencies.includes(frequency as UpdateCheckFrequency)
-    ? frequency as UpdateCheckFrequency
+    ? (frequency as UpdateCheckFrequency)
     : 360;
 }
 
 export function getUpdateCheckFrequency(): UpdateCheckFrequency {
-  const frequency = normalizeUpdateCheckFrequency(settings.store.updateCheckFrequency);
+  const frequency = normalizeUpdateCheckFrequency(
+    settings.store.updateCheckFrequency,
+  );
 
   if (settings.store.updateCheckFrequency !== frequency)
     settings.store.updateCheckFrequency = frequency;

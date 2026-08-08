@@ -66,7 +66,7 @@ The guided installer detects your tools, reuses existing Vencord source code, bu
 | --- | --- | --- |
 | 📚 | **Status library inside Discord** | Search, favorite, and reuse up to 1,000 statuses from Discord's own status dialog. |
 | 🎛️ | **A real preset workspace** | Create unlimited presets, search instantly, see the active one, and collapse or expand editors. |
-| 🧬 | **Fast, conflict-safe editing** | Duplicate variants safely, record shortcuts, and enable or disable presets without hotkey collisions. |
+| ⇅ | **Complete portable backups** | Move presets, Memory values, status history, favorites, and preferences between computers in one file. |
 
 ### Built to take care of itself
 
@@ -197,6 +197,19 @@ The settings dashboard also provides:
 - Per-preset collapse, duplicate, enable, and delete controls
 - **Expand all** and **Collapse all** controls
 - A Discord-style presence picker for Online, Idle, Do Not Disturb, and Invisible
+
+### Backup, transfer, and sharing
+
+The **Backup & sharing** panel exports everything BetterStatus stores to one readable JSON file: all presets and their Memory values, enabled states and hotkeys, the active preset, saved-status history and favorites, plus automatic-update preferences, frequency, restart behavior, and channel.
+
+To move your setup to another computer:
+
+1. Click **Export everything** on the original computer.
+2. Move the downloaded `betterstatus-backup-YYYY-MM-DD.json` file to the new computer.
+3. Install BetterStatus there and click **Import backup**.
+4. Review the import summary and confirm the replacement.
+
+Import validates the file before changing anything and refuses unsupported, malformed, or oversized backups. Existing BetterStatus data is replaced only after confirmation. When a macOS backup is imported on Windows, `Command` shortcuts are automatically converted to `Control`; all other shortcut combinations are preserved exactly. Export the current setup first if you may want to restore it later.
 
 Discord's **Set your status** dialog also includes a searchable saved-status history. BetterStatus remembers up to 1,000 statuses, keeps favorites pinned above recent entries, and lets you reuse, favorite, or remove entries without returning to the plugin settings. Results are paginated in groups of 10 so the history never adds a nested scrollbar to Discord's modal.
 
