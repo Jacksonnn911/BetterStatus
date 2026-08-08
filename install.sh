@@ -194,6 +194,10 @@ mkdir -p "$plugin_dir"
 for plugin_file in index.tsx Settings.tsx native.ts types.ts README.md; do
     cp "$temporary_dir/plugin/$plugin_file" "$plugin_dir/$plugin_file"
 done
+rm -f "$plugin_dir/styles.css"
+if [ -f "$temporary_dir/plugin/styles.css" ]; then
+    cp "$temporary_dir/plugin/styles.css" "$plugin_dir/styles.css"
+fi
 rm -f "$plugin_dir/VERSION"
 if [ -f "$temporary_dir/plugin/VERSION" ]; then
     cp "$temporary_dir/plugin/VERSION" "$plugin_dir/VERSION"

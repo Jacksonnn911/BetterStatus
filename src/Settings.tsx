@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import "./styles.css";
+
 import { definePluginSettings, migratePluginSettings } from "@api/Settings";
 import { FormSwitch } from "@components/FormSwitch";
 import { OptionType, PluginNative } from "@utils/types";
@@ -234,243 +236,121 @@ export default function SettingsComponent() {
     }, [recordingId, presets]);
 
 
+    const enabledCount = presets.filter(preset => preset.enabled).length;
+
     return (
-        <div>
-            <div
-                style={{
-                    padding: "20px",
-                    borderRadius: "12px",
-                    background: "var(--background-secondary)",
-                    border: "1px solid var(--background-modifier-accent)"
-                }}
-            >
-                <Forms.FormTitle tag="h2">
-                    BetterStatus
-                </Forms.FormTitle>
-
-                <Forms.FormText>
-                    Switch between Fixed and Memory status presets from anywhere
-                    using global keyboard shortcuts.
-                </Forms.FormText>
-
-                <Forms.FormText style={{ marginTop: "12px" }}>
-                    {presets.length} preset{presets.length === 1 ? "" : "s"} · {presets.filter(preset => preset.enabled).length} enabled
-                </Forms.FormText>
-            </div>
-
-            <Forms.FormTitle tag="h3" style={{ marginTop: "24px" }}>
-                Status Presets
-            </Forms.FormTitle>
-
-
-            {presets.map(preset => (
-                <div
-                    key={preset.id}
-                    style={{
-                        marginTop: "20px",
-                        padding: "16px",
-                        border: "1px solid var(--background-modifier-accent)",
-                        borderRadius: "8px"
-                    }}
-                >
-                    <div
-                        style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            gap: "12px"
-                        }}
-                    >
-                        <Forms.FormTitle>
-                            {preset.name || "Unnamed Status"}
-                        </Forms.FormTitle>
-                        <Forms.FormText>
-                            {preset.type === "memory" ? "Memory" : "Fixed"} · {preset.enabled ? "Enabled" : "Disabled"}
-                        </Forms.FormText>
-                    </div>
-
-
+        <div className="bs-settings">
+            <div className="bs-toolbar">
+                <div>
+                    <Forms.FormTitle tag="h2">Status presets</Forms.FormTitle>
                     <Forms.FormText>
-                        Preset name
+                        {presets.length} total · {enabledCount} active
                     </Forms.FormText>
-
-                    <TextInput
-                        value={preset.name}
-                        onChange={value =>
-                            updatePreset(
-                                preset.id,
-                                {
-                                    name: value
-                                }
-                            )
-                        }
-                    />
-
-
-                    <div style={{ height: "12px" }} />
-
-
-                    <Forms.FormText>
-                        Preset type
-                    </Forms.FormText>
-
-                    <Select
-                        options={TYPE_OPTIONS}
-                        select={value =>
-                            updatePreset(
-                                preset.id,
-                                {
-                                    type: value as PresetType
-                                }
-                            )
-                        }
-                        serialize={value => value}
-                        isSelected={value =>
-                            value === preset.type
-                        }
-                        closeOnSelect={true}
-                    />
-
-                    <Forms.FormText>
-                        {preset.type === "memory"
-                            ? "Memory learns manual custom-status changes while this preset is active and restores the last one next time."
-                            : "Fixed always restores the custom status configured below."}
-                    </Forms.FormText>
-
-
-                    <div style={{ height: "12px" }} />
-
-
-                    <Forms.FormText>
-                        {preset.type === "memory"
-                            ? "Initial / remembered custom status"
-                            : "Custom status"}
-                    </Forms.FormText>
-
-                    <TextInput
-                        value={preset.type === "memory"
-                            ? preset.rememberedText ?? preset.text
-                            : preset.text}
-                        placeholder="What are you doing?"
-                        onChange={value =>
-                            updatePreset(
-                                preset.id,
-                                preset.type === "memory"
-                                    ? {
-                                        text: value,
-                                        rememberedText: value
-                                    }
-                                    : {
-                                        text: value
-                                    }
-                            )
-                        }
-                    />
-
-
-                    <div style={{ height: "12px" }} />
-
-
-                    <Forms.FormText>
-                        Presence
-                    </Forms.FormText>
-
-                    <Select
-                        options={PRESENCE_OPTIONS}
-                        select={value =>
-                            updatePreset(
-                                preset.id,
-                                {
-                                    presence:
-                                        value as PresenceStatus
-                                }
-                            )
-                        }
-                        serialize={value => value}
-                        isSelected={value =>
-                            value === preset.presence
-                        }
-                        closeOnSelect={true}
-                    />
-
-
-                    <div style={{ height: "16px" }} />
-
-
-                    <Forms.FormText>
-                        Global hotkey
-                    </Forms.FormText>
-
-                    <div
-                        style={{
-                            display: "flex",
-                            gap: "8px",
-                            alignItems: "center"
-                        }}
-                    >
-                        <TextInput
-                            value={
-                                recordingId === preset.id
-                                    ? "Press shortcut..."
-                                    : preset.hotkey || "None"
-                            }
-                            editable={false}
-                        />
-
-                        <Button
-                            onClick={() =>
-                                setRecordingId(
-                                    recordingId === preset.id
-                                        ? null
-                                        : preset.id
-                                )
-                            }
-                        >
-                            {recordingId === preset.id
-                                ? "Cancel"
-                                : "Record"}
-                        </Button>
-                    </div>
-
-
-                    <div style={{ height: "16px" }} />
-
-
-                    <FormSwitch
-                        title="Enabled"
-                        value={preset.enabled}
-                        onChange={value =>
-                            updatePreset(
-                                preset.id,
-                                {
-                                    enabled: value
-                                }
-                            )
-                        }
-                        hideBorder
-                    />
-
-
-                    <div style={{ height: "16px" }} />
-
-
-                    <Button
-                        color={Button.Colors.RED}
-                        onClick={() =>
-                            deletePreset(preset.id)
-                        }
-                    >
-                        Delete Status
-                    </Button>
                 </div>
-            ))}
-
-
-            <div style={{ marginTop: "20px" }}>
-                <Button onClick={addPreset}>
-                    + Add Status
-                </Button>
+                <Button onClick={addPreset}>Add preset</Button>
             </div>
+
+            {presets.length === 0
+                ? (
+                    <div className="bs-empty">
+                        <Forms.FormTitle>No presets yet</Forms.FormTitle>
+                        <Forms.FormText>Create your first status preset to get started.</Forms.FormText>
+                        <Button onClick={addPreset}>Create preset</Button>
+                    </div>
+                )
+                : (
+                    <div className="bs-preset-grid">
+                        {presets.map(preset => (
+                            <section className={`bs-preset-card${preset.enabled ? "" : " bs-preset-card-disabled"}`} key={preset.id}>
+                                <header className="bs-card-header">
+                                    <div className="bs-card-title">
+                                        <Forms.FormTitle>{preset.name || "Untitled preset"}</Forms.FormTitle>
+                                        <span className={`bs-mode-badge bs-mode-${preset.type}`}>
+                                            {preset.type === "memory" ? "Memory" : "Fixed"}
+                                        </span>
+                                    </div>
+                                    <FormSwitch
+                                        title="Enabled"
+                                        value={preset.enabled}
+                                        onChange={enabled => updatePreset(preset.id, { enabled })}
+                                        hideBorder
+                                    />
+                                </header>
+
+                                <div className="bs-fields">
+                                    <label className="bs-field">
+                                        <span>Preset name</span>
+                                        <TextInput
+                                            value={preset.name}
+                                            placeholder="Work, gaming, sleeping…"
+                                            onChange={name => updatePreset(preset.id, { name })}
+                                        />
+                                    </label>
+
+                                    <label className="bs-field">
+                                        <span>Presence</span>
+                                        <Select
+                                            options={PRESENCE_OPTIONS}
+                                            select={presence => updatePreset(preset.id, { presence: presence as PresenceStatus })}
+                                            serialize={value => value}
+                                            isSelected={value => value === preset.presence}
+                                            closeOnSelect
+                                        />
+                                    </label>
+
+                                    <label className="bs-field">
+                                        <span>Behavior</span>
+                                        <Select
+                                            options={TYPE_OPTIONS}
+                                            select={type => updatePreset(preset.id, { type: type as PresetType })}
+                                            serialize={value => value}
+                                            isSelected={value => value === preset.type}
+                                            closeOnSelect
+                                        />
+                                    </label>
+
+                                    <label className="bs-field bs-field-status">
+                                        <span>{preset.type === "memory" ? "Remembered status" : "Custom status"}</span>
+                                        <TextInput
+                                            value={preset.type === "memory" ? preset.rememberedText ?? preset.text : preset.text}
+                                            placeholder="What are you doing?"
+                                            onChange={text => updatePreset(preset.id, preset.type === "memory"
+                                                ? { text, rememberedText: text }
+                                                : { text })}
+                                        />
+                                    </label>
+
+                                    <div className="bs-field bs-field-hotkey">
+                                        <span>Global hotkey</span>
+                                        <div className={`bs-hotkey${recordingId === preset.id ? " bs-hotkey-recording" : ""}`}>
+                                            <TextInput
+                                                value={recordingId === preset.id ? "Press a shortcut…" : preset.hotkey || "Not assigned"}
+                                                editable={false}
+                                            />
+                                            <Button onClick={() => setRecordingId(recordingId === preset.id ? null : preset.id)}>
+                                                {recordingId === preset.id ? "Cancel" : "Record"}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bs-card-footer">
+                                    <Forms.FormText>
+                                        {preset.type === "memory"
+                                            ? "Remembers the last status used while active."
+                                            : "Always applies the status saved above."}
+                                    </Forms.FormText>
+                                    <Button
+                                        color={Button.Colors.RED}
+                                        onClick={() => deletePreset(preset.id)}
+                                    >
+                                        Delete
+                                    </Button>
+                                </div>
+                            </section>
+                        ))}
+                    </div>
+                )}
         </div>
     );
 }

@@ -15,7 +15,7 @@ const registeredShortcuts = new Map<string, string>();
 const executeFile = promisify(execFile);
 
 const REPOSITORY = "Jacksonnn911/BetterStatus";
-const UPDATE_FILES = ["index.tsx", "Settings.tsx", "native.ts", "types.ts", "README.md"];
+const UPDATE_FILES = ["index.tsx", "Settings.tsx", "native.ts", "types.ts", "styles.css", "README.md"];
 const VENCORD_SOURCE_DIR = join(__dirname, "..");
 const PLUGIN_SOURCE_DIR = join(VENCORD_SOURCE_DIR, "src", "userplugins", "betterStatus");
 const VERSION_FILE = join(PLUGIN_SOURCE_DIR, "VERSION");

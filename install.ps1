@@ -186,6 +186,10 @@ try {
     foreach ($File in @("index.tsx", "Settings.tsx", "native.ts", "types.ts", "README.md")) {
         Copy-Item -Force "$ExpandedPlugin\$File" "$PluginDir\$File"
     }
+    Remove-Item -Force -ErrorAction SilentlyContinue "$PluginDir\styles.css"
+    if (Test-Path "$ExpandedPlugin\styles.css") {
+        Copy-Item -Force "$ExpandedPlugin\styles.css" "$PluginDir\styles.css"
+    }
     Remove-Item -Force -ErrorAction SilentlyContinue "$PluginDir\VERSION"
     if (Test-Path "$ExpandedPlugin\VERSION") {
         Copy-Item -Force "$ExpandedPlugin\VERSION" "$PluginDir\VERSION"
