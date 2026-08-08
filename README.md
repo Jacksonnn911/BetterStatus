@@ -52,16 +52,31 @@ The guided installer detects your tools, reuses existing Vencord source code, bu
 
 ## What makes BetterStatus different
 
-| | Standout feature | Why it matters |
-| --- | --- | --- |
-| ⚡ | **True global shortcuts** | Change both your custom status and Discord presence from any app—without opening Discord. |
-| 🧠 | **Memory presets** | BetterStatus learns manual status changes made while a preset is active and restores the latest one next time. |
-| 📚 | **A status library inside Discord** | Search, favorite, and reuse up to 1,000 past statuses directly from Discord's own **Set your status** dialog. |
-| ↩️ | **Presence that survives restarts** | Your last active preset, custom text, and Online, Idle, DND, or Invisible state return when Discord starts. |
-| 🛡️ | **Updates built for custom plugins** | Get SHA-256-verified incremental updates, visible version state, Development opt-in, and automatic rollback if a rebuild fails. |
-| ✨ | **Actually easy to install** | One guided command finds or installs every build tool, builds Vencord, and patches Discord on macOS, Linux, and Windows. |
+### Switch without breaking your flow
 
-Everything else—unlimited presets, instant search, safe duplication, a shortcut recorder, collapsible editors, configurable update schedules, and optional automatic restarts—is included without turning this page into a wall of features. See [Usage](#usage) for the full workflow.
+| | Feature | Why it matters |
+| --- | --- | --- |
+| ⚡ | **True global shortcuts** | Change both custom status and presence from any app—without opening Discord. |
+| 🧠 | **Fixed and Memory presets** | Apply exact text or remember the latest manual status used with each preset. |
+| ↩️ | **Complete state restoration** | Bring back the active preset, custom text, and Online, Idle, DND, or Invisible state after restart. |
+
+### More than a preset list
+
+| | Feature | Why it matters |
+| --- | --- | --- |
+| 📚 | **Status library inside Discord** | Search, favorite, and reuse up to 1,000 statuses from Discord's own status dialog. |
+| 🎛️ | **A real preset workspace** | Create unlimited presets, search instantly, see the active one, and collapse or expand editors. |
+| 🧬 | **Fast, conflict-safe editing** | Duplicate variants safely, record shortcuts, and enable or disable presets without hotkey collisions. |
+
+### Built to take care of itself
+
+| | Feature | Why it matters |
+| --- | --- | --- |
+| 🛡️ | **Verified incremental updates** | Download only changed files, verify SHA-256 hashes, rebuild Vencord, and roll back on failure. |
+| 🚦 | **Updates on your terms** | Choose Production or Development, check manually or on a schedule, and optionally restart automatically. |
+| ✨ | **One-command installation** | Find or install the required tools, build Vencord, and patch Discord on macOS, Linux, and Windows. |
+
+That is the highlight reel—not the entire feature inventory. See [Usage](#usage) for the complete workflow and controls.
 
 <p align="center">
   Crafted by <a href="https://github.com/Jacksonnn911"><strong>Jacksonnn911</strong></a> (<code>nik_jandaaa27829</code>) and <a href="https://github.com/qtmisaliba"><strong>qtmisaliba</strong></a> (<code>qtmisaliba</code>).
