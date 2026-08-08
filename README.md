@@ -40,6 +40,8 @@ The guided installer is designed for non-technical users. It checks the computer
 
 Files managed by the installer are kept inside your user data directory, not installed system-wide.
 
+Before downloading Vencord, the installer searches the current directory and common folders such as `Desktop`, `Documents`, `Downloads`, `Projects`, `Developer`, `dev`, `code`, and `repos`. An existing Vencord source checkout is reused automatically. StatusHotkeys is always installed as a user plugin at `Vencord/src/userplugins/statusHotkeys`.
+
 **macOS or Linux:**
 
 ```sh
@@ -169,6 +171,10 @@ Reapply the build if required by your client, then restart Discord or Vesktop.
 - Confirm the entry file is located at `Vencord/src/userplugins/statusHotkeys/index.tsx`.
 - Rebuild Vencord and fully restart Discord or Vesktop.
 - Check the build output for TypeScript or plugin-loading errors.
+
+### Build says "not a git repository"
+
+Update and rerun the installer. Current versions provide Vencord's required build metadata when the installer-managed source archive has no `.git` directory.
 
 ### A shortcut does nothing
 

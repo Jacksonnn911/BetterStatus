@@ -22,6 +22,41 @@ function Confirm-Step([string]$Message) {
     return (-not $Answer -or $Answer -match '^(y|yes)$')
 }
 
+function Test-VencordSource([string]$Path) {
+    if (-not ((Test-Path "$Path\package.json") -and (Test-Path "$Path\src\plugins"))) {
+        return $false
+    }
+    return (Get-Content "$Path\package.json" -Raw) -match '"name"\s*:\s*"vencord"'
+}
+
+function Find-VencordSource {
+    $Candidates = @(
+        $PWD.Path,
+        "$HOME\Vencord",
+        "$HOME\vencord",
+        "$HOME\Documents\Vencord",
+        "$HOME\Desktop\Vencord",
+        "$HOME\Downloads\Vencord",
+        (Join-Path $DataDir "Vencord")
+    )
+    foreach ($Candidate in $Candidates) {
+        if (Test-VencordSource $Candidate) {
+            return $Candidate
+        }
+    }
+
+    foreach ($SearchRoot in @("$HOME\Desktop", "$HOME\Documents", "$HOME\Projects", "$HOME\Developer", "$HOME\dev", "$HOME\code", "$HOME\repos")) {
+        if (-not (Test-Path $SearchRoot)) { continue }
+        $PackageFiles = Get-ChildItem -Path $SearchRoot -Filter package.json -File -Recurse -Depth 2 -ErrorAction SilentlyContinue
+        foreach ($PackageFile in $PackageFiles) {
+            if (Test-VencordSource $PackageFile.DirectoryName) {
+                return $PackageFile.DirectoryName
+            }
+        }
+    }
+    return $null
+}
+
 Write-Host "`nStatusHotkeys easy installer" -ForegroundColor Cyan
 Write-Host "This installs everything into your user account; administrator access is not needed.`n"
 
@@ -113,17 +148,16 @@ try {
 
     if ($env:VENCORD_DIR) {
         $VencordDir = $env:VENCORD_DIR
-    } elseif ((Test-Path "$PWD\package.json") -and (Test-Path "$PWD\src")) {
-        $VencordDir = $PWD.Path
-    } elseif (Test-Path "$HOME\Vencord\src") {
-        $VencordDir = "$HOME\Vencord"
-    } elseif (Test-Path "$HOME\Documents\Vencord\src") {
-        $VencordDir = "$HOME\Documents\Vencord"
     } else {
-        $VencordDir = Join-Path $DataDir "Vencord"
+        $VencordDir = Find-VencordSource
+        if ($VencordDir) {
+            Write-Success "Found existing Vencord source at $VencordDir"
+        } else {
+            $VencordDir = Join-Path $DataDir "Vencord"
+        }
     }
 
-    if (-not ((Test-Path "$VencordDir\package.json") -and (Test-Path "$VencordDir\src"))) {
+    if (-not (Test-VencordSource $VencordDir)) {
         if (-not (Confirm-Step "Download Vencord source code into $VencordDir?")) {
             throw "Vencord source code is required, so installation was cancelled."
         }
@@ -138,6 +172,10 @@ try {
         Write-Success "Downloaded Vencord"
     }
 
+    if (-not (Test-VencordSource $VencordDir)) {
+        throw "The selected Vencord directory is invalid: $VencordDir"
+    }
+
     $PluginArchive = Join-Path $TemporaryDir "status-hotkeys.zip"
     Write-Step "Downloading the latest StatusHotkeys release"
     Invoke-WebRequest -UseBasicParsing -Uri $PluginUrl -OutFile $PluginArchive
@@ -149,6 +187,13 @@ try {
         Copy-Item -Force "$ExpandedPlugin\$File" "$PluginDir\$File"
     }
     Write-Success "Installed StatusHotkeys source files"
+
+    # GitHub source archives do not contain .git metadata. Vencord accepts
+    # these values instead of calling Git while building archive installs.
+    if (-not (Test-Path "$VencordDir\.git")) {
+        $env:VENCORD_HASH = "archive"
+        $env:VENCORD_REMOTE = "Vendicated/Vencord"
+    }
 
     Write-Step "Installing build dependencies (this can take a few minutes)"
     pnpm --dir $VencordDir install --frozen-lockfile

@@ -52,6 +52,10 @@ jobs:
 
       - name: Install dependencies and build
         working-directory: Vencord
+        env:
+          # Also exercise the metadata fallback used by archive-based installs.
+          VENCORD_HASH: archive
+          VENCORD_REMOTE: Vendicated/Vencord
         run: |
           pnpm install --frozen-lockfile
           pnpm build

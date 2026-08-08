@@ -36,6 +36,47 @@ download() {
     fi
 }
 
+is_vencord_source() {
+    [ -f "$1/package.json" ] &&
+        [ -d "$1/src/plugins" ] &&
+        grep -q '"name"[[:space:]]*:[[:space:]]*"vencord"' "$1/package.json" 2>/dev/null
+}
+
+find_vencord_source() {
+    local search_root candidate
+    for candidate in \
+        "$PWD" \
+        "${HOME}/Vencord" \
+        "${HOME}/vencord" \
+        "${HOME}/Documents/Vencord" \
+        "${HOME}/Desktop/Vencord" \
+        "${HOME}/Downloads/Vencord" \
+        "$DATA_DIR/Vencord"; do
+        if is_vencord_source "$candidate"; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    for search_root in \
+        "${HOME}/Desktop" \
+        "${HOME}/Documents" \
+        "${HOME}/Projects" \
+        "${HOME}/Developer" \
+        "${HOME}/dev" \
+        "${HOME}/code" \
+        "${HOME}/repos"; do
+        [ -d "$search_root" ] || continue
+        for candidate in "$search_root"/* "$search_root"/*/*; do
+            if is_vencord_source "$candidate"; then
+                printf '%s\n' "$candidate"
+                return 0
+            fi
+        done
+    done
+    return 1
+}
+
 printf '\nStatusHotkeys easy installer\n'
 printf 'This installs everything into your user account; administrator access is not needed.\n\n'
 
@@ -124,17 +165,14 @@ fi
 
 if [ -n "${VENCORD_DIR:-}" ]; then
     vencord_dir="$VENCORD_DIR"
-elif [ -f "$PWD/package.json" ] && [ -d "$PWD/src" ]; then
-    vencord_dir="$PWD"
-elif [ -d "${HOME}/Vencord/src" ]; then
-    vencord_dir="${HOME}/Vencord"
-elif [ -d "${HOME}/Documents/Vencord/src" ]; then
-    vencord_dir="${HOME}/Documents/Vencord"
+elif discovered_vencord="$(find_vencord_source)"; then
+    vencord_dir="$discovered_vencord"
+    success "Found existing Vencord source at $vencord_dir"
 else
     vencord_dir="$DATA_DIR/Vencord"
 fi
 
-if [ ! -f "$vencord_dir/package.json" ] || [ ! -d "$vencord_dir/src" ]; then
+if ! is_vencord_source "$vencord_dir"; then
     ask "Download Vencord source code into $vencord_dir?" ||
         fail "Vencord source code is required, so installation was cancelled."
     info "Downloading Vencord (Git is not required)"
@@ -144,8 +182,7 @@ if [ ! -f "$vencord_dir/package.json" ] || [ ! -d "$vencord_dir/src" ]; then
     success "Downloaded Vencord"
 fi
 
-[ -f "$vencord_dir/package.json" ] && [ -d "$vencord_dir/src" ] ||
-    fail "The selected Vencord directory is invalid: $vencord_dir"
+is_vencord_source "$vencord_dir" || fail "The selected Vencord directory is invalid: $vencord_dir"
 
 info "Downloading the latest StatusHotkeys release"
 download "$PLUGIN_URL" "$temporary_dir/status-hotkeys.tar.gz"
@@ -158,6 +195,13 @@ for plugin_file in index.tsx Settings.tsx native.ts types.ts README.md; do
     cp "$temporary_dir/plugin/$plugin_file" "$plugin_dir/$plugin_file"
 done
 success "Installed StatusHotkeys source files"
+
+# GitHub source archives do not contain .git metadata. Vencord accepts these
+# environment values instead of calling Git while building archive installs.
+if [ ! -d "$vencord_dir/.git" ]; then
+    export VENCORD_HASH="archive"
+    export VENCORD_REMOTE="Vendicated/Vencord"
+fi
 
 info "Installing build dependencies (this can take a few minutes)"
 pnpm --dir "$vencord_dir" install --frozen-lockfile
