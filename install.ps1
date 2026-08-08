@@ -17,11 +17,6 @@ function Write-Success([string]$Message) {
     Write-Host "OK  $Message" -ForegroundColor Green
 }
 
-function Confirm-Step([string]$Message) {
-    $Answer = Read-Host "$Message [Y/n]"
-    return (-not $Answer -or $Answer -match '^(y|yes)$')
-}
-
 function Test-VencordSource([string]$Path) {
     if (-not ((Test-Path "$Path\package.json") -and (Test-Path "$Path\src\plugins"))) {
         return $false
@@ -176,9 +171,6 @@ try {
     }
 
     if (-not (Test-VencordSource $VencordDir)) {
-        if (-not (Confirm-Step "Download Vencord source code into $VencordDir?")) {
-            throw "Vencord source code is required, so installation was cancelled."
-        }
         Write-Step "Downloading Vencord (Git is not required)"
         $VencordArchive = Join-Path $TemporaryDir "vencord.zip"
         Invoke-WebRequest -UseBasicParsing -Uri $VencordUrl -OutFile $VencordArchive
