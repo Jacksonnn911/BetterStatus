@@ -191,19 +191,17 @@ try {
     Invoke-WebRequest -UseBasicParsing -Uri $PluginUrl -OutFile $PluginArchive
     $ExpandedPlugin = Join-Path $TemporaryDir "plugin"
     Expand-Archive -Path $PluginArchive -DestinationPath $ExpandedPlugin
+    if (-not (Test-Path "$ExpandedPlugin\index.tsx")) {
+        throw "The BetterStatus release package is invalid: index.tsx is missing."
+    }
     $PluginDir = "$VencordDir\src\userplugins\$PluginName"
+    if (Test-Path $PluginDir) {
+        Remove-Item -Recurse -Force $PluginDir
+    }
     New-Item -ItemType Directory -Force -Path $PluginDir | Out-Null
-    Remove-Item -Force -ErrorAction SilentlyContinue "$PluginDir\SavedStatusesProfile.tsx"
-    foreach ($File in @("index.tsx", "Settings.tsx", "StatusHistory.tsx", "StatusSwitcher.tsx", "savedStatuses.ts", "native.ts", "types.ts", "README.md")) {
-        Copy-Item -Force "$ExpandedPlugin\$File" "$PluginDir\$File"
-    }
-    Remove-Item -Force -ErrorAction SilentlyContinue "$PluginDir\styles.css"
-    if (Test-Path "$ExpandedPlugin\styles.css") {
-        Copy-Item -Force "$ExpandedPlugin\styles.css" "$PluginDir\styles.css"
-    }
-    Remove-Item -Force -ErrorAction SilentlyContinue "$PluginDir\VERSION"
+    Copy-Item -Recurse -Force "$ExpandedPlugin\*" $PluginDir
     if (Test-Path "$ExpandedPlugin\VERSION") {
-        Copy-Item -Force "$ExpandedPlugin\VERSION" "$PluginDir\VERSION"
+        Write-Success "Installed version marker"
     } else {
         Write-Step "This release predates version markers; Auto Update will initialize it on its first check"
     }

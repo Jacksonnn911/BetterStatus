@@ -115,9 +115,6 @@ if command -v pnpm >/dev/null 2>&1; then
 fi
 
 if [ -z "$system_node" ]; then
-    ask "Download a private Node.js 24 runtime for BetterStatus?" ||
-        fail "Node.js is required, so installation was cancelled."
-
     case "$(uname -s)" in
         Darwin) node_platform="darwin" ;;
         Linux) node_platform="linux" ;;
@@ -155,8 +152,6 @@ node_major="$(node --version | sed 's/^v//' | cut -d. -f1)"
 [ "$node_major" -ge 22 ] || fail "Node.js 22 or newer is required."
 
 if ! command -v pnpm >/dev/null 2>&1; then
-    ask "Install the required pnpm build tool privately?" ||
-        fail "pnpm is required, so installation was cancelled."
     info "Installing pnpm 11 into $TOOLS_DIR"
     npm install --global --prefix "$TOOLS_DIR" pnpm@11.9.0
     export PATH="$TOOLS_DIR/bin:$PATH"
@@ -173,8 +168,6 @@ else
 fi
 
 if ! is_vencord_source "$vencord_dir"; then
-    ask "Download Vencord source code into $vencord_dir?" ||
-        fail "Vencord source code is required, so installation was cancelled."
     info "Downloading Vencord (Git is not required)"
     download "$VENCORD_URL" "$temporary_dir/vencord.tar.gz"
     mkdir -p "$vencord_dir"
@@ -188,20 +181,14 @@ info "Downloading the latest BetterStatus release"
 download "$PLUGIN_URL" "$temporary_dir/better-status.tar.gz"
 mkdir "$temporary_dir/plugin"
 tar -xzf "$temporary_dir/better-status.tar.gz" -C "$temporary_dir/plugin"
+[ -f "$temporary_dir/plugin/index.tsx" ] || fail "The BetterStatus release package is invalid: index.tsx is missing."
 
 plugin_dir="$vencord_dir/src/userplugins/$PLUGIN_NAME"
+rm -rf "$plugin_dir"
 mkdir -p "$plugin_dir"
-rm -f "$plugin_dir/SavedStatusesProfile.tsx"
-for plugin_file in index.tsx Settings.tsx StatusHistory.tsx StatusSwitcher.tsx savedStatuses.ts native.ts types.ts README.md; do
-    cp "$temporary_dir/plugin/$plugin_file" "$plugin_dir/$plugin_file"
-done
-rm -f "$plugin_dir/styles.css"
-if [ -f "$temporary_dir/plugin/styles.css" ]; then
-    cp "$temporary_dir/plugin/styles.css" "$plugin_dir/styles.css"
-fi
-rm -f "$plugin_dir/VERSION"
+cp -R "$temporary_dir/plugin/." "$plugin_dir/"
 if [ -f "$temporary_dir/plugin/VERSION" ]; then
-    cp "$temporary_dir/plugin/VERSION" "$plugin_dir/VERSION"
+    success "Installed version marker"
 else
     info "This release predates version markers; Auto Update will initialize it on its first check"
 fi
