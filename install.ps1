@@ -1,8 +1,8 @@
 $ErrorActionPreference = "Stop"
 
 $Repository = "Jacksonnn911/StatusHotkeys"
-$PluginName = "statusHotkeys"
-$PluginUrl = "https://github.com/$Repository/releases/latest/download/status-hotkeys.zip"
+$PluginName = "betterStatus"
+$PluginUrl = "https://github.com/$Repository/releases/latest/download/better-status.zip"
 $VencordUrl = "https://github.com/Vendicated/Vencord/archive/refs/heads/main.zip"
 $NodeIndex = "https://nodejs.org/dist/latest-v24.x"
 $DataDir = Join-Path $env:LOCALAPPDATA "StatusHotkeys"
@@ -57,7 +57,7 @@ function Find-VencordSource {
     return $null
 }
 
-Write-Host "`nStatusHotkeys easy installer" -ForegroundColor Cyan
+Write-Host "`nBetterStatus easy installer" -ForegroundColor Cyan
 Write-Host "This installs everything into your user account; administrator access is not needed.`n"
 
 New-Item -ItemType Directory -Force -Path $DataDir, $RuntimeDir, $ToolsDir | Out-Null
@@ -98,7 +98,7 @@ New-Item -ItemType Directory -Path $TemporaryDir | Out-Null
 
 try {
     if (-not $CompatibleNode) {
-        if (-not (Confirm-Step "Download a private Node.js 24 runtime for StatusHotkeys?")) {
+        if (-not (Confirm-Step "Download a private Node.js 24 runtime for BetterStatus?")) {
             throw "Node.js is required, so installation was cancelled."
         }
 
@@ -176,8 +176,8 @@ try {
         throw "The selected Vencord directory is invalid: $VencordDir"
     }
 
-    $PluginArchive = Join-Path $TemporaryDir "status-hotkeys.zip"
-    Write-Step "Downloading the latest StatusHotkeys release"
+    $PluginArchive = Join-Path $TemporaryDir "better-status.zip"
+    Write-Step "Downloading the latest BetterStatus release"
     Invoke-WebRequest -UseBasicParsing -Uri $PluginUrl -OutFile $PluginArchive
     $ExpandedPlugin = Join-Path $TemporaryDir "plugin"
     Expand-Archive -Path $PluginArchive -DestinationPath $ExpandedPlugin
@@ -186,7 +186,12 @@ try {
     foreach ($File in @("index.tsx", "Settings.tsx", "native.ts", "types.ts", "README.md")) {
         Copy-Item -Force "$ExpandedPlugin\$File" "$PluginDir\$File"
     }
-    Write-Success "Installed StatusHotkeys source files"
+    $LegacyPluginDir = "$VencordDir\src\userplugins\statusHotkeys"
+    if (Test-Path $LegacyPluginDir) {
+        Remove-Item -Recurse -Force $LegacyPluginDir
+        Write-Step "Removed the old StatusHotkeys plugin folder after migration"
+    }
+    Write-Success "Installed BetterStatus source files"
 
     # GitHub source archives do not contain .git metadata. Vencord accepts
     # these values instead of calling Git while building archive installs.
@@ -199,7 +204,7 @@ try {
     pnpm --dir $VencordDir install --frozen-lockfile
     Write-Step "Building Vencord"
     pnpm --dir $VencordDir build
-    Write-Success "StatusHotkeys and Vencord built successfully"
+    Write-Success "BetterStatus and Vencord built successfully"
 
     Write-Host "`nWhich Discord client do you use?"
     Write-Host "  1) Discord Desktop"
@@ -210,7 +215,7 @@ try {
         "2" {
             Write-Host "`nIn Vesktop, open Settings, find 'Vencord Location', and select:"
             Write-Host "$VencordDir\dist" -ForegroundColor Yellow
-            Write-Host "Then restart Vesktop and enable StatusHotkeys under Vencord > Plugins."
+            Write-Host "Then restart Vesktop and enable BetterStatus under Vencord > Plugins."
         }
         "3" { Write-Host "`nBuild complete. Vencord is located at: $VencordDir" }
         default {
@@ -233,7 +238,7 @@ try {
                 Write-Step "Relaunching Discord"
                 Start-Process -FilePath $DiscordLaunchPath
             }
-            Write-Host "`nEnable StatusHotkeys under Vencord > Plugins, and you are done." -ForegroundColor Green
+            Write-Host "`nEnable BetterStatus under Vencord > Plugins, and you are done." -ForegroundColor Green
         }
     }
 } finally {

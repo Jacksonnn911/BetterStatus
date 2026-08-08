@@ -3,8 +3,8 @@
 set -euo pipefail
 
 REPOSITORY="Jacksonnn911/StatusHotkeys"
-PLUGIN_NAME="statusHotkeys"
-PLUGIN_URL="https://github.com/${REPOSITORY}/releases/latest/download/status-hotkeys.tar.gz"
+PLUGIN_NAME="betterStatus"
+PLUGIN_URL="https://github.com/${REPOSITORY}/releases/latest/download/better-status.tar.gz"
 VENCORD_URL="https://github.com/Vendicated/Vencord/archive/refs/heads/main.tar.gz"
 NODE_INDEX="https://nodejs.org/dist/latest-v24.x"
 DATA_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/status-hotkeys"
@@ -77,7 +77,7 @@ find_vencord_source() {
     return 1
 }
 
-printf '\nStatusHotkeys easy installer\n'
+printf '\nBetterStatus easy installer\n'
 printf 'This installs everything into your user account; administrator access is not needed.\n\n'
 
 temporary_dir="$(mktemp -d)"
@@ -115,7 +115,7 @@ if command -v pnpm >/dev/null 2>&1; then
 fi
 
 if [ -z "$system_node" ]; then
-    ask "Download a private Node.js 24 runtime for StatusHotkeys?" ||
+    ask "Download a private Node.js 24 runtime for BetterStatus?" ||
         fail "Node.js is required, so installation was cancelled."
 
     case "$(uname -s)" in
@@ -184,17 +184,22 @@ fi
 
 is_vencord_source "$vencord_dir" || fail "The selected Vencord directory is invalid: $vencord_dir"
 
-info "Downloading the latest StatusHotkeys release"
-download "$PLUGIN_URL" "$temporary_dir/status-hotkeys.tar.gz"
+info "Downloading the latest BetterStatus release"
+download "$PLUGIN_URL" "$temporary_dir/better-status.tar.gz"
 mkdir "$temporary_dir/plugin"
-tar -xzf "$temporary_dir/status-hotkeys.tar.gz" -C "$temporary_dir/plugin"
+tar -xzf "$temporary_dir/better-status.tar.gz" -C "$temporary_dir/plugin"
 
 plugin_dir="$vencord_dir/src/userplugins/$PLUGIN_NAME"
 mkdir -p "$plugin_dir"
 for plugin_file in index.tsx Settings.tsx native.ts types.ts README.md; do
     cp "$temporary_dir/plugin/$plugin_file" "$plugin_dir/$plugin_file"
 done
-success "Installed StatusHotkeys source files"
+legacy_plugin_dir="$vencord_dir/src/userplugins/statusHotkeys"
+if [ -d "$legacy_plugin_dir" ]; then
+    rm -rf "$legacy_plugin_dir"
+    info "Removed the old StatusHotkeys plugin folder after migration"
+fi
+success "Installed BetterStatus source files"
 
 # GitHub source archives do not contain .git metadata. Vencord accepts these
 # environment values instead of calling Git while building archive installs.
@@ -207,7 +212,7 @@ info "Installing build dependencies (this can take a few minutes)"
 pnpm --dir "$vencord_dir" install --frozen-lockfile
 info "Building Vencord"
 pnpm --dir "$vencord_dir" build
-success "StatusHotkeys and Vencord built successfully"
+success "BetterStatus and Vencord built successfully"
 
 printf '\nWhich Discord client do you use?\n  1) Discord Desktop\n  2) Vesktop\n  3) Finish without configuring a client\nChoice [1]: ' >/dev/tty
 read -r client_choice </dev/tty || true
@@ -255,7 +260,7 @@ case "${client_choice:-1}" in
                 printf '1. Open System Settings > Privacy & Security > Full Disk Access.\n' >&2
                 printf '2. Enable the terminal application you are currently using.\n' >&2
                 printf '3. Fully quit and reopen that terminal application.\n' >&2
-                printf '4. Run the StatusHotkeys installation command again.\n\n' >&2
+                printf '4. Run the BetterStatus installation command again.\n\n' >&2
                 if ask "Open the Full Disk Access settings now?"; then
                     open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles" || true
                 fi
@@ -303,10 +308,10 @@ case "${client_choice:-1}" in
                 info "Discord was patched, but its launch command could not be found. Please open it normally."
             fi
         fi
-        printf '\nEnable StatusHotkeys under Vencord > Plugins, and you are done.\n'
+        printf '\nEnable BetterStatus under Vencord > Plugins, and you are done.\n'
         ;;
     2)
-        printf '\nIn Vesktop, open Settings, find "Vencord Location", and select:\n%s/dist\nThen restart Vesktop and enable StatusHotkeys under Vencord > Plugins.\n' "$vencord_dir"
+        printf '\nIn Vesktop, open Settings, find "Vencord Location", and select:\n%s/dist\nThen restart Vesktop and enable BetterStatus under Vencord > Plugins.\n' "$vencord_dir"
         ;;
     *)
         printf '\nBuild complete. Vencord is located at: %s\n' "$vencord_dir"

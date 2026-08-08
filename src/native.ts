@@ -6,7 +6,7 @@ function triggerPreset(event: IpcMainInvokeEvent, presetId: string) {
     const encodedId = JSON.stringify(presetId);
 
     event.sender.executeJavaScript(
-        `Vencord.Plugins.plugins.StatusHotkeys.triggerPreset(${encodedId})`
+        `Vencord.Plugins.plugins.BetterStatus.triggerPreset(${encodedId})`
     ).catch(console.error);
 }
 
@@ -50,7 +50,7 @@ export function registerHotkeys(
             }
         } catch (error) {
             console.error(
-                `[StatusHotkeys] Failed to register ${preset.hotkey}`,
+                `[BetterStatus] Failed to register ${preset.hotkey}`,
                 error
             );
 

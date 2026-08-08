@@ -1,6 +1,6 @@
-# StatusHotkeys
+# BetterStatus
 
-StatusHotkeys is a custom [Vencord](https://vencord.dev/) plugin that lets you create Discord status presets and activate them with system-wide keyboard shortcuts—even while Discord is in the background.
+BetterStatus is a custom [Vencord](https://vencord.dev/) plugin that lets you create Discord status presets and activate them with system-wide keyboard shortcuts—even while Discord is in the background.
 
 Created by [Jacksonnn911](https://github.com/Jacksonnn911).
 
@@ -36,12 +36,12 @@ The guided installer is designed for non-technical users. It checks the computer
 - Download a private Node.js 24 runtime when Node.js is missing or too old
 - Install pnpm privately without administrator access
 - Download Vencord without requiring Git
-- Download and build StatusHotkeys
+- Download and build BetterStatus
 - Patch Discord Desktop non-interactively or show the exact Vesktop folder to select
 
 Files managed by the installer are kept inside your user data directory, not installed system-wide.
 
-Before downloading Vencord, the installer searches the current directory and common folders such as `Desktop`, `Documents`, `Downloads`, `Projects`, `Developer`, `dev`, `code`, and `repos`. An existing Vencord source checkout is reused automatically. StatusHotkeys is always installed as a user plugin at `Vencord/src/userplugins/statusHotkeys`.
+Before downloading Vencord, the installer searches the current directory and common folders such as `Desktop`, `Documents`, `Downloads`, `Projects`, `Developer`, `dev`, `code`, and `repos`. An existing Vencord source checkout is reused automatically. BetterStatus is always installed as a user plugin at `Vencord/src/userplugins/betterStatus`.
 
 **macOS or Linux:**
 
@@ -59,7 +59,7 @@ Answer the prompts and choose Discord Desktop or Vesktop at the end. No knowledg
 
 For Discord Desktop, the installer uses Vencord's CLI with `--install` and an automatically selected location; it does not open the Vencord installer GUI. If Discord is running, the installer closes it before patching and relaunches it after a successful patch. Discord remains closed if it was already closed before installation.
 
-Because Vencord does not publish a macOS CLI executable, each StatusHotkeys release builds the CLI directly from the official [`Vencord/Installer`](https://github.com/Vencord/Installer) source for Intel and Apple Silicon Macs. The downloaded binary is verified against the release's SHA-256 checksums before execution.
+Because Vencord does not publish a macOS CLI executable, each BetterStatus release builds the CLI directly from the official [`Vencord/Installer`](https://github.com/Vencord/Installer) source for Intel and Apple Silicon Macs. The downloaded binary is verified against the release's SHA-256 checksums before execution.
 
 On macOS, Discord must be installed at `/Applications/Discord.app`. Immediately before patching, the installer runs `sudo chown -R "$USER":wheel /Applications/Discord.app` and asks for the account password. This gives the current user ownership of the Discord application bundle so it can be patched.
 
@@ -87,11 +87,12 @@ Bun is detected correctly, but it is not used as the build runtime because Venco
 
 If you prefer not to use the installer, first follow the official [Vencord source installation guide](https://docs.vencord.dev/installing/).
 
-From your Vencord directory, create the user plugin directory and clone StatusHotkeys into it:
+From your Vencord directory, create the user plugin directory and extract the latest release into it:
 
 ```sh
-mkdir -p src/userplugins
-git clone https://github.com/Jacksonnn911/StatusHotkeys.git src/userplugins/statusHotkeys
+mkdir -p src/userplugins/betterStatus
+curl -fsSL https://github.com/Jacksonnn911/StatusHotkeys/releases/latest/download/better-status.tar.gz \
+    | tar -xz -C src/userplugins/betterStatus
 ```
 
 Build Vencord:
@@ -111,7 +112,7 @@ For platform-specific details, see Vencord's [custom plugin guide](https://docs.
 
 1. Open Discord's **User Settings**.
 2. Go to **Vencord > Plugins**.
-3. Search for **StatusHotkeys**.
+3. Search for **BetterStatus**.
 4. Enable it.
 5. Restart Discord if Vencord asks you to.
 
@@ -119,7 +120,7 @@ The plugin depends on Vencord's `UserSettingsAPI`; Vencord enables that dependen
 
 ## Usage
 
-Open **User Settings > Vencord > Plugins**, find **StatusHotkeys**, and open its settings.
+Open **User Settings > Vencord > Plugins**, find **BetterStatus**, and open its settings.
 
 To create a preset:
 
@@ -156,7 +157,7 @@ These defaults are designed for macOS. On Windows or Linux—or if the combinati
 
 ## How it works
 
-When Vencord starts the plugin, StatusHotkeys loads your presets and registers every enabled shortcut through Electron's `globalShortcut` API. When a shortcut is pressed, the native process tells the Vencord renderer which preset to activate. Before switching, the plugin saves the current text for the active Memory preset. It then updates Discord's custom-status and presence settings through Vencord's `UserSettingsAPI`.
+When Vencord starts the plugin, BetterStatus loads your presets and registers every enabled shortcut through Electron's `globalShortcut` API. When a shortcut is pressed, the native process tells the Vencord renderer which preset to activate. Before switching, the plugin saves the current text for the active Memory preset. It then updates Discord's custom-status and presence settings through Vencord's `UserSettingsAPI`.
 
 Presets are stored in Vencord's plugin settings. Disabling or deleting a preset immediately rebuilds the registered shortcut list, and disabling the plugin unregisters all of its shortcuts.
 
@@ -164,11 +165,9 @@ Presets are stored in Vencord's plugin settings. Disabling or deleting a preset 
 
 Run the same one-command installer again. It downloads the current rolling release, replaces the plugin files, and rebuilds Vencord.
 
-Alternatively, if you installed the repository manually, run this from the plugin directory inside your Vencord checkout:
+Alternatively, repeat the manual archive command above and then rebuild from your Vencord directory:
 
 ```sh
-git pull
-cd ../../..
 pnpm build
 ```
 
@@ -176,8 +175,8 @@ Reapply the build if required by your client, then restart Discord or Vesktop.
 
 ## Uninstalling
 
-1. Disable **StatusHotkeys** in Vencord's plugin settings.
-2. Delete `src/userplugins/statusHotkeys` from your Vencord source directory.
+1. Disable **BetterStatus** in Vencord's plugin settings.
+2. Delete `src/userplugins/betterStatus` from your Vencord source directory.
 3. Run `pnpm build` from the Vencord directory.
 4. Reapply the build if required, then restart the client.
 
@@ -185,7 +184,7 @@ Reapply the build if required by your client, then restart Discord or Vesktop.
 
 ### The plugin does not appear
 
-- Confirm the entry file is located at `Vencord/src/userplugins/statusHotkeys/index.tsx`.
+- Confirm the entry file is located at `Vencord/src/userplugins/betterStatus/index.tsx`.
 - Rebuild Vencord and fully restart Discord or Vesktop.
 - Check the build output for TypeScript or plugin-loading errors.
 
@@ -203,7 +202,7 @@ Update and rerun the installer. Current versions provide Vencord's required buil
 ### The status does not update
 
 - Confirm Vencord's `UserSettingsAPI` dependency is enabled.
-- Open Discord's developer console and look for messages beginning with `[StatusHotkeys]`.
+- Open Discord's developer console and look for messages beginning with `[BetterStatus]`.
 - Discord or Vencord updates can change internal settings APIs; rebuild with an up-to-date Vencord checkout.
 
 ### macOS permissions
@@ -213,7 +212,7 @@ If ownership changes fail with `Operation not permitted`, give your terminal app
 1. Open **System Settings > Privacy & Security > Full Disk Access**.
 2. Enable Terminal, iTerm, Warp, or whichever terminal application ran the installer.
 3. Fully quit and reopen the terminal application.
-4. Run the StatusHotkeys installation command again.
+4. Run the BetterStatus installation command again.
 
 The installer detects this failure, offers to open the correct System Settings page, and stops before attempting to patch Discord.
 
@@ -221,7 +220,7 @@ If global shortcuts are not detected after installation, check **System Settings
 
 ## Development
 
-Place the repository at `Vencord/src/userplugins/statusHotkeys`, then run a development watcher from the Vencord root:
+Clone this repository anywhere convenient, then copy or symlink its `src` directory to `Vencord/src/userplugins/betterStatus`. Run a development watcher from the Vencord root:
 
 ```sh
 pnpm build --dev --watch
@@ -229,10 +228,10 @@ pnpm build --dev --watch
 
 The main files are:
 
-- `index.tsx` — plugin lifecycle, preset storage, and Discord setting updates
-- `Settings.tsx` — preset editor and shortcut recorder
-- `native.ts` — Electron global shortcut registration
-- `types.ts` — shared preset and presence types
+- `src/index.tsx` — plugin lifecycle, preset storage, and Discord setting updates
+- `src/Settings.tsx` — preset editor and shortcut recorder
+- `src/native.ts` — Electron global shortcut registration
+- `src/types.ts` — shared preset and presence types
 
 ## Automated releases
 

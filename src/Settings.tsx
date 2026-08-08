@@ -34,6 +34,12 @@ const TYPE_OPTIONS = [
     }
 ];
 
+const PROJECT_URL = "https://github.com/Jacksonnn911/StatusHotkeys";
+
+function openProject(path = "") {
+    VencordNative.native.openExternal(`${PROJECT_URL}${path}`);
+}
+
 
 function createId() {
     return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -210,14 +216,50 @@ export default function SettingsComponent() {
 
     return (
         <div>
-            <Forms.FormTitle tag="h2">
-                Status Hotkeys
-            </Forms.FormTitle>
+            <div
+                style={{
+                    padding: "20px",
+                    borderRadius: "12px",
+                    background: "var(--background-secondary)",
+                    border: "1px solid var(--background-modifier-accent)"
+                }}
+            >
+                <Forms.FormTitle tag="h2">
+                    BetterStatus
+                </Forms.FormTitle>
 
-            <Forms.FormText>
-                Create Discord status presets and assign global
-                keyboard shortcuts to them.
-            </Forms.FormText>
+                <Forms.FormText>
+                    Switch between Fixed and Memory status presets from anywhere
+                    using global keyboard shortcuts.
+                </Forms.FormText>
+
+                <div
+                    style={{
+                        display: "flex",
+                        gap: "8px",
+                        flexWrap: "wrap",
+                        marginTop: "16px"
+                    }}
+                >
+                    <Button onClick={() => openProject()}>
+                        View on GitHub
+                    </Button>
+                    <Button onClick={() => openProject("/releases/latest")}>
+                        Latest Release
+                    </Button>
+                    <Button onClick={() => openProject("/issues/new")}>
+                        Report an Issue
+                    </Button>
+                </div>
+
+                <Forms.FormText style={{ marginTop: "12px" }}>
+                    {presets.length} preset{presets.length === 1 ? "" : "s"} · {presets.filter(preset => preset.enabled).length} enabled
+                </Forms.FormText>
+            </div>
+
+            <Forms.FormTitle tag="h3" style={{ marginTop: "24px" }}>
+                Status Presets
+            </Forms.FormTitle>
 
 
             {presets.map(preset => (
@@ -230,9 +272,21 @@ export default function SettingsComponent() {
                         borderRadius: "8px"
                     }}
                 >
-                    <Forms.FormTitle>
-                        {preset.name || "Unnamed Status"}
-                    </Forms.FormTitle>
+                    <div
+                        style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            gap: "12px"
+                        }}
+                    >
+                        <Forms.FormTitle>
+                            {preset.name || "Unnamed Status"}
+                        </Forms.FormTitle>
+                        <Forms.FormText>
+                            {preset.type === "memory" ? "Memory" : "Fixed"} · {preset.enabled ? "Enabled" : "Disabled"}
+                        </Forms.FormText>
+                    </div>
 
 
                     <Forms.FormText>

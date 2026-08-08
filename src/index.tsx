@@ -6,7 +6,7 @@ import type { PluginNative } from "@utils/types";
 import SettingsComponent from "./Settings";
 import type { StatusPreset } from "./types";
 
-const Native = VencordNative.pluginHelpers.StatusHotkeys as PluginNative<typeof import("./native")>;
+const Native = VencordNative.pluginHelpers.BetterStatus as PluginNative<typeof import("./native")>;
 
 interface CustomStatus {
     text?: string;
@@ -46,7 +46,19 @@ const DEFAULT_PRESETS: StatusPreset[] = [
 
 
 function getPluginSettings(): any {
-    return Settings.plugins.StatusHotkeys ??= {};
+    const current = Settings.plugins.BetterStatus ??= {};
+    const legacy = Settings.plugins.StatusHotkeys;
+
+    if (legacy) {
+        if (!Array.isArray(current.presets) && Array.isArray(legacy.presets)) {
+            current.presets = legacy.presets;
+        }
+        if (!current.activePresetId && legacy.activePresetId) {
+            current.activePresetId = legacy.activePresetId;
+        }
+    }
+
+    return current;
 }
 
 
@@ -122,7 +134,7 @@ async function rememberActivePreset() {
 
 
 export default definePlugin({
-    name: "StatusHotkeys",
+    name: "BetterStatus",
 
     description:
         "Create unlimited custom Discord statuses and activate them using global hotkeys.",
@@ -154,11 +166,11 @@ export default definePlugin({
             getPluginSettings().activePresetId = preset.id;
 
             console.log(
-                `[StatusHotkeys] Activated "${preset.name}"`
+                `[BetterStatus] Activated "${preset.name}"`
             );
         } catch (error) {
             console.error(
-                `[StatusHotkeys] Failed to activate "${preset.name}"`,
+                `[BetterStatus] Failed to activate "${preset.name}"`,
                 error
             );
         }
@@ -177,7 +189,7 @@ export default definePlugin({
         );
 
         console.log(
-            `[StatusHotkeys] Registered ${presets.length} presets`
+            `[BetterStatus] Registered ${presets.length} presets`
         );
     },
 

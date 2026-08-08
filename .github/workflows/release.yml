@@ -19,10 +19,10 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - name: Check out StatusHotkeys
+      - name: Check out BetterStatus
         uses: actions/checkout@v4
         with:
-          path: statusHotkeys
+          path: betterStatus
 
       - name: Check out official Vencord Installer source
         uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
       - name: Build CLI for Intel and Apple Silicon
         working-directory: Installer
         run: |
-          cp ../statusHotkeys/scripts/vencord_cli_darwin_compat.go .
+          cp ../betterStatus/scripts/vencord_cli_darwin_compat.go .
           CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -tags cli -o ../vencord-installer-cli-macos-x64 .
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -tags cli -o ../vencord-installer-cli-macos-arm64 .
 
@@ -58,10 +58,10 @@ jobs:
           - 24
 
     steps:
-      - name: Check out StatusHotkeys
+      - name: Check out BetterStatus
         uses: actions/checkout@v4
         with:
-          path: statusHotkeys
+          path: betterStatus
 
       - name: Check out Vencord
         uses: actions/checkout@v4
@@ -81,8 +81,8 @@ jobs:
 
       - name: Add plugin to Vencord
         run: |
-          mkdir -p Vencord/src/userplugins/statusHotkeys
-          cp statusHotkeys/index.tsx statusHotkeys/Settings.tsx statusHotkeys/native.ts statusHotkeys/types.ts Vencord/src/userplugins/statusHotkeys/
+          mkdir -p Vencord/src/userplugins/betterStatus
+          cp betterStatus/src/index.tsx betterStatus/src/Settings.tsx betterStatus/src/native.ts betterStatus/src/types.ts Vencord/src/userplugins/betterStatus/
 
       - name: Install dependencies and build
         working-directory: Vencord
@@ -106,10 +106,10 @@ jobs:
 
       - name: Validate plugin source
         run: |
-          test -f index.tsx
-          test -f Settings.tsx
-          test -f native.ts
-          test -f types.ts
+          test -f src/index.tsx
+          test -f src/Settings.tsx
+          test -f src/native.ts
+          test -f src/types.ts
           bash -n install.sh
           pwsh -NoProfile -Command '$tokens = $null; $errors = $null; [System.Management.Automation.Language.Parser]::ParseFile("install.ps1", [ref]$tokens, [ref]$errors) > $null; if ($errors.Count) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }'
 
@@ -122,20 +122,20 @@ jobs:
       - name: Create release packages
         run: |
           mkdir -p package
-          cp index.tsx Settings.tsx native.ts types.ts README.md package/
-          tar -C package -czf status-hotkeys.tar.gz .
-          (cd package && zip -qr ../status-hotkeys.zip .)
+          cp src/index.tsx src/Settings.tsx src/native.ts src/types.ts README.md package/
+          tar -C package -czf better-status.tar.gz .
+          (cd package && zip -qr ../better-status.zip .)
           cp macos-cli/vencord-installer-cli-macos-* .
           chmod +x vencord-installer-cli-macos-*
-          sha256sum status-hotkeys.tar.gz status-hotkeys.zip vencord-installer-cli-macos-* > SHA256SUMS.txt
+          sha256sum better-status.tar.gz better-status.zip vencord-installer-cli-macos-* > SHA256SUMS.txt
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: status-hotkeys-${{ github.sha }}
+          name: better-status-${{ github.sha }}
           path: |
-            status-hotkeys.tar.gz
-            status-hotkeys.zip
+            better-status.tar.gz
+            better-status.zip
             SHA256SUMS.txt
             install.sh
             install.ps1
@@ -147,14 +147,14 @@ jobs:
         run: |
           gh release delete latest --cleanup-tag --yes || true
           gh release create latest \
-            status-hotkeys.tar.gz \
-            status-hotkeys.zip \
+            better-status.tar.gz \
+            better-status.zip \
             SHA256SUMS.txt \
             install.sh \
             install.ps1 \
             vencord-installer-cli-macos-x64 \
             vencord-installer-cli-macos-arm64 \
             --target "$GITHUB_SHA" \
-            --title "Latest StatusHotkeys build" \
+            --title "Latest BetterStatus build" \
             --notes "Automated build from commit $GITHUB_SHA. This rolling release is replaced after every push to main." \
             --latest
