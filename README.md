@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/assets/hero.svg" alt="BetterStatus — Your Discord presence, one shortcut away" width="100%">
+  <img src="https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/assets/hero.svg?v=685c6dd" alt="BetterStatus — Your Discord presence, one shortcut away" width="100%">
 </p>
 
 <p align="center">
