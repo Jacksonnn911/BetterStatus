@@ -10,7 +10,7 @@ import { Link } from "@components/Link";
 import { relaunch } from "@utils/native";
 import definePlugin from "@utils/types";
 
-import { getPresets, getUpdateChannel, rememberSavedStatus, savePresets, settings } from "./Settings";
+import { getPresets, getUpdateChannel, getUpdateCheckFrequency, rememberSavedStatus, savePresets, settings } from "./Settings";
 import { startStatusHistoryModalObserver, stopStatusHistoryModalObserver } from "./StatusHistory";
 import type { StatusPreset } from "./types";
 
@@ -27,6 +27,65 @@ const StatusSettings =
 
 const CustomStatusSettings =
     getUserSettingLazy<CustomStatus>("status", "customStatus")!;
+
+let updateCheckTimer: number | undefined;
+let automaticUpdateCheck: Promise<void> | undefined;
+let updateSchedulerActive = false;
+
+function clearScheduledUpdateCheck() {
+    if (updateCheckTimer !== undefined)
+        window.clearTimeout(updateCheckTimer);
+
+    updateCheckTimer = undefined;
+}
+
+function scheduleNextUpdateCheck() {
+    clearScheduledUpdateCheck();
+
+    const frequency = getUpdateCheckFrequency();
+    if (!updateSchedulerActive || !settings.store.autoUpdate || frequency === 0)
+        return;
+
+    updateCheckTimer = window.setTimeout(
+        runAutomaticUpdateCheck,
+        frequency * 60_000
+    );
+}
+
+function runAutomaticUpdateCheck() {
+    if (!updateSchedulerActive || !settings.store.autoUpdate)
+        return;
+
+    clearScheduledUpdateCheck();
+    if (automaticUpdateCheck)
+        return;
+
+    automaticUpdateCheck = VencordNative.pluginHelpers.BetterStatus.checkForUpdates(
+        true,
+        getUpdateChannel()
+    )
+        .then(result => {
+            if (result.status === "updated") {
+                showNotification({
+                    title: "BetterStatus updated",
+                    body: settings.store.autoRestart
+                        ? "Discord will restart automatically."
+                        : "Restart Discord to use the new version."
+                });
+                if (settings.store.autoRestart)
+                    window.setTimeout(relaunch, 1_500);
+            } else if (result.status === "failed") {
+                showNotification({
+                    title: "BetterStatus update failed",
+                    body: result.error ?? "Run the BetterStatus installer to update manually."
+                });
+            }
+        })
+        .finally(() => {
+            automaticUpdateCheck = undefined;
+            scheduleNextUpdateCheck();
+        });
+}
 
 
 async function setCustomStatusText(text: string) {
@@ -208,6 +267,7 @@ export default definePlugin({
 
 
     async start() {
+        updateSchedulerActive = true;
         const presets = getPresets();
         await savePresets(presets);
         startStatusHistoryModalObserver();
@@ -220,35 +280,29 @@ export default definePlugin({
             console.error("[BetterStatus] Failed to restore the last active preset", error);
         }
 
-        void VencordNative.pluginHelpers.BetterStatus.checkForUpdates(
-            settings.store.autoUpdate,
-            getUpdateChannel()
-        )
-            .then(result => {
-                if (result.status === "updated") {
-                    showNotification({
-                        title: "BetterStatus updated",
-                        body: settings.store.autoRestart
-                            ? "Discord will restart automatically."
-                            : "Restart Discord to use the new version."
-                    });
-                    if (settings.store.autoRestart)
-                        window.setTimeout(relaunch, 1_500);
-                } else if (result.status === "failed") {
-                    showNotification({
-                        title: "BetterStatus update failed",
-                        body: result.error ?? "Run the BetterStatus installer to update manually."
-                    });
-                }
-            });
+        runAutomaticUpdateCheck();
 
         console.log(
             `[BetterStatus] Registered ${presets.length} presets`
         );
     },
 
+    configureUpdateChecks(checkNow = false) {
+        clearScheduledUpdateCheck();
+
+        if (!updateSchedulerActive || !settings.store.autoUpdate)
+            return;
+
+        if (checkNow)
+            runAutomaticUpdateCheck();
+        else
+            scheduleNextUpdateCheck();
+    },
+
 
     stop() {
+        updateSchedulerActive = false;
+        clearScheduledUpdateCheck();
         stopStatusHistoryModalObserver();
         VencordNative.pluginHelpers.BetterStatus.unregisterAll();
     }

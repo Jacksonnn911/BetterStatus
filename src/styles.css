@@ -112,6 +112,20 @@
   gap: 6px;
 }
 
+.bs-update-frequency {
+  display: flex;
+  width: 230px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 3px 0 7px;
+}
+
+.bs-update-frequency > span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .bs-update-actions .vc-form-switch-wrapper {
   display: flex;
   min-height: 38px;
@@ -2414,6 +2428,10 @@
   }
 
   .bs-update-switches {
+    width: 100%;
+  }
+
+  .bs-update-frequency {
     width: 100%;
   }
 

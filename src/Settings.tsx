@@ -33,6 +33,7 @@ import type {
   SavedStatus,
   StatusPreset,
   UpdateChannel,
+  UpdateCheckFrequency,
 } from "./types";
 
 const Native = VencordNative.pluginHelpers.BetterStatus as PluginNative<
@@ -88,6 +89,20 @@ const UPDATE_CHANNEL_OPTIONS = [
     label: "Development",
     value: "dev",
   },
+];
+
+const UPDATE_FREQUENCY_OPTIONS: Array<{
+  label: string;
+  value: UpdateCheckFrequency;
+}> = [
+  { label: "Every 15 minutes", value: 15 },
+  { label: "Every 30 minutes", value: 30 },
+  { label: "Every hour", value: 60 },
+  { label: "Every 3 hours", value: 180 },
+  { label: "Every 6 hours (recommended)", value: 360 },
+  { label: "Every 12 hours", value: 720 },
+  { label: "Every day", value: 1440 },
+  { label: "On startup only", value: 0 },
 ];
 
 function createId() {
@@ -205,9 +220,10 @@ function DevelopmentChannelPrompt({
 }
 
 export default function SettingsComponent() {
-  const { autoUpdate, autoRestart, updateChannel, activePresetId } = settings.use([
+  const { autoUpdate, autoRestart, updateCheckFrequency, updateChannel, activePresetId } = settings.use([
     "autoUpdate",
     "autoRestart",
+    "updateCheckFrequency",
     "updateChannel",
     "activePresetId",
   ]);
@@ -227,6 +243,7 @@ export default function SettingsComponent() {
   const [lastCheckedAt, setLastCheckedAt] = React.useState<Date | null>(null);
   const selectedUpdateChannel: UpdateChannel =
     updateChannel === "dev" ? "dev" : "prod";
+  const selectedUpdateFrequency = normalizeUpdateCheckFrequency(updateCheckFrequency);
 
   async function refreshUpdateInfo(channel: UpdateChannel) {
     try {
@@ -530,9 +547,26 @@ export default function SettingsComponent() {
             <FormSwitch
               title="Auto update"
               value={autoUpdate}
-              onChange={value => (settings.store.autoUpdate = value)}
+              onChange={value => {
+                settings.store.autoUpdate = value;
+                Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(value);
+              }}
               hideBorder
             />
+            <div className="bs-update-frequency">
+              <span>Check frequency</span>
+              <Select
+                options={UPDATE_FREQUENCY_OPTIONS}
+                select={frequency => {
+                  settings.store.updateCheckFrequency = normalizeUpdateCheckFrequency(frequency);
+                  Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(false);
+                }}
+                serialize={value => String(value)}
+                isSelected={value => value === selectedUpdateFrequency}
+                isDisabled={!autoUpdate}
+                closeOnSelect
+              />
+            </div>
             <FormSwitch
               title="Auto restart Discord"
               value={autoRestart}
@@ -812,6 +846,10 @@ export const settings = definePluginSettings({
     type: OptionType.CUSTOM,
     default: false,
   },
+  updateCheckFrequency: {
+    type: OptionType.CUSTOM,
+    default: 360 as UpdateCheckFrequency,
+  },
   updateChannel: {
     type: OptionType.CUSTOM,
     default: "prod" as UpdateChannel,
@@ -871,6 +909,24 @@ export function getUpdateChannel(): UpdateChannel {
     settings.store.updateChannel = channel;
 
   return channel;
+}
+
+export function normalizeUpdateCheckFrequency(value: unknown): UpdateCheckFrequency {
+  const frequency = Number(value);
+  const validFrequencies: UpdateCheckFrequency[] = [0, 15, 30, 60, 180, 360, 720, 1440];
+
+  return validFrequencies.includes(frequency as UpdateCheckFrequency)
+    ? frequency as UpdateCheckFrequency
+    : 360;
+}
+
+export function getUpdateCheckFrequency(): UpdateCheckFrequency {
+  const frequency = normalizeUpdateCheckFrequency(settings.store.updateCheckFrequency);
+
+  if (settings.store.updateCheckFrequency !== frequency)
+    settings.store.updateCheckFrequency = frequency;
+
+  return frequency;
 }
 
 export async function savePresets(presets: StatusPreset[]) {
