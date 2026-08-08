@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { showNotification } from "@api/Notifications";
 import { getUserSettingLazy } from "@api/UserSettings";
 import { Paragraph } from "@components/Paragraph";
 import definePlugin from "@utils/types";
@@ -126,6 +127,21 @@ export default definePlugin({
     async start() {
         const presets = getPresets();
         await savePresets(presets);
+
+        void VencordNative.pluginHelpers.BetterStatus.checkForUpdates(settings.store.autoUpdate)
+            .then(result => {
+                if (result.status === "updated") {
+                    showNotification({
+                        title: "BetterStatus updated",
+                        body: "Restart Discord to use the new version."
+                    });
+                } else if (result.status === "failed") {
+                    showNotification({
+                        title: "BetterStatus update failed",
+                        body: result.error ?? "Run the BetterStatus installer to update manually."
+                    });
+                }
+            });
 
         console.log(
             `[BetterStatus] Registered ${presets.length} presets`

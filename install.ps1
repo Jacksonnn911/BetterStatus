@@ -183,7 +183,7 @@ try {
     Expand-Archive -Path $PluginArchive -DestinationPath $ExpandedPlugin
     $PluginDir = "$VencordDir\src\userplugins\$PluginName"
     New-Item -ItemType Directory -Force -Path $PluginDir | Out-Null
-    foreach ($File in @("index.tsx", "Settings.tsx", "native.ts", "types.ts", "README.md")) {
+    foreach ($File in @("index.tsx", "Settings.tsx", "native.ts", "types.ts", "README.md", "VERSION")) {
         Copy-Item -Force "$ExpandedPlugin\$File" "$PluginDir\$File"
     }
     $LegacyPluginDir = "$VencordDir\src\userplugins\statusHotkeys"

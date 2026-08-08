@@ -478,6 +478,15 @@ export default function SettingsComponent() {
 migratePluginSettings("BetterStatus", "StatusHotkeys");
 
 export const settings = definePluginSettings({
+    autoUpdate: {
+        type: OptionType.BOOLEAN,
+        description: "Automatically download the latest successful BetterStatus release and rebuild Vencord. The update is used after Discord restarts.",
+        default: false,
+        async onChange(value: boolean) {
+            if (value)
+                await Native.checkForUpdates(true);
+        }
+    },
     presets: {
         type: OptionType.CUSTOM,
         default: DEFAULT_PRESETS

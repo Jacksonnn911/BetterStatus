@@ -123,6 +123,7 @@ jobs:
         run: |
           mkdir -p package
           cp src/index.tsx src/Settings.tsx src/native.ts src/types.ts README.md package/
+          printf '%s\n' "$GITHUB_SHA" > package/VERSION
           tar -C package -czf better-status.tar.gz .
           (cd package && zip -qr ../better-status.zip .)
           cp macos-cli/vencord-installer-cli-macos-* .

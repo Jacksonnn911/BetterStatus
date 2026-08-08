@@ -133,6 +133,8 @@ To create a preset:
 
 Changes are saved immediately. Press the shortcut from any application to activate the preset.
 
+To receive new BetterStatus releases automatically, enable **Auto Update** at the top of the plugin settings. BetterStatus checks GitHub when Discord starts, downloads only files from the latest successful rolling release, and rebuilds the existing Vencord source installation. The currently running Discord session is not interrupted; restart Discord when the update notification appears. Auto Update is off by default, and the one-command installer remains the manual recovery/update method.
+
 Press `Escape` while recording to cancel. A preset can be temporarily disabled with its **Enabled** switch or permanently removed with **Delete Status**.
 
 ### Fixed and Memory presets
