@@ -197,7 +197,16 @@ Update and rerun the installer. Current versions provide Vencord's required buil
 
 ### macOS permissions
 
-If global shortcuts are not detected, check **System Settings > Privacy & Security** and ensure Discord or Vesktop has any requested input-related permissions.
+If ownership changes fail with `Operation not permitted`, give your terminal application **Full Disk Access**:
+
+1. Open **System Settings > Privacy & Security > Full Disk Access**.
+2. Enable Terminal, iTerm, Warp, or whichever terminal application ran the installer.
+3. Fully quit and reopen the terminal application.
+4. Run the StatusHotkeys installation command again.
+
+The installer detects this failure, offers to open the correct System Settings page, and stops before attempting to patch Discord.
+
+If global shortcuts are not detected after installation, check **System Settings > Privacy & Security** and ensure Discord or Vesktop has any requested input-related permissions.
 
 ## Development
 

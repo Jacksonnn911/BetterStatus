@@ -249,7 +249,22 @@ case "${client_choice:-1}" in
             chmod +x "$cli_path"
 
             info "Correcting ownership of $discord_app (macOS will ask for your password)"
-            sudo chown -R "$current_user:wheel" "$discord_app"
+            if ! sudo chown -R "$current_user:wheel" "$discord_app" 2>"$temporary_dir/chown-error.log"; then
+                printf '\n\033[1;33mmacOS blocked access to Discord.app.\033[0m\n' >&2
+                printf 'Your terminal needs Full Disk Access before it can patch Discord.\n\n' >&2
+                printf '1. Open System Settings > Privacy & Security > Full Disk Access.\n' >&2
+                printf '2. Enable the terminal application you are currently using.\n' >&2
+                printf '3. Fully quit and reopen that terminal application.\n' >&2
+                printf '4. Run the StatusHotkeys installation command again.\n\n' >&2
+                if ask "Open the Full Disk Access settings now?"; then
+                    open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles" || true
+                fi
+                if [ "$discord_was_running" = true ]; then
+                    info "Relaunching Discord because patching did not start"
+                    open -a "$discord_app" || true
+                fi
+                fail "Full Disk Access is required to change permissions inside $discord_app."
+            fi
             info "Installing the custom Vencord build into Discord without opening a GUI"
             VENCORD_USER_DATA_DIR="$vencord_dir" VENCORD_DEV_INSTALL=1 \
                 "$cli_path" --install --location "$discord_app"
