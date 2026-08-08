@@ -1,12 +1,15 @@
-import { Settings } from "@api/Settings";
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Vendicated and contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { getUserSettingLazy } from "@api/UserSettings";
 import definePlugin from "@utils/types";
-import type { PluginNative } from "@utils/types";
+import { Forms } from "@webpack/common";
 
-import SettingsComponent from "./Settings";
+import { getPresets, savePresets, settings } from "./Settings";
 import type { StatusPreset } from "./types";
-
-const Native = VencordNative.pluginHelpers.BetterStatus as PluginNative<typeof import("./native")>;
 
 interface CustomStatus {
     text?: string;
@@ -21,75 +24,6 @@ const StatusSettings =
 
 const CustomStatusSettings =
     getUserSettingLazy<CustomStatus>("status", "customStatus")!;
-
-
-const DEFAULT_PRESETS: StatusPreset[] = [
-    {
-        id: "sleeping",
-        name: "Sleeping",
-        text: "Spinkám 👅",
-        type: "fixed",
-        presence: "dnd",
-        hotkey: "Command+-",
-        enabled: true
-    },
-    {
-        id: "normal",
-        name: "Normal",
-        text: "Every end has a new beginning...",
-        type: "fixed",
-        presence: "online",
-        hotkey: "Command+=",
-        enabled: true
-    }
-];
-
-
-function getPluginSettings(): any {
-    const current = Settings.plugins.BetterStatus ??= {};
-    const legacy = Settings.plugins.StatusHotkeys;
-
-    if (legacy) {
-        if (!Array.isArray(current.presets) && Array.isArray(legacy.presets)) {
-            current.presets = legacy.presets;
-        }
-        if (!current.activePresetId && legacy.activePresetId) {
-            current.activePresetId = legacy.activePresetId;
-        }
-    }
-
-    return current;
-}
-
-
-export function getPresets(): StatusPreset[] {
-    const pluginSettings = getPluginSettings();
-
-    if (!Array.isArray(pluginSettings.presets)) {
-        pluginSettings.presets = DEFAULT_PRESETS;
-    }
-
-    // Presets created before modes existed keep their original behaviour.
-    pluginSettings.presets = pluginSettings.presets.map((preset: StatusPreset) => ({
-        ...preset,
-        type: preset.type === "memory" ? "memory" : "fixed"
-    }));
-
-    return pluginSettings.presets;
-}
-
-
-export async function savePresets(presets: StatusPreset[]) {
-    getPluginSettings().presets = presets;
-
-    await Native.registerHotkeys(
-        presets.map(preset => ({
-            id: preset.id,
-            hotkey: preset.hotkey,
-            enabled: preset.enabled
-        }))
-    );
-}
 
 
 async function setDiscordState(preset: StatusPreset) {
@@ -110,8 +44,7 @@ async function setDiscordState(preset: StatusPreset) {
 
 
 async function rememberActivePreset() {
-    const pluginSettings = getPluginSettings();
-    const activePresetId = pluginSettings.activePresetId as string | undefined;
+    const { activePresetId } = settings.store;
 
     if (!activePresetId)
         return;
@@ -125,10 +58,23 @@ async function rememberActivePreset() {
     const currentStatus = CustomStatusSettings.getSetting();
     const rememberedText = currentStatus?.text ?? "";
 
-    pluginSettings.presets = presets.map(preset =>
+    await savePresets(presets.map(preset =>
         preset.id === activePresetId
             ? { ...preset, rememberedText }
             : preset
+    ));
+}
+
+function AboutComponent() {
+    return (
+        <Forms.FormText>
+            BetterStatus is an open-source Vencord user plugin by Jacksonnn911. {" "}
+            <a href="https://github.com/Jacksonnn911/BetterStatus" target="_blank" rel="noreferrer">GitHub</a>
+            {" · "}
+            <a href="https://github.com/Jacksonnn911/BetterStatus#usage" target="_blank" rel="noreferrer">Documentation</a>
+            {" · "}
+            <a href="https://github.com/Jacksonnn911/BetterStatus/issues/new" target="_blank" rel="noreferrer">Report an issue</a>
+        </Forms.FormText>
     );
 }
 
@@ -141,14 +87,15 @@ export default definePlugin({
 
     authors: [
         {
-            name: "Nicolas",
+            name: "Jacksonnn911",
             id: 0n
         }
     ],
 
     dependencies: ["UserSettingsAPI"],
 
-    settingsAboutComponent: SettingsComponent,
+    settings,
+    settingsAboutComponent: AboutComponent,
 
 
     async triggerPreset(id: string) {
@@ -163,7 +110,7 @@ export default definePlugin({
         try {
             await rememberActivePreset();
             await setDiscordState(preset);
-            getPluginSettings().activePresetId = preset.id;
+            settings.store.activePresetId = preset.id;
 
             console.log(
                 `[BetterStatus] Activated "${preset.name}"`
@@ -179,14 +126,7 @@ export default definePlugin({
 
     async start() {
         const presets = getPresets();
-
-        await Native.registerHotkeys(
-            presets.map(preset => ({
-                id: preset.id,
-                hotkey: preset.hotkey,
-                enabled: preset.enabled
-            }))
-        );
+        await savePresets(presets);
 
         console.log(
             `[BetterStatus] Registered ${presets.length} presets`
@@ -195,6 +135,6 @@ export default definePlugin({
 
 
     stop() {
-        Native.unregisterAll();
+        VencordNative.pluginHelpers.BetterStatus.unregisterAll();
     }
 });

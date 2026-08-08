@@ -1,3 +1,9 @@
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Vendicated and contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { globalShortcut, IpcMainInvokeEvent } from "electron";
 
 const registeredShortcuts = new Map<string, string>();

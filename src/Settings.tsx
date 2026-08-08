@@ -1,7 +1,38 @@
-import { Button, Forms, React, Select, Switch, TextInput } from "@webpack/common";
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Vendicated and contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
 
-import { getPresets, savePresets } from "./index";
+import { definePluginSettings, migratePluginSettings } from "@api/Settings";
+import { FormSwitch } from "@components/FormSwitch";
+import { OptionType, PluginNative } from "@utils/types";
+import { Button, Forms, React, Select, TextInput } from "@webpack/common";
+
 import type { PresenceStatus, PresetType, StatusPreset } from "./types";
+
+const Native = VencordNative.pluginHelpers.BetterStatus as PluginNative<typeof import("./native")>;
+
+const DEFAULT_PRESETS: StatusPreset[] = [
+    {
+        id: "sleeping",
+        name: "Sleeping",
+        text: "Spinkám 👅",
+        type: "fixed",
+        presence: "dnd",
+        hotkey: "Command+-",
+        enabled: true
+    },
+    {
+        id: "normal",
+        name: "Normal",
+        text: "Every end has a new beginning...",
+        type: "fixed",
+        presence: "online",
+        hotkey: "Command+=",
+        enabled: true
+    }
+];
 
 
 const PRESENCE_OPTIONS = [
@@ -33,13 +64,6 @@ const TYPE_OPTIONS = [
         value: "memory"
     }
 ];
-
-const PROJECT_URL = "https://github.com/Jacksonnn911/BetterStatus";
-
-function openProject(path = "") {
-    VencordNative.native.openExternal(`${PROJECT_URL}${path}`);
-}
-
 
 function createId() {
     return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -73,7 +97,7 @@ function eventToAccelerator(event: KeyboardEvent): string | null {
         parts.push("Shift");
 
 
-    let key = event.key;
+    let { key } = event;
 
     const aliases: Record<string, string> = {
         " ": "Space",
@@ -103,17 +127,13 @@ function eventToAccelerator(event: KeyboardEvent): string | null {
 
 
 export default function SettingsComponent() {
-    const [presets, setPresets] =
-        React.useState<StatusPreset[]>(() =>
-            [...getPresets()]
-        );
+    const { presets } = settings.use(["presets"]);
 
     const [recordingId, setRecordingId] =
         React.useState<string | null>(null);
 
 
     async function commit(next: StatusPreset[]) {
-        setPresets(next);
         await savePresets(next);
     }
 
@@ -232,25 +252,6 @@ export default function SettingsComponent() {
                     Switch between Fixed and Memory status presets from anywhere
                     using global keyboard shortcuts.
                 </Forms.FormText>
-
-                <div
-                    style={{
-                        display: "flex",
-                        gap: "8px",
-                        flexWrap: "wrap",
-                        marginTop: "16px"
-                    }}
-                >
-                    <Button onClick={() => openProject()}>
-                        View on GitHub
-                    </Button>
-                    <Button onClick={() => openProject("/releases/latest")}>
-                        Latest Release
-                    </Button>
-                    <Button onClick={() => openProject("/issues/new")}>
-                        Report an Issue
-                    </Button>
-                </div>
 
                 <Forms.FormText style={{ marginTop: "12px" }}>
                     {presets.length} preset{presets.length === 1 ? "" : "s"} · {presets.filter(preset => preset.enabled).length} enabled
@@ -435,7 +436,8 @@ export default function SettingsComponent() {
                     <div style={{ height: "16px" }} />
 
 
-                    <Switch
+                    <FormSwitch
+                        title="Enabled"
                         value={preset.enabled}
                         onChange={value =>
                             updatePreset(
@@ -445,9 +447,8 @@ export default function SettingsComponent() {
                                 }
                             )
                         }
-                    >
-                        Enabled
-                    </Switch>
+                        hideBorder
+                    />
 
 
                     <div style={{ height: "16px" }} />
@@ -472,4 +473,41 @@ export default function SettingsComponent() {
             </div>
         </div>
     );
+}
+
+migratePluginSettings("BetterStatus", "StatusHotkeys");
+
+export const settings = definePluginSettings({
+    presets: {
+        type: OptionType.CUSTOM,
+        default: DEFAULT_PRESETS
+    },
+    presetEditor: {
+        type: OptionType.COMPONENT,
+        component: SettingsComponent
+    }
+}).withPrivateSettings<{
+    activePresetId?: string;
+}>();
+
+export function getPresets(): StatusPreset[] {
+    const normalized = settings.store.presets.map(preset => ({
+        ...preset,
+        type: preset.type === "memory" ? "memory" as const : "fixed" as const
+    }));
+
+    if (normalized.some((preset, index) => preset.type !== settings.store.presets[index].type))
+        settings.store.presets = normalized;
+
+    return normalized;
+}
+
+export async function savePresets(presets: StatusPreset[]) {
+    settings.store.presets = presets;
+
+    await Native.registerHotkeys(presets.map(({ id, hotkey, enabled }) => ({
+        id,
+        hotkey,
+        enabled
+    })));
 }

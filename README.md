@@ -120,7 +120,7 @@ The plugin depends on Vencord's `UserSettingsAPI`; Vencord enables that dependen
 
 ## Usage
 
-Open **User Settings > Vencord > Plugins**, find **BetterStatus**, and open its settings.
+Open **User Settings > Vencord > Plugins**, find **BetterStatus**, and click the cog/settings button. The preset editor is rendered in Vencord's normal plugin settings section; the **Info** section contains links to this repository, documentation, and the issue tracker.
 
 To create a preset:
 
@@ -159,7 +159,9 @@ These defaults are designed for macOS. On Windows or Linux—or if the combinati
 
 When Vencord starts the plugin, BetterStatus loads your presets and registers every enabled shortcut through Electron's `globalShortcut` API. When a shortcut is pressed, the native process tells the Vencord renderer which preset to activate. Before switching, the plugin saves the current text for the active Memory preset. It then updates Discord's custom-status and presence settings through Vencord's `UserSettingsAPI`.
 
-Presets are stored in Vencord's plugin settings. Disabling or deleting a preset immediately rebuilds the registered shortcut list, and disabling the plugin unregisters all of its shortcuts.
+Presets are stored through Vencord's typed `definePluginSettings` API. The preset list is a custom persisted option and the editor is an `OptionType.COMPONENT`, so it appears and updates inside Vencord's standard plugin settings modal. Old `StatusHotkeys` settings are migrated with Vencord's supported migration helper. Disabling or deleting a preset immediately rebuilds the registered shortcut list, and disabling the plugin unregisters all of its shortcuts.
+
+Discord state is read and written through Vencord's `UserSettingsAPI`; the plugin declares that dependency so Vencord enables it automatically. The small `native.ts` helper runs in Electron's main process only to register system-wide shortcuts. This follows Vencord's documented user-plugin layout: `index.tsx`, `native.ts`, and the plugin `README.md` live together in `src/userplugins/betterStatus` after installation.
 
 ## Updating
 
