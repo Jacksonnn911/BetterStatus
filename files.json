@@ -1,7 +1,7 @@
 {
   "version": 1,
   "channel": "dev",
-  "commit": "35b26b68c8ce790219310965a7b1da599f8dbe67",
+  "commit": "cec83fd4533a38fc5f3410218c82b0cc07885bc1",
   "files": [
     {
       "source": "src/index.tsx",
@@ -26,7 +26,7 @@
     {
       "source": "src/Settings.tsx",
       "target": "Settings.tsx",
-      "sha256": "f6ca5d2f6b5ae305ea56aefd01225ac8c75547d10a265596b8f159d67e42938a"
+      "sha256": "68eb553af51f33938b861b9c36f002c94fa6f31892ba05732bdfa689f5492b85"
     },
     {
       "source": "src/StatusSwitcher.tsx",
@@ -36,7 +36,7 @@
     {
       "source": "src/styles.css",
       "target": "styles.css",
-      "sha256": "5ec330e413e26d9bc4b5ac3a494bd888f41a50ebc78ffc9f5dee9ce86a1c1f6c"
+      "sha256": "de7207cfa7a81b78aae96d7821e789bb2e34756b7e84ef9fd2aa6b22ca63d39e"
     },
     {
       "source": "src/types.ts",
