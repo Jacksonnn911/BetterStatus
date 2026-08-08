@@ -143,12 +143,13 @@ function ChevronIcon({ collapsed }: { collapsed: boolean; }) {
 
 
 export default function SettingsComponent() {
-    const { presets } = settings.use(["presets"]);
+    const { autoUpdate, presets } = settings.use(["autoUpdate", "presets"]);
 
     const [recordingId, setRecordingId] =
         React.useState<string | null>(null);
     const [collapsedIds, setCollapsedIds] =
         React.useState<Set<string>>(() => new Set());
+    const [searchQuery, setSearchQuery] = React.useState("");
 
 
     async function commit(next: StatusPreset[]) {
@@ -202,11 +203,6 @@ export default function SettingsComponent() {
                 enabled: false
             }
         ]);
-    }
-
-
-    function activatePreset(id: string) {
-        void Native.activatePreset(id);
     }
 
 
@@ -298,9 +294,30 @@ export default function SettingsComponent() {
     const enabledCount = presets.filter(preset => preset.enabled).length;
     const memoryCount = presets.filter(preset => preset.type === "memory").length;
     const allCollapsed = presets.length > 0 && presets.every(preset => collapsedIds.has(preset.id));
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const visiblePresets = normalizedQuery
+        ? presets.filter(preset => [preset.name, preset.text, preset.hotkey, preset.presence, preset.type]
+            .some(value => value.toLowerCase().includes(normalizedQuery)))
+        : presets;
 
     return (
         <div className="bs-settings">
+            <div className="bs-control-panel">
+                <div className="bs-control-icon">↻</div>
+                <div className="bs-control-copy">
+                    <Forms.FormTitle>Automatic updates</Forms.FormTitle>
+                    <Forms.FormText>
+                        Keep BetterStatus current with verified rolling releases. Updates build safely and apply after restart.
+                    </Forms.FormText>
+                </div>
+                <FormSwitch
+                    title={autoUpdate ? "On" : "Off"}
+                    value={autoUpdate}
+                    onChange={value => settings.store.autoUpdate = value}
+                    hideBorder
+                />
+            </div>
+
             <div className="bs-toolbar">
                 <div>
                     <Forms.FormTitle tag="h2">Status presets</Forms.FormTitle>
@@ -311,6 +328,14 @@ export default function SettingsComponent() {
                     </div>
                 </div>
                 <div className="bs-toolbar-actions">
+                    <div className="bs-search">
+                        <span aria-hidden="true">⌕</span>
+                        <TextInput
+                            value={searchQuery}
+                            placeholder="Search presets"
+                            onChange={setSearchQuery}
+                        />
+                    </div>
                     {!!presets.length && (
                         <button type="button" className="bs-secondary-button" onClick={toggleAllCollapsed}>
                             <ChevronIcon collapsed={!allCollapsed} />
@@ -329,9 +354,17 @@ export default function SettingsComponent() {
                         <Button onClick={addPreset}>Create preset</Button>
                     </div>
                 )
-                : (
+                : visiblePresets.length === 0
+                    ? (
+                        <div className="bs-empty">
+                            <Forms.FormTitle>No matching presets</Forms.FormTitle>
+                            <Forms.FormText>Try a different name, status, presence, mode, or hotkey.</Forms.FormText>
+                            <button type="button" className="bs-secondary-button" onClick={() => setSearchQuery("")}>Clear search</button>
+                        </div>
+                    )
+                    : (
                     <div className="bs-preset-grid">
-                        {presets.map(preset => {
+                        {visiblePresets.map(preset => {
                             const collapsed = collapsedIds.has(preset.id);
                             const contentId = `bs-preset-${preset.id}`;
 
@@ -363,15 +396,6 @@ export default function SettingsComponent() {
                                             onClick={() => duplicatePreset(preset)}
                                         >
                                             Duplicate
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="bs-activate-button"
-                                            disabled={!preset.enabled}
-                                            title={preset.enabled ? "Activate this preset now" : "Enable this preset before activating it"}
-                                            onClick={() => activatePreset(preset.id)}
-                                        >
-                                            Activate
                                         </button>
                                         <FormSwitch
                                             title="Enabled"
@@ -478,8 +502,7 @@ migratePluginSettings("BetterStatus", "StatusHotkeys");
 
 export const settings = definePluginSettings({
     autoUpdate: {
-        type: OptionType.BOOLEAN,
-        description: "Automatically download the latest successful BetterStatus release and rebuild Vencord. The update is used after Discord restarts.",
+        type: OptionType.CUSTOM,
         default: false
     },
     presets: {

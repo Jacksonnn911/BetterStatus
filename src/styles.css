@@ -6,6 +6,47 @@
     padding-top: 4px;
 }
 
+.bs-control-panel {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 13px;
+    padding: 14px 16px;
+    border: 1px solid color-mix(in srgb, var(--brand-500) 24%, var(--background-modifier-accent));
+    border-radius: 12px;
+    background: linear-gradient(110deg, color-mix(in srgb, var(--brand-500) 10%, var(--background-secondary)), var(--background-secondary));
+}
+
+.bs-control-icon {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    color: var(--brand-360);
+    background: color-mix(in srgb, var(--brand-500) 16%, transparent);
+    font-size: 24px;
+    font-weight: 500;
+    place-items: center;
+}
+
+.bs-control-copy {
+    min-width: 0;
+}
+
+.bs-control-copy h5 {
+    margin: 0 0 3px;
+}
+
+.bs-control-copy > :last-child {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.bs-control-panel .vc-form-switch {
+    gap: 8px;
+    padding: 0;
+}
+
 .bs-about {
     position: relative;
     display: flex;
@@ -125,6 +166,26 @@
     align-items: center;
     flex: 0 0 auto;
     gap: 8px;
+}
+
+.bs-search {
+    position: relative;
+    width: 190px;
+}
+
+.bs-search > span {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    left: 10px;
+    color: var(--text-muted);
+    font-size: 18px;
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.bs-search input {
+    padding-left: 32px;
 }
 
 .bs-secondary-button {
@@ -310,7 +371,6 @@
     gap: 8px;
 }
 
-.bs-activate-button,
 .bs-duplicate-button {
     border: 1px solid var(--background-modifier-accent);
     border-radius: 7px;
@@ -320,25 +380,6 @@
     font: inherit;
     font-size: 12px;
     font-weight: 600;
-}
-
-.bs-activate-button {
-    height: 32px;
-    padding: 0 12px;
-    color: var(--brand-360);
-    border-color: color-mix(in srgb, var(--brand-500) 36%, var(--background-modifier-accent));
-    background: color-mix(in srgb, var(--brand-500) 10%, transparent);
-}
-
-.bs-activate-button:hover:not(:disabled) {
-    color: white;
-    border-color: var(--brand-500);
-    background: var(--brand-500);
-}
-
-.bs-activate-button:disabled {
-    cursor: not-allowed;
-    opacity: .45;
 }
 
 .bs-card-header .vc-form-switch-wrapper {
@@ -492,11 +533,21 @@
         align-items: flex-start;
     }
 
-    .bs-activate-button {
+    .bs-duplicate-button {
         display: none;
     }
 
-    .bs-duplicate-button {
-        display: none;
+    .bs-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .bs-toolbar-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .bs-search {
+        width: 100%;
     }
 }
