@@ -1,7 +1,7 @@
 {
   "version": 1,
   "channel": "dev",
-  "commit": "f876683f56fbc5419447cf878b1f595b5b616fa9",
+  "commit": "9fabb6c9da384817d700cf45bd08d5552ea94768",
   "files": [
     {
       "source": "src/index.tsx",
@@ -26,7 +26,7 @@
     {
       "source": "src/Settings.tsx",
       "target": "Settings.tsx",
-      "sha256": "7229ab69c9ff9e40feb9d80ab923d6fa2045b1ca4d82b1159fc6e1bf83c0e060"
+      "sha256": "56ae46a7de8120a3ecb69d6716a249bdf79a219adfcf68cb0077ca151ca09782"
     },
     {
       "source": "src/StatusHistory.tsx",
