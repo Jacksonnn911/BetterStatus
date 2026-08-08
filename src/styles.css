@@ -741,6 +741,32 @@
     font-weight: 700;
 }
 
+.bs-active-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.bs-active-summary i,
+.bs-active-badge i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--interactive-muted);
+}
+
+.bs-active-summary-live {
+    color: var(--green-360) !important;
+    border-color: color-mix(in srgb, var(--green-360) 30%, var(--background-modifier-accent)) !important;
+    background: color-mix(in srgb, var(--green-360) 9%, transparent) !important;
+}
+
+.bs-active-summary-live i,
+.bs-active-badge i {
+    background: var(--green-360);
+    box-shadow: 0 0 9px color-mix(in srgb, var(--green-360) 70%, transparent);
+}
+
 .bs-preset-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr));
@@ -783,6 +809,21 @@
     border-color: color-mix(in srgb, var(--bs-presence-color) 48%, var(--background-modifier-accent));
     box-shadow: 0 16px 38px rgb(0 0 0 / 20%), 0 0 22px color-mix(in srgb, var(--bs-presence-color) 7%, transparent);
     transform: translateY(-2px);
+}
+
+.bs-preset-card-active {
+    border-color: color-mix(in srgb, var(--green-360) 55%, var(--background-modifier-accent));
+    box-shadow: 0 16px 38px rgb(0 0 0 / 18%), 0 0 0 1px color-mix(in srgb, var(--green-360) 12%, transparent), 0 0 28px color-mix(in srgb, var(--green-360) 10%, transparent);
+}
+
+.bs-preset-card-active::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--green-360), transparent);
+    content: "";
 }
 
 .bs-preset-card-disabled {
@@ -961,6 +1002,23 @@
 .bs-mode-memory {
     color: var(--brand-360);
     background: color-mix(in srgb, var(--brand-500) 18%, transparent);
+}
+
+.bs-active-badge {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: 5px;
+    padding: 4px 8px;
+    border: 1px solid color-mix(in srgb, var(--green-360) 32%, transparent);
+    border-radius: 999px;
+    color: var(--green-360);
+    background: color-mix(in srgb, var(--green-360) 10%, transparent);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    line-height: 1.2;
+    text-transform: uppercase;
 }
 
 .bs-fields {

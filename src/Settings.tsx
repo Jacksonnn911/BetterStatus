@@ -120,7 +120,10 @@ function ChevronIcon({ collapsed }: { collapsed: boolean }) {
 }
 
 export default function SettingsComponent() {
-  const { autoUpdate } = settings.use(["autoUpdate"]);
+  const { autoUpdate, activePresetId } = settings.use([
+    "autoUpdate",
+    "activePresetId",
+  ]);
 
   const [recordingId, setRecordingId] = React.useState<string | null>(null);
   const [presets, setPresets] = React.useState<StatusPreset[]>(() => [
@@ -214,6 +217,10 @@ export default function SettingsComponent() {
         : preset,
     );
 
+    if (id === activePresetId && patch.enabled === false) {
+      settings.store.activePresetId = undefined;
+    }
+
     void commit(next);
   }
 
@@ -248,6 +255,8 @@ export default function SettingsComponent() {
   }
 
   function deletePreset(id: string) {
+    if (id === activePresetId) settings.store.activePresetId = undefined;
+
     void commit(presets.filter(preset => preset.id !== id));
   }
 
@@ -302,6 +311,15 @@ export default function SettingsComponent() {
     return () => window.removeEventListener("keydown", handler, true);
   }, [recordingId, presets]);
 
+  React.useEffect(() => {
+    if (
+      activePresetId &&
+      !presets.some(preset => preset.id === activePresetId && preset.enabled)
+    ) {
+      settings.store.activePresetId = undefined;
+    }
+  }, [activePresetId, presets]);
+
   const enabledCount = presets.filter(preset => preset.enabled).length;
   const memoryCount = presets.filter(
     preset => preset.type === "memory",
@@ -321,6 +339,9 @@ export default function SettingsComponent() {
         ].some(value => value.toLowerCase().includes(normalizedQuery)),
       )
     : presets;
+  const activePreset = presets.find(
+    preset => preset.id === activePresetId && preset.enabled,
+  );
 
   return (
     <div className="bs-settings">
@@ -363,6 +384,18 @@ export default function SettingsComponent() {
             </span>
             <span>
               <strong>{memoryCount}</strong> memory
+            </span>
+            <span
+              className={`bs-active-summary${activePreset ? " bs-active-summary-live" : ""}`}
+            >
+              <i />
+              {activePreset ? (
+                <>
+                  Current: <strong>{activePreset.name || "Untitled preset"}</strong>
+                </>
+              ) : (
+                "No active preset"
+              )}
             </span>
           </div>
         </div>
@@ -419,7 +452,7 @@ export default function SettingsComponent() {
 
             return (
               <section
-                className={`bs-preset-card bs-presence-${preset.presence}${preset.enabled ? "" : " bs-preset-card-disabled"}${collapsed ? " bs-preset-card-collapsed" : ""}`}
+                className={`bs-preset-card bs-presence-${preset.presence}${preset.enabled ? "" : " bs-preset-card-disabled"}${collapsed ? " bs-preset-card-collapsed" : ""}${preset.id === activePreset?.id ? " bs-preset-card-active" : ""}`}
                 key={preset.id}
               >
                 <header className="bs-card-header">
@@ -435,6 +468,11 @@ export default function SettingsComponent() {
                         >
                           {preset.type === "memory" ? "Memory" : "Fixed"}
                         </span>
+                        {preset.id === activePreset?.id && (
+                          <span className="bs-active-badge">
+                            <i /> Active
+                          </span>
+                        )}
                       </div>
                       {collapsed && (
                         <div className="bs-card-summary">
