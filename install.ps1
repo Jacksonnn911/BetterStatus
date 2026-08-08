@@ -218,9 +218,22 @@ try {
             if (-not (Test-Path $InstallerScript)) {
                 throw "Vencord's installer script was not found."
             }
+            $DiscordProcesses = @(Get-Process -Name "Discord" -ErrorAction SilentlyContinue)
+            $DiscordWasRunning = $DiscordProcesses.Count -gt 0
+            $DiscordLaunchPath = $null
+            if ($DiscordWasRunning) {
+                $DiscordLaunchPath = $DiscordProcesses[0].Path
+                Write-Step "Closing Discord before patching"
+                $DiscordProcesses | Stop-Process -Force
+                $DiscordProcesses | Wait-Process -ErrorAction SilentlyContinue
+            }
             Write-Step "Installing the custom Vencord build into Discord without opening the installer GUI"
             node $InstallerScript -- --install --branch auto
-            Write-Host "`nRestart Discord, enable StatusHotkeys under Vencord > Plugins, and you are done." -ForegroundColor Green
+            if ($DiscordWasRunning -and $DiscordLaunchPath) {
+                Write-Step "Relaunching Discord"
+                Start-Process -FilePath $DiscordLaunchPath
+            }
+            Write-Host "`nEnable StatusHotkeys under Vencord > Plugins, and you are done." -ForegroundColor Green
         }
     }
 } finally {

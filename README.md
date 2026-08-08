@@ -56,7 +56,9 @@ irm https://raw.githubusercontent.com/Jacksonnn911/StatusHotkeys/main/install.ps
 
 Answer the prompts and choose Discord Desktop or Vesktop at the end. No knowledge of Node.js or package managers is required.
 
-For Discord Desktop, the installer uses Vencord's CLI with `--install` and an automatically selected location; it does not open the Vencord installer GUI. Because Vencord does not publish a macOS CLI executable, each StatusHotkeys release builds the CLI directly from the official [`Vencord/Installer`](https://github.com/Vencord/Installer) source for Intel and Apple Silicon Macs. The downloaded binary is verified against the release's SHA-256 checksums before execution.
+For Discord Desktop, the installer uses Vencord's CLI with `--install` and an automatically selected location; it does not open the Vencord installer GUI. If Discord is running, the installer closes it before patching and relaunches it after a successful patch. Discord remains closed if it was already closed before installation.
+
+Because Vencord does not publish a macOS CLI executable, each StatusHotkeys release builds the CLI directly from the official [`Vencord/Installer`](https://github.com/Vencord/Installer) source for Intel and Apple Silicon Macs. The downloaded binary is verified against the release's SHA-256 checksums before execution.
 
 On macOS, Discord must be installed at `/Applications/Discord.app`. Immediately before patching, the installer runs `sudo chown -R "$USER":wheel /Applications/Discord.app` and asks for the account password. This gives the current user ownership of the Discord application bundle so it can be patched.
 

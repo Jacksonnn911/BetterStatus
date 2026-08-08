@@ -215,10 +215,22 @@ case "${client_choice:-1}" in
     1)
         installer_script="$vencord_dir/scripts/runInstaller.mjs"
         [ -f "$installer_script" ] || fail "Vencord's installer script was not found."
+        discord_was_running=false
+        discord_launch_path=""
         if [ "$(uname -s)" = "Darwin" ]; then
             discord_app="/Applications/Discord.app"
             [ -d "$discord_app" ] ||
                 fail "Discord was not found at $discord_app. Install Discord in Applications and rerun this installer."
+            if pgrep -x Discord >/dev/null 2>&1; then
+                discord_was_running=true
+                info "Closing Discord before patching"
+                pkill -TERM -x Discord 2>/dev/null || true
+                for _ in 1 2 3 4 5; do
+                    pgrep -x Discord >/dev/null 2>&1 || break
+                    sleep 1
+                done
+                pkill -KILL -x Discord 2>/dev/null || true
+            fi
             current_user="$(id -un)"
             case "$(uname -m)" in
                 x86_64|amd64) cli_arch="x64" ;;
@@ -242,10 +254,41 @@ case "${client_choice:-1}" in
             VENCORD_USER_DATA_DIR="$vencord_dir" VENCORD_DEV_INSTALL=1 \
                 "$cli_path" --install --location "$discord_app"
         else
+            discord_process_name="Discord"
+            discord_pid="$(pgrep -x "$discord_process_name" 2>/dev/null | head -n 1 || true)"
+            if [ -z "$discord_pid" ]; then
+                discord_process_name="discord"
+                discord_pid="$(pgrep -x "$discord_process_name" 2>/dev/null | head -n 1 || true)"
+            fi
+            if [ -n "$discord_pid" ]; then
+                discord_was_running=true
+                if [ -e "/proc/$discord_pid/exe" ]; then
+                    discord_launch_path="$(readlink "/proc/$discord_pid/exe" 2>/dev/null || true)"
+                fi
+                info "Closing Discord before patching"
+                pkill -TERM -x "$discord_process_name" 2>/dev/null || true
+                for _ in 1 2 3 4 5; do
+                    pgrep -x "$discord_process_name" >/dev/null 2>&1 || break
+                    sleep 1
+                done
+                pkill -KILL -x "$discord_process_name" 2>/dev/null || true
+            fi
             info "Installing the custom Vencord build into Discord without opening the installer GUI"
             node "$installer_script" -- --install --branch auto
         fi
-        printf '\nRestart Discord, enable StatusHotkeys under Vencord > Plugins, and you are done.\n'
+        if [ "$discord_was_running" = true ]; then
+            info "Relaunching Discord"
+            if [ "$(uname -s)" = "Darwin" ]; then
+                open -a "$discord_app"
+            elif [ -n "$discord_launch_path" ]; then
+                nohup "$discord_launch_path" >/dev/null 2>&1 &
+            elif command -v discord >/dev/null 2>&1; then
+                nohup discord >/dev/null 2>&1 &
+            else
+                info "Discord was patched, but its launch command could not be found. Please open it normally."
+            fi
+        fi
+        printf '\nEnable StatusHotkeys under Vencord > Plugins, and you are done.\n'
         ;;
     2)
         printf '\nIn Vesktop, open Settings, find "Vencord Location", and select:\n%s/dist\nThen restart Vesktop and enable StatusHotkeys under Vencord > Plugins.\n' "$vencord_dir"
