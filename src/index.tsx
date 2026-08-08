@@ -7,7 +7,6 @@
 import { showNotification } from "@api/Notifications";
 import { getUserSettingLazy } from "@api/UserSettings";
 import { Link } from "@components/Link";
-import { Paragraph } from "@components/Paragraph";
 import definePlugin from "@utils/types";
 import type { User } from "@vencord/discord-types";
 
@@ -79,6 +78,54 @@ async function rememberActivePreset() {
     ));
 }
 
+function BetterStatusOverview() {
+    const { activePresetId, presets } = settings.use(["activePresetId", "presets"]);
+    const activePreset = presets.find(preset => preset.id === activePresetId && preset.enabled);
+    const activeText = activePreset
+        ? activePreset.type === "memory"
+            ? activePreset.rememberedText ?? activePreset.text
+            : activePreset.text
+        : "Activate a preset to see it here.";
+
+    return (
+        <div className="bs-overview">
+            <div className="bs-overview-header">
+                <div className="bs-overview-brand">
+                    <div className="bs-overview-monogram">B</div>
+                    <div>
+                        <strong>BetterStatus</strong>
+                        <span>Presence, precisely controlled.</span>
+                    </div>
+                </div>
+                <div className="bs-overview-links">
+                    <Link href="https://github.com/Jacksonnn911/BetterStatus">GitHub</Link>
+                    <Link href="https://github.com/Jacksonnn911/BetterStatus#usage">Docs</Link>
+                    <Link href="https://github.com/Jacksonnn911/BetterStatus/issues/new">Support</Link>
+                </div>
+            </div>
+
+            <div className={`bs-now-playing bs-now-${activePreset?.presence ?? "none"}`}>
+                <div className="bs-now-indicator"><i /></div>
+                <div className="bs-now-copy">
+                    <span>{activePreset ? "ACTIVE PRESET" : "READY WHEN YOU ARE"}</span>
+                    <strong>{activePreset?.name || "No preset active"}</strong>
+                    <small>{activeText || "No custom status"}</small>
+                </div>
+                <div className="bs-now-details">
+                    {activePreset && <span>{activePreset.presence === "dnd" ? "Do Not Disturb" : activePreset.presence}</span>}
+                    <kbd>{activePreset?.hotkey || "No shortcut"}</kbd>
+                </div>
+            </div>
+
+            <div className="bs-overview-footer">
+                <span><i /> {presets.filter(preset => preset.enabled).length} presets ready</span>
+                <span>Fixed + memory behavior</span>
+                <span className="bs-overview-credit">By <strong>nik_jandaaa27829</strong> &amp; <strong>misaliba</strong></span>
+            </div>
+        </div>
+    );
+}
+
 export default definePlugin({
     name: "BetterStatus",
 
@@ -112,59 +159,7 @@ export default definePlugin({
 
     settings,
     settingsAboutComponent() {
-        return (
-            <div className="bs-command-hero">
-                <div className="bs-command-topline">
-                    <div className="bs-command-brand">
-                        <span className="bs-command-mark"><i /><i /><i /></span>
-                        <span>BETTERSTATUS</span>
-                    </div>
-                    <span className="bs-command-version"><i /> VENCORD USER PLUGIN</span>
-                </div>
-
-                <div className="bs-command-body">
-                    <div className="bs-command-message">
-                        <span className="bs-command-kicker">YOUR PRESENCE, ON YOUR TERMS</span>
-                        <h2>Switch context.<br /><em>Stay in flow.</em></h2>
-                        <Paragraph>
-                            Purpose-built presets and global shortcuts for the way you actually use Discord.
-                        </Paragraph>
-                    </div>
-
-                    <div className="bs-command-console" aria-hidden="true">
-                        <div className="bs-console-header">
-                            <span><i /> GLOBAL SHORTCUT</span>
-                            <strong>LISTENING</strong>
-                        </div>
-                        <div className="bs-console-keys">
-                            <kbd>⌘</kbd><span>+</span><kbd>⇧</kbd><span>+</span><kbd>S</kbd>
-                        </div>
-                        <div className="bs-console-route">
-                            <div><span>01</span><strong>CAPTURE</strong><small>Shortcut</small></div>
-                            <i />
-                            <div><span>02</span><strong>RECALL</strong><small>Preset</small></div>
-                            <i />
-                            <div><span>03</span><strong>SWITCH</strong><small>Presence</small></div>
-                        </div>
-                        <div className="bs-console-result"><i /> STATUS APPLIED <strong>INSTANTLY</strong></div>
-                    </div>
-                </div>
-
-                <div className="bs-command-footer">
-                    <div className="bs-command-meta">
-                        <span>GLOBAL HOTKEYS</span><span>MEMORY PRESETS</span><span>SAFE UPDATES</span>
-                    </div>
-                    <div className="bs-command-credit">
-                        Crafted by <strong>nik_jandaaa27829</strong> &amp; <strong>misaliba</strong>
-                    </div>
-                    <div className="bs-command-links">
-                        <Link href="https://github.com/Jacksonnn911/BetterStatus">Source</Link>
-                        <Link href="https://github.com/Jacksonnn911/BetterStatus#usage">Docs</Link>
-                        <Link href="https://github.com/Jacksonnn911/BetterStatus/issues/new">Support</Link>
-                    </div>
-                </div>
-            </div>
-        );
+        return <BetterStatusOverview />;
     },
 
     renderSavedStatusesProfile(props: { user: User; }) {
