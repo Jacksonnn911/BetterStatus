@@ -1,7 +1,7 @@
 import { Button, Forms, React, Select, Switch, TextInput } from "@webpack/common";
 
 import { getPresets, savePresets } from "./index";
-import type { PresenceStatus, StatusPreset } from "./types";
+import type { PresenceStatus, PresetType, StatusPreset } from "./types";
 
 
 const PRESENCE_OPTIONS = [
@@ -20,6 +20,17 @@ const PRESENCE_OPTIONS = [
     {
         label: "Invisible",
         value: "invisible"
+    }
+];
+
+const TYPE_OPTIONS = [
+    {
+        label: "Fixed",
+        value: "fixed"
+    },
+    {
+        label: "Memory",
+        value: "memory"
     }
 ];
 
@@ -125,6 +136,7 @@ export default function SettingsComponent() {
                 id: createId(),
                 name: `Status ${presets.length + 1}`,
                 text: "",
+                type: "fixed",
                 presence: "online",
                 hotkey: "",
                 enabled: true
@@ -244,18 +256,58 @@ export default function SettingsComponent() {
 
 
                     <Forms.FormText>
-                        Custom status
+                        Preset type
+                    </Forms.FormText>
+
+                    <Select
+                        options={TYPE_OPTIONS}
+                        select={value =>
+                            updatePreset(
+                                preset.id,
+                                {
+                                    type: value as PresetType
+                                }
+                            )
+                        }
+                        serialize={value => value}
+                        isSelected={value =>
+                            value === preset.type
+                        }
+                        closeOnSelect={true}
+                    />
+
+                    <Forms.FormText>
+                        {preset.type === "memory"
+                            ? "Memory learns manual custom-status changes while this preset is active and restores the last one next time."
+                            : "Fixed always restores the custom status configured below."}
+                    </Forms.FormText>
+
+
+                    <div style={{ height: "12px" }} />
+
+
+                    <Forms.FormText>
+                        {preset.type === "memory"
+                            ? "Initial / remembered custom status"
+                            : "Custom status"}
                     </Forms.FormText>
 
                     <TextInput
-                        value={preset.text}
+                        value={preset.type === "memory"
+                            ? preset.rememberedText ?? preset.text
+                            : preset.text}
                         placeholder="What are you doing?"
                         onChange={value =>
                             updatePreset(
                                 preset.id,
-                                {
-                                    text: value
-                                }
+                                preset.type === "memory"
+                                    ? {
+                                        text: value,
+                                        rememberedText: value
+                                    }
+                                    : {
+                                        text: value
+                                    }
                             )
                         }
                     />

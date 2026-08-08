@@ -7,6 +7,7 @@ Created by [Jacksonnn911](https://github.com/Jacksonnn911).
 Each preset can define:
 
 - A display name
+- A `Fixed` or `Memory` behavior
 - Custom status text
 - A Discord presence (`Online`, `Idle`, `Do Not Disturb`, or `Invisible`)
 - A global keyboard shortcut
@@ -123,14 +124,24 @@ Open **User Settings > Vencord > Plugins**, find **StatusHotkeys**, and open its
 To create a preset:
 
 1. Click **+ Add Status**.
-2. Enter a preset name and the custom status text Discord should display.
-3. Select a presence.
-4. Click **Record**, then press the desired key combination.
-5. Leave **Enabled** switched on.
+2. Enter a preset name.
+3. Select **Fixed** or **Memory** behavior.
+4. Enter the initial custom status and select a presence.
+5. Click **Record**, then press the desired key combination.
+6. Leave **Enabled** switched on.
 
 Changes are saved immediately. Press the shortcut from any application to activate the preset.
 
 Press `Escape` while recording to cancel. A preset can be temporarily disabled with its **Enabled** switch or permanently removed with **Delete Status**.
+
+### Fixed and Memory presets
+
+- **Fixed** always applies the exact custom-status text configured in the preset.
+- **Memory** remembers manual changes made to your Discord custom status while that preset is active. The next time you activate another preset—or press the same preset's hotkey again—the current text is saved. Activating the Memory preset later restores that saved text.
+
+For example, create a Memory preset with the `Do Not Disturb` presence. Activate it, manually change your Discord custom status to `Hello`, then switch presets. The next time you activate the Do Not Disturb preset, it restores `Hello`.
+
+Presets created with an older plugin version automatically remain Fixed presets.
 
 ## Default presets
 
@@ -145,7 +156,7 @@ These defaults are designed for macOS. On Windows or Linux—or if the combinati
 
 ## How it works
 
-When Vencord starts the plugin, StatusHotkeys loads your presets and registers every enabled shortcut through Electron's `globalShortcut` API. When a shortcut is pressed, the native process tells the Vencord renderer which preset to activate. The plugin then updates Discord's custom-status and presence settings through Vencord's `UserSettingsAPI`.
+When Vencord starts the plugin, StatusHotkeys loads your presets and registers every enabled shortcut through Electron's `globalShortcut` API. When a shortcut is pressed, the native process tells the Vencord renderer which preset to activate. Before switching, the plugin saves the current text for the active Memory preset. It then updates Discord's custom-status and presence settings through Vencord's `UserSettingsAPI`.
 
 Presets are stored in Vencord's plugin settings. Disabling or deleting a preset immediately rebuilds the registered shortcut list, and disabling the plugin unregisters all of its shortcuts.
 

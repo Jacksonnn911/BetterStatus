@@ -28,6 +28,7 @@ const DEFAULT_PRESETS: StatusPreset[] = [
         id: "sleeping",
         name: "Sleeping",
         text: "Spinkám 👅",
+        type: "fixed",
         presence: "dnd",
         hotkey: "Command+-",
         enabled: true
@@ -36,6 +37,7 @@ const DEFAULT_PRESETS: StatusPreset[] = [
         id: "normal",
         name: "Normal",
         text: "Every end has a new beginning...",
+        type: "fixed",
         presence: "online",
         hotkey: "Command+=",
         enabled: true
@@ -55,6 +57,12 @@ export function getPresets(): StatusPreset[] {
         pluginSettings.presets = DEFAULT_PRESETS;
     }
 
+    // Presets created before modes existed keep their original behaviour.
+    pluginSettings.presets = pluginSettings.presets.map((preset: StatusPreset) => ({
+        ...preset,
+        type: preset.type === "memory" ? "memory" : "fixed"
+    }));
+
     return pluginSettings.presets;
 }
 
@@ -73,8 +81,12 @@ export async function savePresets(presets: StatusPreset[]) {
 
 
 async function setDiscordState(preset: StatusPreset) {
+    const text = preset.type === "memory"
+        ? preset.rememberedText ?? preset.text
+        : preset.text;
+
     await CustomStatusSettings.updateSetting({
-        text: preset.text,
+        text,
         emojiId: "0",
         emojiName: "",
         expiresAtMs: "0",
@@ -82,6 +94,30 @@ async function setDiscordState(preset: StatusPreset) {
     });
 
     await StatusSettings.updateSetting(preset.presence);
+}
+
+
+async function rememberActivePreset() {
+    const pluginSettings = getPluginSettings();
+    const activePresetId = pluginSettings.activePresetId as string | undefined;
+
+    if (!activePresetId)
+        return;
+
+    const presets = getPresets();
+    const activePreset = presets.find(preset => preset.id === activePresetId);
+
+    if (!activePreset || activePreset.type !== "memory")
+        return;
+
+    const currentStatus = CustomStatusSettings.getSetting();
+    const rememberedText = currentStatus?.text ?? "";
+
+    pluginSettings.presets = presets.map(preset =>
+        preset.id === activePresetId
+            ? { ...preset, rememberedText }
+            : preset
+    );
 }
 
 
@@ -113,7 +149,9 @@ export default definePlugin({
         }
 
         try {
+            await rememberActivePreset();
             await setDiscordState(preset);
+            getPluginSettings().activePresetId = preset.id;
 
             console.log(
                 `[StatusHotkeys] Activated "${preset.name}"`
