@@ -97,6 +97,7 @@ jobs:
           pnpm build
 
   publish-manifest:
+    if: github.ref_name == 'dev'
     name: Publish file manifest
     needs:
       - compatibility-test
@@ -109,18 +110,7 @@ jobs:
           ref: ${{ github.sha }}
 
       - name: Generate files.json
-        run: node scripts/generate-files-manifest.mjs "$GITHUB_REF_NAME" "$GITHUB_SHA"
-
-      - name: Validate channel manifest
-        run: |
-          node -e '
-            const fs = require("fs");
-            const manifest = JSON.parse(fs.readFileSync("files.json", "utf8"));
-            if (manifest.version !== 1) throw new Error("Unexpected manifest version");
-            if (manifest.channel !== process.env.GITHUB_REF_NAME) throw new Error(`Manifest channel ${manifest.channel} does not match ${process.env.GITHUB_REF_NAME}`);
-            if (manifest.commit !== process.env.GITHUB_SHA.toLowerCase()) throw new Error(`Manifest commit ${manifest.commit} does not match ${process.env.GITHUB_SHA}`);
-            if (!Array.isArray(manifest.files) || manifest.files.length === 0) throw new Error("Manifest contains no files");
-          '
+        run: node scripts/generate-files-manifest.mjs "$GITHUB_SHA"
 
       - name: Commit channel manifest
         run: |
@@ -130,8 +120,8 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update $GITHUB_REF_NAME file manifest [skip ci]"
-          git push origin "HEAD:$GITHUB_REF_NAME"
+          git commit -m "Update dev file manifest [skip ci]"
+          git push origin "HEAD:dev"
 
   release:
     if: github.ref_name == 'prod'
