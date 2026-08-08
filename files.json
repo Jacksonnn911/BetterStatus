@@ -1,12 +1,12 @@
 {
   "version": 1,
   "channel": "dev",
-  "commit": "1d8124c5078409b01066afdd138f9e16c6678a6d",
+  "commit": "5c0777d7cd1c7f6933eab535e33ade60e9cde305",
   "files": [
     {
       "source": "src/index.tsx",
       "target": "index.tsx",
-      "sha256": "6c308fdcae985eb2efa04a34c8c0e9b761da80309b659bb7e7624bac56506e5f"
+      "sha256": "c5f263adb48536e60a841180b841d5b2937c8f4f168ca473ea4c1bef661fa227"
     },
     {
       "source": "src/native.ts",
@@ -16,7 +16,7 @@
     {
       "source": "README.md",
       "target": "README.md",
-      "sha256": "06f3ee5702a7bea516c7dbdf099f3adfac8bb49baa72e0227190e914132b25d0"
+      "sha256": "06e741b541b0969c5f9b9973a0bcf0d1cab1d967c3d0eb1d067f7fd66ad056d9"
     },
     {
       "source": "src/savedStatuses.ts",
@@ -31,7 +31,7 @@
     {
       "source": "src/StatusHistory.tsx",
       "target": "StatusHistory.tsx",
-      "sha256": "bfacd62462a9be60885a17c51d8e98ab7693cb840da7a52c451e424fba6113fb"
+      "sha256": "7ae009c4f7f54ef708ab13d961483b88b12bec3a41223cefa7683eb8ba155363"
     },
     {
       "source": "src/StatusSwitcher.tsx",
@@ -41,7 +41,7 @@
     {
       "source": "src/styles.css",
       "target": "styles.css",
-      "sha256": "2642230db9d32b3705c93f0ba68c013f9922289ed8aa12efa2370dc911cc7837"
+      "sha256": "85fb479389a8052a9214d5a78eaceb8663f7c049558bb02d2504fe6428e3fefa"
     },
     {
       "source": "src/types.ts",
