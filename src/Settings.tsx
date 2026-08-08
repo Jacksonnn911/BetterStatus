@@ -148,7 +148,7 @@ export default function SettingsComponent() {
     const [recordingId, setRecordingId] =
         React.useState<string | null>(null);
     const [collapsedIds, setCollapsedIds] =
-        React.useState<Set<string>>(() => new Set());
+        React.useState<Set<string>>(() => new Set(storedPresets.map(preset => preset.id)));
     const [searchQuery, setSearchQuery] = React.useState("");
     const [presets, setPresets] = React.useState<StatusPreset[]>(() => [...storedPresets]);
 
