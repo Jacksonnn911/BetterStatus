@@ -277,7 +277,7 @@ Build the current checkout for the locally installed Discord client with:
 make dev
 ```
 
-By default, this uses the Vencord source installed by BetterStatus at `~/.local/share/status-hotkeys/Vencord`. The command syncs the plugin sources, installs Vencord's locked dependencies, and creates a development build. Fully quit Discord with <kbd>Cmd</kbd>+<kbd>Q</kbd> and reopen it after the build completes.
+By default, this uses the Vencord source installed by BetterStatus at `~/.local/share/status-hotkeys/Vencord`. The command syncs the plugin sources, installs Vencord's locked dependencies, creates a development build, then automatically quits and reopens Discord so the new build is loaded.
 
 To use another Vencord checkout, pass its path explicitly:
 

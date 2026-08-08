@@ -5,6 +5,7 @@ STATUS_HOTKEYS_DATA_DIR ?= $(if $(XDG_DATA_HOME),$(XDG_DATA_HOME)/status-hotkeys
 VENCORD_DIR ?= $(STATUS_HOTKEYS_DATA_DIR)/Vencord
 PLUGIN_DIR := $(VENCORD_DIR)/src/userplugins/betterStatus
 DEV_PATH := $(STATUS_HOTKEYS_DATA_DIR)/runtime/node/bin:$(STATUS_HOTKEYS_DATA_DIR)/tools/bin:$(PATH)
+DISCORD_APP ?= Discord
 
 PLUGIN_FILES := \
 	src/index.tsx \
@@ -16,18 +17,18 @@ PLUGIN_FILES := \
 	src/types.ts \
 	src/styles.css
 
-.PHONY: help dev check-dev sync-dev install-dev-deps build-dev
+.PHONY: help dev check-dev sync-dev install-dev-deps build-dev restart-discord
 
 help:
 	@echo "BetterStatus development commands"
 	@echo
-	@echo "  make dev                         Sync and build for local Discord"
+	@echo "  make dev                         Sync, build, and restart local Discord"
 	@echo "  make dev VENCORD_DIR=/path/...  Use a different Vencord checkout"
 
 dev: build-dev
 	@echo
 	@echo "BetterStatus development build completed."
-	@echo "Fully quit Discord (Cmd+Q) and reopen it to load the new build."
+	@$(MAKE) --no-print-directory restart-discord
 
 check-dev:
 	@test -f "$(VENCORD_DIR)/package.json" && test -f "$(VENCORD_DIR)/scripts/build/build.mjs" || { \
@@ -56,3 +57,20 @@ build-dev: install-dev-deps
 		export VENCORD_HASH=archive VENCORD_REMOTE=Vendicated/Vencord; \
 	fi; \
 	PATH="$(DEV_PATH)" pnpm --dir "$(VENCORD_DIR)" build --dev
+
+restart-discord:
+	@if [[ "$$(uname -s)" != "Darwin" ]]; then \
+		echo "Automatic Discord restart is currently supported on macOS only." >&2; \
+		exit 1; \
+	fi
+	@echo "Restarting $(DISCORD_APP)..."
+	@osascript -e 'tell application "$(DISCORD_APP)" to quit' >/dev/null 2>&1 || true
+	@for _ in {1..20}; do \
+		pgrep -x "$(DISCORD_APP)" >/dev/null || break; \
+		sleep 0.25; \
+	done; \
+	if pgrep -x "$(DISCORD_APP)" >/dev/null; then \
+		pkill -x "$(DISCORD_APP)"; \
+	fi
+	@open -a "$(DISCORD_APP)"
+	@echo "$(DISCORD_APP) reopened with the new development build."
