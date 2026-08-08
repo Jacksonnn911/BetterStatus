@@ -120,23 +120,28 @@ export default definePlugin({
                 </div>
                 <div className="bs-about-preview" aria-hidden="true">
                     <div className="bs-preview-glow" />
-                    <div className="bs-preview-card bs-preview-dnd">
-                        <span className="bs-preview-dot" />
-                        <div>
-                            <strong>Deep focus</strong>
-                            <span className="bs-preview-status">Locked in. No distractions.</span>
+                    <div className="bs-signal-stage">
+                        <svg className="bs-signal-lines" viewBox="0 0 320 260" preserveAspectRatio="none">
+                            <path d="M160 130 C118 88 92 62 54 47" />
+                            <path d="M160 130 C208 90 236 67 273 50" />
+                            <path d="M160 130 C112 169 86 193 48 214" />
+                            <path d="M160 130 C205 170 234 195 274 216" />
+                        </svg>
+                        <div className="bs-signal-core">
+                            <span className="bs-signal-pulse" />
+                            <strong>BS</strong>
+                            <small>READY</small>
                         </div>
-                        <kbd>⌘ −</kbd>
-                    </div>
-                    <div className="bs-preview-card bs-preview-online">
-                        <span className="bs-preview-dot" />
-                        <div>
-                            <strong>Available</strong>
-                            <span className="bs-preview-status">Free to chat — say hello.</span>
+                        <span className="bs-signal-node bs-signal-node-dnd"><i />Focus</span>
+                        <span className="bs-signal-node bs-signal-node-online"><i />Online</span>
+                        <span className="bs-signal-node bs-signal-node-idle"><i />Away</span>
+                        <span className="bs-signal-node bs-signal-node-memory"><i />Memory</span>
+                        <div className="bs-command-chip"><kbd>⌘</kbd><span>+</span><kbd>⇧</kbd><span>+</span><kbd>S</kbd></div>
+                        <div className="bs-signal-caption">
+                            <span>Global command received</span>
+                            <strong>Presence switched</strong>
                         </div>
-                        <kbd>⌘ =</kbd>
                     </div>
-                    <div className="bs-preview-orbit"><span /></div>
                 </div>
             </div>
         );
