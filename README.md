@@ -28,28 +28,21 @@
 
 No Node.js knowledge, Git setup, or manual Vencord patching required.
 
-<table>
-<tr>
-<td width="50%" valign="top">
+### 🍎 macOS & Linux
 
-**macOS / Linux**
+Open **Terminal**, paste this command, and press Enter:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/install.sh | bash
 ```
 
-</td>
-<td width="50%" valign="top">
+### 🪟 Windows
 
-**Windows PowerShell**
+Open **PowerShell**, paste this command, and press Enter:
 
 ```powershell
 irm https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/install.ps1 | iex
 ```
-
-</td>
-</tr>
-</table>
 
 The guided installer detects your tools, reuses existing Vencord source code, builds BetterStatus, and patches Discord with simple prompts.
 
