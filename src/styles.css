@@ -148,6 +148,76 @@
   white-space: nowrap;
 }
 
+.bs-backup-panel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 15px;
+  padding: 14px 18px;
+  border: 1px solid var(--bs-card-border);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 100% 50%, color-mix(in srgb, #a855f7 9%, transparent), transparent 28%),
+    color-mix(in srgb, var(--background-secondary) 82%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
+}
+
+.bs-backup-mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  border: 1px solid color-mix(in srgb, #a855f7 35%, var(--background-modifier-accent));
+  border-radius: 13px;
+  color: color-mix(in srgb, #c084fc 78%, white);
+  background: color-mix(in srgb, #a855f7 13%, var(--background-primary));
+  font-size: 22px;
+  font-weight: 700;
+  place-items: center;
+}
+
+.bs-backup-copy { min-width: 0; }
+.bs-backup-copy h5 { margin: 0 0 3px; }
+.bs-backup-copy > div { color: var(--text-muted); font-size: 12px; }
+
+.bs-backup-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bs-backup-status {
+  margin-top: 7px;
+  color: var(--brand-360) !important;
+  font-weight: 600;
+}
+
+.bs-import-confirmation {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bs-import-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bs-import-summary span {
+  padding: 10px;
+  border: 1px solid var(--background-modifier-accent);
+  border-radius: 10px;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  text-align: center;
+}
+
+.bs-import-summary strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--header-primary);
+}
+
 /* Saved statuses inside Discord's Set your status modal */
 .bs-status-history {
   margin-top: 20px;
@@ -2472,6 +2542,22 @@
 
   .bs-update-actions .vc-form-switch-wrapper {
     width: 100%;
+  }
+
+  .bs-backup-panel {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .bs-backup-actions {
+    grid-column: 1 / -1;
+  }
+
+  .bs-backup-actions > * {
+    flex: 1;
+  }
+
+  .bs-import-summary {
+    grid-template-columns: 1fr;
   }
 
   .bs-fields {

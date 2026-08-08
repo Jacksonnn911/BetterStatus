@@ -48,6 +48,113 @@ interface UpdateInfo {
   status: "current" | "updateAvailable" | "restartRequired";
 }
 
+type BackupPlatform = "macos" | "windows" | "linux" | "unknown";
+
+interface BetterStatusBackup {
+  format: "betterstatus-backup";
+  version: 1;
+  exportedAt: string;
+  platform: BackupPlatform;
+  settings: {
+    presets: StatusPreset[];
+    savedStatuses: SavedStatus[];
+    activePresetId?: string;
+    autoUpdate: boolean;
+    autoRestart: boolean;
+    updateCheckFrequency: UpdateCheckFrequency;
+    updateChannel: UpdateChannel;
+  };
+}
+
+const MAX_BACKUP_BYTES = 2 * 1024 * 1024;
+const PRESENCE_VALUES = new Set(["online", "idle", "dnd", "invisible"]);
+
+function currentPlatform(): BackupPlatform {
+  const platform = navigator.platform.toLowerCase();
+
+  if (platform.includes("mac")) return "macos";
+  if (platform.includes("win")) return "windows";
+  if (platform.includes("linux")) return "linux";
+
+  return "unknown";
+}
+
+function validateBackup(value: unknown): BetterStatusBackup {
+  if (!value || typeof value !== "object")
+    throw new Error("This file does not contain a BetterStatus backup.");
+
+  const backup = value as Partial<BetterStatusBackup>;
+  if (backup.format !== "betterstatus-backup" || backup.version !== 1)
+    throw new Error("This BetterStatus backup format is not supported.");
+  if (!backup.settings || typeof backup.settings !== "object")
+    throw new Error("The backup does not contain settings.");
+
+  const source = backup.settings as Partial<BetterStatusBackup["settings"]>;
+  if (!Array.isArray(source.presets) || !Array.isArray(source.savedStatuses))
+    throw new Error("The backup is missing presets or saved statuses.");
+  if (source.presets.length > 10_000)
+    throw new Error("The backup contains too many presets.");
+
+  const ids = new Set<string>();
+  const presets = source.presets.map((value, index): StatusPreset => {
+    if (!value || typeof value !== "object")
+      throw new Error(`Preset ${index + 1} is invalid.`);
+
+    const preset = value as Partial<StatusPreset>;
+    if (typeof preset.id !== "string" || !preset.id || preset.id.length > 200 || ids.has(preset.id))
+      throw new Error(`Preset ${index + 1} has an invalid or duplicate ID.`);
+    if (typeof preset.name !== "string" || typeof preset.text !== "string" || typeof preset.hotkey !== "string")
+      throw new Error(`Preset ${index + 1} contains invalid text fields.`);
+    if (preset.name.length > 500 || preset.text.length > 10_000 || preset.hotkey.length > 200)
+      throw new Error(`Preset ${index + 1} contains an oversized field.`);
+    if (preset.type !== "fixed" && preset.type !== "memory")
+      throw new Error(`Preset ${index + 1} has an invalid behavior.`);
+    if (!PRESENCE_VALUES.has(preset.presence ?? ""))
+      throw new Error(`Preset ${index + 1} has an invalid presence.`);
+    if (typeof preset.enabled !== "boolean")
+      throw new Error(`Preset ${index + 1} has an invalid enabled state.`);
+    if (preset.rememberedText !== undefined && typeof preset.rememberedText !== "string")
+      throw new Error(`Preset ${index + 1} has invalid Memory text.`);
+
+    ids.add(preset.id);
+    return {
+      id: preset.id,
+      name: preset.name,
+      text: preset.text,
+      type: preset.type,
+      rememberedText: preset.rememberedText,
+      presence: preset.presence as StatusPreset["presence"],
+      hotkey: preset.hotkey,
+      enabled: preset.enabled,
+    };
+  });
+
+  const savedStatuses = normalizeSavedStatuses(source.savedStatuses);
+  const updateChannel: UpdateChannel = source.updateChannel === "dev" ? "dev" : "prod";
+  const updateCheckFrequency = normalizeUpdateCheckFrequency(source.updateCheckFrequency);
+  const activePresetId = typeof source.activePresetId === "string" && ids.has(source.activePresetId)
+    ? source.activePresetId
+    : undefined;
+
+  return {
+    format: "betterstatus-backup",
+    version: 1,
+    exportedAt: typeof backup.exportedAt === "string" ? backup.exportedAt : new Date(0).toISOString(),
+    platform: ["macos", "windows", "linux"].includes(backup.platform ?? "")
+      ? backup.platform as BackupPlatform
+      : "unknown",
+    settings: {
+      presets,
+      savedStatuses,
+      activePresetId,
+      autoUpdate: source.autoUpdate !== false,
+      autoRestart: source.autoRestart === true,
+      updateCheckFrequency,
+      updateChannel,
+    },
+  };
+}
+
 const DEFAULT_PRESETS: StatusPreset[] = [
   {
     id: "sleeping",
@@ -241,6 +348,7 @@ export default function SettingsComponent() {
   const [updateInfo, setUpdateInfo] = React.useState<UpdateInfo | null>(null);
   const [updateInfoError, setUpdateInfoError] = React.useState<string | null>(null);
   const [lastCheckedAt, setLastCheckedAt] = React.useState<Date | null>(null);
+  const [backupStatus, setBackupStatus] = React.useState<string | null>(null);
   const selectedUpdateChannel: UpdateChannel =
     updateChannel === "dev" ? "dev" : "prod";
   const selectedUpdateFrequency = normalizeUpdateCheckFrequency(updateCheckFrequency);
@@ -317,6 +425,122 @@ export default function SettingsComponent() {
   async function commit(next: StatusPreset[]) {
     setPresets(next);
     await savePresets(next);
+  }
+
+  function exportSettings() {
+    const backup: BetterStatusBackup = {
+      format: "betterstatus-backup",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      platform: currentPlatform(),
+      settings: {
+        presets: getPresets(),
+        savedStatuses: getSavedStatuses(),
+        activePresetId: settings.store.activePresetId,
+        autoUpdate: settings.store.autoUpdate,
+        autoRestart: settings.store.autoRestart,
+        updateCheckFrequency: getUpdateCheckFrequency(),
+        updateChannel: getUpdateChannel(),
+      },
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10);
+
+    anchor.href = url;
+    anchor.download = `betterstatus-backup-${date}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setBackupStatus(`Exported ${backup.settings.presets.length} presets and ${backup.settings.savedStatuses.length} saved statuses.`);
+  }
+
+  async function applyBackup(backup: BetterStatusBackup) {
+    const convertMacHotkeys = backup.platform === "macos" && currentPlatform() === "windows";
+    const importedPresets = backup.settings.presets.map(preset => ({
+      ...preset,
+      hotkey: convertMacHotkeys
+        ? preset.hotkey.replace(/(^|\+)Command(?=\+|$)/g, "$1Control")
+        : preset.hotkey,
+    }));
+
+    settings.store.savedStatuses = backup.settings.savedStatuses;
+    settings.store.autoUpdate = backup.settings.autoUpdate;
+    settings.store.autoRestart = backup.settings.autoRestart;
+    settings.store.updateCheckFrequency = backup.settings.updateCheckFrequency;
+    settings.store.updateChannel = backup.settings.updateChannel;
+    settings.store.activePresetId = importedPresets.some(
+      preset => preset.id === backup.settings.activePresetId && preset.enabled,
+    )
+      ? backup.settings.activePresetId
+      : undefined;
+
+    await commit(importedPresets);
+    setCollapsedIds(new Set(importedPresets.map(preset => preset.id)));
+    setSearchQuery("");
+    setRecordingId(null);
+    Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(false);
+
+    const message = `Imported ${importedPresets.length} presets and ${backup.settings.savedStatuses.length} saved statuses${convertMacHotkeys ? "; Command shortcuts were converted to Control" : ""}.`;
+    setBackupStatus(message);
+    showNotification({ title: "BetterStatus backup imported", body: message });
+  }
+
+  function confirmBackupImport(backup: BetterStatusBackup) {
+    const convertsHotkeys = backup.platform === "macos" && currentPlatform() === "windows";
+
+    openModal(modalProps => (
+      <ConfirmModal
+        {...modalProps}
+        title="Replace all BetterStatus settings?"
+        confirmText="Import backup"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={() => void applyBackup(backup)}
+      >
+        <div className="bs-import-confirmation">
+          <Forms.FormText>
+            This replaces every BetterStatus preset, saved status, active preset,
+            and update preference currently stored on this computer.
+          </Forms.FormText>
+          <div className="bs-import-summary">
+            <span><strong>{backup.settings.presets.length}</strong> presets</span>
+            <span><strong>{backup.settings.savedStatuses.length}</strong> saved statuses</span>
+            <span><strong>{backup.settings.updateChannel === "dev" ? "Development" : "Production"}</strong> updates</span>
+          </div>
+          {convertsHotkeys && (
+            <Forms.FormText>
+              macOS <strong>Command</strong> shortcuts will be converted to Windows <strong>Control</strong> shortcuts.
+            </Forms.FormText>
+          )}
+          <Forms.FormText>Your current setup will not be recoverable unless you export it first.</Forms.FormText>
+        </div>
+      </ConfirmModal>
+    ));
+  }
+
+  function importSettings() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      try {
+        if (file.size > MAX_BACKUP_BYTES)
+          throw new Error("The selected backup is larger than 2 MB.");
+
+        const backup = validateBackup(JSON.parse(await file.text()));
+        setBackupStatus(null);
+        confirmBackupImport(backup);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setBackupStatus(`Import failed: ${message}`);
+        showNotification({ title: "BetterStatus import failed", body: message });
+      }
+    };
+    input.click();
   }
 
   function updatePreset(id: string, patch: Partial<StatusPreset>) {
@@ -576,6 +800,25 @@ export default function SettingsComponent() {
           </div>
         </div>
       </div>
+
+      <section className="bs-backup-panel">
+        <div className="bs-backup-mark" aria-hidden="true">⇅</div>
+        <div className="bs-backup-copy">
+          <Forms.FormTitle>Backup & sharing</Forms.FormTitle>
+          <Forms.FormText>
+            Move your complete BetterStatus setup between computers or keep a
+            personal backup. Presets, Memory values, saved statuses, favorites,
+            and update preferences are all included.
+          </Forms.FormText>
+          {backupStatus && <div className="bs-backup-status" role="status">{backupStatus}</div>}
+        </div>
+        <div className="bs-backup-actions">
+          <button type="button" className="bs-secondary-button" onClick={importSettings}>
+            Import backup
+          </button>
+          <Button onClick={exportSettings}>Export everything</Button>
+        </div>
+      </section>
 
       <div className="bs-toolbar">
         <div>
