@@ -1,0 +1,66 @@
+name: Build rolling release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rolling-release
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate plugin source
+        run: |
+          test -f index.tsx
+          test -f Settings.tsx
+          test -f native.ts
+          test -f types.ts
+          bash -n install.sh
+
+      - name: Create release packages
+        run: |
+          mkdir -p package
+          cp index.tsx Settings.tsx native.ts types.ts README.md package/
+          tar -C package -czf status-hotkeys.tar.gz .
+          (cd package && zip -qr ../status-hotkeys.zip .)
+          sha256sum status-hotkeys.tar.gz status-hotkeys.zip > SHA256SUMS.txt
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: status-hotkeys-${{ github.sha }}
+          path: |
+            status-hotkeys.tar.gz
+            status-hotkeys.zip
+            SHA256SUMS.txt
+            install.sh
+            install.ps1
+
+      - name: Replace rolling GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --cleanup-tag --yes || true
+          gh release create latest \
+            status-hotkeys.tar.gz \
+            status-hotkeys.zip \
+            SHA256SUMS.txt \
+            install.sh \
+            install.ps1 \
+            --target "$GITHUB_SHA" \
+            --title "Latest StatusHotkeys build" \
+            --notes "Automated build from commit $GITHUB_SHA. This rolling release is replaced after every push to main." \
+            --latest
+

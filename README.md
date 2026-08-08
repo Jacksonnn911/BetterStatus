@@ -1,0 +1,182 @@
+# StatusHotkeys
+
+StatusHotkeys is a custom [Vencord](https://vencord.dev/) plugin that lets you create Discord status presets and activate them with system-wide keyboard shortcuts—even while Discord is in the background.
+
+Each preset can define:
+
+- A display name
+- Custom status text
+- A Discord presence (`Online`, `Idle`, `Do Not Disturb`, or `Invisible`)
+- A global keyboard shortcut
+- Whether the preset is enabled
+
+> [!IMPORTANT]
+> This is a third-party user plugin. Custom plugins require building Vencord from source and are not supported by the official Vencord support team.
+
+## Requirements
+
+- Discord Desktop or [Vesktop](https://vesktop.vencord.dev/)
+- A [Vencord source installation](https://docs.vencord.dev/installing/)
+- Git, Node.js, and pnpm
+
+The plugin uses Electron's native global shortcut API, so browser and userscript builds are not supported.
+
+## Installation
+
+### One-command installation
+
+The installer finds your Vencord source checkout automatically. If one does not exist, it clones Vencord into `~/Vencord` and installs its dependencies. It then downloads the latest StatusHotkeys release and builds Vencord.
+
+You still need Git, Node.js, and pnpm installed. See the [Vencord prerequisites](https://docs.vencord.dev/installing/#prerequisites).
+
+**macOS or Linux:**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/StatusHotkeys/main/install.sh | bash
+```
+
+**Windows PowerShell:**
+
+```powershell
+irm https://raw.githubusercontent.com/Jacksonnn911/StatusHotkeys/main/install.ps1 | iex
+```
+
+After the build finishes, follow the printed instruction for Discord Desktop or Vesktop and restart the client. Then enable the plugin as described below.
+
+> [!TIP]
+> If your Vencord source is in a non-standard location, set `VENCORD_DIR` first. For example: `VENCORD_DIR=/path/to/Vencord curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/StatusHotkeys/main/install.sh | bash`.
+
+> [!NOTE]
+> Piping a remote script into a shell runs code from the internet. You can [inspect `install.sh`](./install.sh) or [inspect `install.ps1`](./install.ps1) before running it.
+
+### Manual installation
+
+If you prefer not to use the installer, first follow the official [Vencord source installation guide](https://docs.vencord.dev/installing/).
+
+From your Vencord directory, create the user plugin directory and clone StatusHotkeys into it:
+
+```sh
+mkdir -p src/userplugins
+git clone https://github.com/Jacksonnn911/StatusHotkeys.git src/userplugins/statusHotkeys
+```
+
+Build Vencord:
+
+```sh
+pnpm build
+```
+
+Then apply the custom build:
+
+- **Discord Desktop:** run `pnpm inject`, select your Discord installation, and restart Discord completely.
+- **Vesktop:** open Vesktop settings, find **Vencord Location**, select the `dist` directory inside your Vencord source folder, and restart Vesktop completely.
+
+For platform-specific details, see Vencord's [custom plugin guide](https://docs.vencord.dev/installing/custom-plugins/) and [custom build installation guide](https://docs.vencord.dev/installing/#installing-your-custom-build).
+
+## Enabling the plugin
+
+1. Open Discord's **User Settings**.
+2. Go to **Vencord > Plugins**.
+3. Search for **StatusHotkeys**.
+4. Enable it.
+5. Restart Discord if Vencord asks you to.
+
+The plugin depends on Vencord's `UserSettingsAPI`; Vencord enables that dependency automatically.
+
+## Usage
+
+Open **User Settings > Vencord > Plugins**, find **StatusHotkeys**, and open its settings.
+
+To create a preset:
+
+1. Click **+ Add Status**.
+2. Enter a preset name and the custom status text Discord should display.
+3. Select a presence.
+4. Click **Record**, then press the desired key combination.
+5. Leave **Enabled** switched on.
+
+Changes are saved immediately. Press the shortcut from any application to activate the preset.
+
+Press `Escape` while recording to cancel. A preset can be temporarily disabled with its **Enabled** switch or permanently removed with **Delete Status**.
+
+## Default presets
+
+The plugin creates two example presets on first use:
+
+| Preset | Presence | Shortcut |
+| --- | --- | --- |
+| Sleeping | Do Not Disturb | `Command` + `-` |
+| Normal | Online | `Command` + `=` |
+
+These defaults are designed for macOS. On Windows or Linux—or if the combinations conflict with another application—record different shortcuts in the plugin settings.
+
+## How it works
+
+When Vencord starts the plugin, StatusHotkeys loads your presets and registers every enabled shortcut through Electron's `globalShortcut` API. When a shortcut is pressed, the native process tells the Vencord renderer which preset to activate. The plugin then updates Discord's custom-status and presence settings through Vencord's `UserSettingsAPI`.
+
+Presets are stored in Vencord's plugin settings. Disabling or deleting a preset immediately rebuilds the registered shortcut list, and disabling the plugin unregisters all of its shortcuts.
+
+## Updating
+
+Run the same one-command installer again. It downloads the current rolling release, replaces the plugin files, and rebuilds Vencord.
+
+Alternatively, if you installed the repository manually, run this from the plugin directory inside your Vencord checkout:
+
+```sh
+git pull
+cd ../../..
+pnpm build
+```
+
+Reapply the build if required by your client, then restart Discord or Vesktop.
+
+## Uninstalling
+
+1. Disable **StatusHotkeys** in Vencord's plugin settings.
+2. Delete `src/userplugins/statusHotkeys` from your Vencord source directory.
+3. Run `pnpm build` from the Vencord directory.
+4. Reapply the build if required, then restart the client.
+
+## Troubleshooting
+
+### The plugin does not appear
+
+- Confirm the entry file is located at `Vencord/src/userplugins/statusHotkeys/index.tsx`.
+- Rebuild Vencord and fully restart Discord or Vesktop.
+- Check the build output for TypeScript or plugin-loading errors.
+
+### A shortcut does nothing
+
+- Make sure the preset and plugin are both enabled.
+- Record a different combination. Electron cannot register a shortcut already reserved by the operating system or another application.
+- Avoid single-key shortcuts and common system shortcuts.
+- Restart the client after changing or updating the plugin if registration still fails.
+
+### The status does not update
+
+- Confirm Vencord's `UserSettingsAPI` dependency is enabled.
+- Open Discord's developer console and look for messages beginning with `[StatusHotkeys]`.
+- Discord or Vencord updates can change internal settings APIs; rebuild with an up-to-date Vencord checkout.
+
+### macOS permissions
+
+If global shortcuts are not detected, check **System Settings > Privacy & Security** and ensure Discord or Vesktop has any requested input-related permissions.
+
+## Development
+
+Place the repository at `Vencord/src/userplugins/statusHotkeys`, then run a development watcher from the Vencord root:
+
+```sh
+pnpm build --dev --watch
+```
+
+The main files are:
+
+- `index.tsx` — plugin lifecycle, preset storage, and Discord setting updates
+- `Settings.tsx` — preset editor and shortcut recorder
+- `native.ts` — Electron global shortcut registration
+- `types.ts` — shared preset and presence types
+
+## Automated releases
+
+Every push to `main` runs the GitHub Actions release workflow. It validates the installer, creates `.tar.gz` and `.zip` plugin packages, generates SHA-256 checksums, uploads workflow artifacts, and replaces the rolling `latest` GitHub release used by the installers.
