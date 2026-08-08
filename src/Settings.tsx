@@ -127,12 +127,28 @@ function eventToAccelerator(event: KeyboardEvent): string | null {
     return parts.join("+");
 }
 
+function ChevronIcon({ collapsed }: { collapsed: boolean; }) {
+    return (
+        <svg
+            aria-hidden="true"
+            className={`bs-chevron${collapsed ? " bs-chevron-collapsed" : ""}`}
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+        >
+            <path fill="currentColor" d="M6.7 8.3a1 1 0 0 1 1.4 0l3.9 3.9 3.9-3.9a1 1 0 1 1 1.4 1.4l-4.6 4.6a1 1 0 0 1-1.4 0L6.7 9.7a1 1 0 0 1 0-1.4Z" />
+        </svg>
+    );
+}
+
 
 export default function SettingsComponent() {
     const { presets } = settings.use(["presets"]);
 
     const [recordingId, setRecordingId] =
         React.useState<string | null>(null);
+    const [collapsedIds, setCollapsedIds] =
+        React.useState<Set<string>>(() => new Set());
 
 
     async function commit(next: StatusPreset[]) {
@@ -181,6 +197,23 @@ export default function SettingsComponent() {
                 preset.id !== id
             )
         );
+    }
+
+
+    function toggleCollapsed(id: string) {
+        setCollapsedIds(current => {
+            const next = new Set(current);
+
+            if (next.has(id))
+                next.delete(id);
+            else
+                next.add(id);
+
+            return next;
+        });
+
+        if (recordingId === id)
+            setRecordingId(null);
     }
 
 
@@ -260,8 +293,12 @@ export default function SettingsComponent() {
                 )
                 : (
                     <div className="bs-preset-grid">
-                        {presets.map(preset => (
-                            <section className={`bs-preset-card${preset.enabled ? "" : " bs-preset-card-disabled"}`} key={preset.id}>
+                        {presets.map(preset => {
+                            const collapsed = collapsedIds.has(preset.id);
+                            const contentId = `bs-preset-${preset.id}`;
+
+                            return (
+                            <section className={`bs-preset-card${preset.enabled ? "" : " bs-preset-card-disabled"}${collapsed ? " bs-preset-card-collapsed" : ""}`} key={preset.id}>
                                 <header className="bs-card-header">
                                     <div className="bs-card-title">
                                         <Forms.FormTitle>{preset.name || "Untitled preset"}</Forms.FormTitle>
@@ -269,14 +306,28 @@ export default function SettingsComponent() {
                                             {preset.type === "memory" ? "Memory" : "Fixed"}
                                         </span>
                                     </div>
-                                    <FormSwitch
-                                        title="Enabled"
-                                        value={preset.enabled}
-                                        onChange={enabled => updatePreset(preset.id, { enabled })}
-                                        hideBorder
-                                    />
+                                    <div className="bs-card-actions">
+                                        <FormSwitch
+                                            title="Enabled"
+                                            value={preset.enabled}
+                                            onChange={enabled => updatePreset(preset.id, { enabled })}
+                                            hideBorder
+                                        />
+                                        <button
+                                            type="button"
+                                            className="bs-collapse-button"
+                                            aria-controls={contentId}
+                                            aria-expanded={!collapsed}
+                                            aria-label={`${collapsed ? "Expand" : "Collapse"} ${preset.name || "preset"}`}
+                                            title={collapsed ? "Expand preset" : "Collapse preset"}
+                                            onClick={() => toggleCollapsed(preset.id)}
+                                        >
+                                            <ChevronIcon collapsed={collapsed} />
+                                        </button>
+                                    </div>
                                 </header>
 
+                                {!collapsed && <div id={contentId} className="bs-card-content">
                                 <div className="bs-fields">
                                     <label className="bs-field">
                                         <span>Preset name</span>
@@ -347,8 +398,10 @@ export default function SettingsComponent() {
                                         Delete
                                     </Button>
                                 </div>
+                                </div>}
                             </section>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
         </div>

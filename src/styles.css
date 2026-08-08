@@ -57,6 +57,10 @@
     background: var(--background-secondary-alt);
 }
 
+.bs-preset-card-collapsed .bs-card-header {
+    border-bottom: 0;
+}
+
 .bs-card-title {
     display: flex;
     align-items: center;
@@ -72,6 +76,13 @@
     white-space: nowrap;
 }
 
+.bs-card-actions {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: 8px;
+}
+
 .bs-card-header .vc-form-switch-wrapper {
     flex: 0 0 auto;
 }
@@ -79,6 +90,39 @@
 .bs-card-header .vc-form-switch {
     gap: 8px;
     padding: 0;
+}
+
+.bs-collapse-button {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    color: var(--interactive-normal);
+    background: transparent;
+    cursor: pointer;
+    place-items: center;
+    transition: color 150ms ease, background-color 150ms ease;
+}
+
+.bs-collapse-button:hover {
+    color: var(--interactive-hover);
+    background: var(--background-modifier-hover);
+}
+
+.bs-collapse-button:focus-visible {
+    outline: 2px solid var(--brand-500);
+    outline-offset: 2px;
+}
+
+.bs-chevron {
+    transform: rotate(0deg);
+    transition: transform 180ms ease;
+}
+
+.bs-chevron-collapsed {
+    transform: rotate(-90deg);
 }
 
 .bs-mode-badge {
