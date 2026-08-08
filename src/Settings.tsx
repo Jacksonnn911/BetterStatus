@@ -148,13 +148,22 @@ export default function SettingsComponent() {
     const [recordingId, setRecordingId] =
         React.useState<string | null>(null);
     const [collapsedIds, setCollapsedIds] =
-        React.useState<Set<string>>(() => new Set(storedPresets.map(preset => preset.id)));
+        React.useState<Set<string>>(() => new Set((storedPresets ?? []).map(preset => preset.id)));
     const [searchQuery, setSearchQuery] = React.useState("");
-    const [presets, setPresets] = React.useState<StatusPreset[]>(() => [...storedPresets]);
+    const [presets, setPresets] = React.useState<StatusPreset[]>(() => [...(storedPresets ?? [])]);
+    const collapseStateInitialized = React.useRef(storedPresets != null);
 
 
     React.useEffect(() => {
+        if (!storedPresets)
+            return;
+
         setPresets([...storedPresets]);
+
+        if (!collapseStateInitialized.current) {
+            setCollapsedIds(new Set(storedPresets.map(preset => preset.id)));
+            collapseStateInitialized.current = true;
+        }
     }, [storedPresets]);
 
 
