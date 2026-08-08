@@ -133,6 +133,16 @@
   font-weight: 600;
 }
 
+.bs-dev-channel-prompt {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.bs-dev-channel-prompt strong {
+    color: var(--header-primary);
+}
+
 .bs-about {
   position: relative;
   display: grid;
