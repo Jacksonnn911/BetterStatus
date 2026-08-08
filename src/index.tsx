@@ -10,7 +10,7 @@ import { Link } from "@components/Link";
 import { relaunch } from "@utils/native";
 import definePlugin from "@utils/types";
 
-import { getPresets, getUpdateChannel, getUpdateCheckFrequency, rememberSavedStatus, savePresets, settings } from "./Settings";
+import { getPresets, getUpdateChannel, getUpdateCheckFrequency, rememberSavedStatus, savePresets, settings, showUpdateFailureNotification } from "./Settings";
 import { startStatusHistoryModalObserver, stopStatusHistoryModalObserver } from "./StatusHistory";
 import type { StatusPreset } from "./types";
 
@@ -82,12 +82,7 @@ function runAutomaticUpdateCheck() {
                     window.setTimeout(relaunch, 1_500);
             } else if (result.status === "failed") {
                 retryAt = result.retryAt;
-                showNotification({
-                    title: result.retryAt
-                        ? "BetterStatus update checks paused"
-                        : "BetterStatus update failed",
-                    body: result.error ?? "Run the BetterStatus installer to update manually."
-                });
+                showUpdateFailureNotification(result);
             }
         })
         .finally(() => {

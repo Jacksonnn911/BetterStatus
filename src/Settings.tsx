@@ -48,6 +48,30 @@ interface UpdateInfo {
   status: "current" | "updateAvailable" | "restartRequired";
 }
 
+interface UpdateFailure {
+  error?: string;
+  retryAt?: number;
+}
+
+let lastRateLimitNotificationRetryAt = 0;
+
+export function showUpdateFailureNotification(failure: UpdateFailure) {
+  const isRateLimited = failure.retryAt !== undefined;
+  if (isRateLimited && failure.retryAt === lastRateLimitNotificationRetryAt)
+    return;
+
+  if (isRateLimited)
+    lastRateLimitNotificationRetryAt = failure.retryAt!;
+
+  showNotification({
+    title: isRateLimited
+      ? "BetterStatus update checks paused"
+      : "BetterStatus update failed",
+    body: failure.error ?? "Run the BetterStatus installer to update manually.",
+    noPersist: isRateLimited,
+  });
+}
+
 type BackupPlatform = "macos" | "windows" | "linux" | "unknown";
 
 interface BetterStatusBackup {
@@ -421,12 +445,7 @@ export default function SettingsComponent() {
         if (retryAt !== undefined)
           Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(false, retryAt);
         setUpdateStatus(`Update failed: ${message}`);
-        showNotification({
-          title: retryAt !== undefined
-            ? "BetterStatus update checks paused"
-            : "BetterStatus update failed",
-          body: message,
-        });
+        showUpdateFailureNotification(result);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
