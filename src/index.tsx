@@ -6,6 +6,7 @@
 
 import { showNotification } from "@api/Notifications";
 import { getUserSettingLazy } from "@api/UserSettings";
+import { Link } from "@components/Link";
 import { Paragraph } from "@components/Paragraph";
 import definePlugin from "@utils/types";
 
@@ -77,11 +78,11 @@ export default definePlugin({
     authors: [
         {
             name: "nik_jandaaa27829 (Jacksonnn911)",
-            id: 0n
+            id: 523075512579522562n
         },
         {
             name: "misaliba (qtmisaliba)",
-            id: 0n
+            id: 686582690597568520n
         }
     ],
 
@@ -90,14 +91,20 @@ export default definePlugin({
     settings,
     settingsAboutComponent() {
         return (
-            <Paragraph>
-                Plugin by nik_jandaaa27829 (Jacksonnn911) &amp; misaliba (qtmisaliba). {" "}
-                <a href="https://github.com/Jacksonnn911/BetterStatus" target="_blank" rel="noreferrer">GitHub</a>
-                {" · "}
-                <a href="https://github.com/Jacksonnn911/BetterStatus#usage" target="_blank" rel="noreferrer">Documentation</a>
-                {" · "}
-                <a href="https://github.com/Jacksonnn911/BetterStatus/issues/new" target="_blank" rel="noreferrer">Report an issue</a>
-            </Paragraph>
+            <>
+                <Paragraph>
+                    BetterStatus provides configurable Discord status presets with system-wide hotkeys,
+                    including fixed and memory-based status behavior.
+                </Paragraph>
+                <Paragraph>
+                    Project resources: {" "}
+                    <Link href="https://github.com/Jacksonnn911/BetterStatus">Source code</Link>
+                    {" · "}
+                    <Link href="https://github.com/Jacksonnn911/BetterStatus#usage">Documentation</Link>
+                    {" · "}
+                    <Link href="https://github.com/Jacksonnn911/BetterStatus/issues/new">Report an issue</Link>
+                </Paragraph>
+            </>
         );
     },
 
