@@ -1,7 +1,7 @@
 {
   "version": 1,
   "channel": "dev",
-  "commit": "5c0777d7cd1c7f6933eab535e33ade60e9cde305",
+  "commit": "43709e8c56f53a4783628b1b07b782b6050d2303",
   "files": [
     {
       "source": "src/index.tsx",
@@ -11,7 +11,7 @@
     {
       "source": "src/native.ts",
       "target": "native.ts",
-      "sha256": "cc671dc2be0d9a7c2921f79105908c6513c45de6e9d7badb5fb53a629cd4fd0c"
+      "sha256": "e1fdd4ddd3ccff20805802f12e8310126296e4c1451c8688e5dc7a2c80f25fa4"
     },
     {
       "source": "README.md",
