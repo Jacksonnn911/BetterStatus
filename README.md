@@ -1,20 +1,76 @@
-# BetterStatus
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/assets/hero.svg" alt="BetterStatus — Your Discord presence, one shortcut away" width="100%">
+</p>
 
-BetterStatus is a custom [Vencord](https://vencord.dev/) plugin that lets you create Discord status presets and activate them with system-wide keyboard shortcuts—even while Discord is in the background.
+<p align="center">
+  <a href="https://github.com/Jacksonnn911/BetterStatus/actions/workflows/release.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/Jacksonnn911/BetterStatus/release.yml?branch=main&amp;style=for-the-badge&amp;logo=githubactions&amp;logoColor=white&amp;label=Build"></a>
+  <a href="https://github.com/Jacksonnn911/BetterStatus/releases/tag/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Jacksonnn911/BetterStatus?display_name=tag&amp;style=for-the-badge&amp;logo=github&amp;label=Release"></a>
+  <img alt="Node 22 and 24" src="https://img.shields.io/badge/Node-22%20%7C%2024-5FA04E?style=for-the-badge&amp;logo=nodedotjs&amp;logoColor=white">
+  <img alt="macOS, Linux and Windows" src="https://img.shields.io/badge/macOS%20%7C%20Linux%20%7C%20Windows-5865F2?style=for-the-badge&amp;logo=discord&amp;logoColor=white">
+</p>
 
-Authors: [Jacksonnn911](https://github.com/Jacksonnn911) (`nik_jandaaa27829` on Discord) and [misaliba](https://github.com/misaliba) (`qtmisaliba` on Discord).
+<p align="center">
+  <strong>A polished Vencord plugin for switching Discord custom statuses and presence from anywhere.</strong><br>
+  Build unlimited presets, bind global shortcuts, remember changing statuses, and stay updated automatically.
+</p>
 
-Each preset can define:
+<p align="center">
+  <a href="#-install-in-one-command">Install</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#usage">Usage</a> ·
+  <a href="#troubleshooting">Troubleshooting</a> ·
+  <a href="https://github.com/Jacksonnn911/BetterStatus/releases/tag/latest">Latest release</a>
+</p>
 
-- A display name
-- A `Fixed` or `Memory` behavior
-- Custom status text
-- A Discord presence (`Online`, `Idle`, `Do Not Disturb`, or `Invisible`)
-- A global keyboard shortcut
-- Whether the preset is enabled
+---
+
+## ✨ Install in one command
+
+No Node.js knowledge, Git setup, or manual Vencord patching required.
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**macOS / Linux**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/install.sh | bash
+```
+
+</td>
+<td width="50%" valign="top">
+
+**Windows PowerShell**
+
+```powershell
+irm https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/install.ps1 | iex
+```
+
+</td>
+</tr>
+</table>
+
+The guided installer detects your tools, reuses existing Vencord source code, builds BetterStatus, and patches Discord with simple prompts.
 
 > [!IMPORTANT]
-> This is a third-party user plugin. Custom plugins require building Vencord from source and are not supported by the official Vencord support team.
+> BetterStatus is a third-party user plugin. Custom plugins require a source build and are not supported by the official Vencord support team.
+
+## Features
+
+| | Feature | What it gives you |
+| --- | --- | --- |
+| ⚡ | **Global shortcuts** | Switch status from any application without opening Discord. |
+| ♾️ | **Unlimited presets** | Create focused profiles for work, gaming, sleep, streaming, or anything else. |
+| 🧠 | **Fixed + Memory modes** | Apply exact text every time or remember your most recently used custom status. |
+| 🟢 | **Full presence control** | Set Online, Idle, Do Not Disturb, or Invisible alongside custom status text. |
+| 🎛️ | **Polished dashboard** | Collapse, duplicate, activate, enable, and edit presets from a responsive interface. |
+| 🔄 | **Optional auto updates** | Download successful releases, rebuild safely, and roll back automatically on failure. |
+| 🧰 | **All-in-one installer** | Detect Node, Bun, Yarn, and pnpm; acquire missing build tools privately when needed. |
+
+<p align="center">
+  Crafted by <a href="https://github.com/Jacksonnn911"><strong>Jacksonnn911</strong></a> (<code>nik_jandaaa27829</code>) and <a href="https://github.com/misaliba"><strong>misaliba</strong></a> (<code>qtmisaliba</code>).
+</p>
 
 ## Requirements
 
@@ -26,9 +82,9 @@ The easy installer handles Node.js, pnpm, Vencord source code, and the plugin fo
 
 The plugin uses Electron's native global shortcut API, so browser and userscript builds are not supported.
 
-## Installation
+## Installation details
 
-### One-command installation
+### What the guided installer does
 
 The guided installer is designed for non-technical users. It checks the computer, explains what it needs, and asks simple yes/no questions before downloading anything. It can:
 
@@ -43,19 +99,7 @@ Files managed by the installer are kept inside your user data directory, not ins
 
 Before downloading Vencord, the installer searches the current directory and common folders such as `Desktop`, `Documents`, `Downloads`, `Projects`, `Developer`, `dev`, `code`, and `repos`. An existing Vencord source checkout is reused automatically. BetterStatus is always installed as a user plugin at `Vencord/src/userplugins/betterStatus`.
 
-**macOS or Linux:**
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/install.sh | bash
-```
-
-**Windows PowerShell:**
-
-```powershell
-irm https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/main/install.ps1 | iex
-```
-
-Answer the prompts and choose Discord Desktop or Vesktop at the end. No knowledge of Node.js or package managers is required.
+Use the [one-command installer](#-install-in-one-command), answer the prompts, and choose Discord Desktop or Vesktop at the end. No knowledge of Node.js or package managers is required.
 
 For Discord Desktop, the installer uses Vencord's CLI with `--install` and an automatically selected location; it does not open the Vencord installer GUI. If Discord is running, the installer closes it before patching and relaunches it after a successful patch. Discord remains closed if it was already closed before installation.
 
