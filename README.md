@@ -12,7 +12,7 @@
 <p align="center">
   <strong>A polished Vencord plugin for switching Discord custom statuses and presence from anywhere.</strong><br>
   Build unlimited presets, bind global shortcuts, remember changing statuses, and stay updated automatically.<br><br>
-  Made with care by <a href="https://github.com/Jacksonnn911"><strong>Jacksonnn911</strong></a> (<code>nik_jandaaa27829</code>) &amp; <a href="https://github.com/qtmisaliba"><strong>misaliba</strong></a> (<code>qtmisaliba</code>).
+  Made with care by <a href="https://github.com/Jacksonnn911"><strong>Jacksonnn911</strong></a> (<code>nik_jandaaa27829</code>) &amp; <a href="https://github.com/qtmisaliba"><strong>qtmisaliba</strong></a> (<code>qtmisaliba</code>).
 </p>
 
 <p align="center">
