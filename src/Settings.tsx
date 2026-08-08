@@ -11,7 +11,9 @@ import { FormSwitch } from "@components/FormSwitch";
 import { OptionType, PluginNative } from "@utils/types";
 import { Button, Forms, React, Select, TextInput } from "@webpack/common";
 
-import type { PresenceStatus, PresetType, StatusPreset } from "./types";
+import { normalizeSavedStatuses, rememberStatusInLibrary } from "./savedStatuses";
+import { StatusSwitcher } from "./StatusSwitcher";
+import type { PresetType, SavedStatus, StatusPreset } from "./types";
 
 const Native = VencordNative.pluginHelpers.BetterStatus as PluginNative<typeof import("./native")>;
 
@@ -37,25 +39,6 @@ const DEFAULT_PRESETS: StatusPreset[] = [
 ];
 
 
-const PRESENCE_OPTIONS = [
-    {
-        label: "Online",
-        value: "online"
-    },
-    {
-        label: "Idle",
-        value: "idle"
-    },
-    {
-        label: "Do Not Disturb",
-        value: "dnd"
-    },
-    {
-        label: "Invisible",
-        value: "invisible"
-    }
-];
-
 const TYPE_OPTIONS = [
     {
         label: "Fixed",
@@ -70,7 +53,6 @@ const TYPE_OPTIONS = [
 function createId() {
     return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
-
 
 function eventToAccelerator(event: KeyboardEvent): string | null {
     const ignored = [
@@ -148,6 +130,7 @@ export default function SettingsComponent() {
     const [recordingId, setRecordingId] =
         React.useState<string | null>(null);
     const [presets, setPresets] = React.useState<StatusPreset[]>(() => [...getPresets()]);
+    const [savedStatuses, setSavedStatuses] = React.useState<SavedStatus[]>(() => [...getSavedStatuses()]);
     const [collapsedIds, setCollapsedIds] =
         React.useState<Set<string>>(() => new Set(presets.map(preset => preset.id)));
     const [searchQuery, setSearchQuery] = React.useState("");
@@ -156,6 +139,26 @@ export default function SettingsComponent() {
     async function commit(next: StatusPreset[]) {
         setPresets(next);
         await savePresets(next);
+    }
+
+    function commitSavedStatuses(next: SavedStatus[]) {
+        const normalized = normalizeSavedStatuses(next);
+        setSavedStatuses(normalized);
+        settings.store.savedStatuses = normalized;
+    }
+
+    function saveStatus(value: string) {
+        commitSavedStatuses(rememberStatusInLibrary(savedStatuses, value));
+    }
+
+    function toggleFavorite(id: string) {
+        commitSavedStatuses(savedStatuses.map(status => status.id === id
+            ? { ...status, favorite: !status.favorite }
+            : status));
+    }
+
+    function deleteSavedStatus(id: string) {
+        commitSavedStatuses(savedStatuses.filter(status => status.id !== id));
     }
 
 
@@ -430,16 +433,24 @@ export default function SettingsComponent() {
                                         />
                                     </label>
 
-                                    <label className="bs-field">
+                                    <div className="bs-field">
                                         <span>Presence</span>
-                                        <Select
-                                            options={PRESENCE_OPTIONS}
-                                            select={presence => updatePreset(preset.id, { presence: presence as PresenceStatus })}
-                                            serialize={value => value}
-                                            isSelected={value => value === preset.presence}
-                                            closeOnSelect
+                                        <StatusSwitcher
+                                            presence={preset.presence}
+                                            statusText={preset.type === "memory" ? preset.rememberedText ?? preset.text : preset.text}
+                                            savedStatuses={savedStatuses}
+                                            onPresenceChange={presence => updatePreset(preset.id, { presence })}
+                                            onSaveCurrentStatus={() => saveStatus(preset.type === "memory" ? preset.rememberedText ?? preset.text : preset.text)}
+                                            onSelectSavedStatus={status => {
+                                                updatePreset(preset.id, preset.type === "memory"
+                                                    ? { text: status.text, rememberedText: status.text }
+                                                    : { text: status.text });
+                                                saveStatus(status.text);
+                                            }}
+                                            onToggleFavorite={toggleFavorite}
+                                            onDeleteSavedStatus={deleteSavedStatus}
                                         />
-                                    </label>
+                                    </div>
 
                                     <label className="bs-field">
                                         <span>Behavior</span>
@@ -511,6 +522,10 @@ export const settings = definePluginSettings({
         type: OptionType.CUSTOM,
         default: DEFAULT_PRESETS
     },
+    savedStatuses: {
+        type: OptionType.CUSTOM,
+        default: [] as SavedStatus[]
+    },
     presetEditor: {
         type: OptionType.COMPONENT,
         component: SettingsComponent
@@ -529,6 +544,20 @@ export function getPresets(): StatusPreset[] {
         settings.store.presets = normalized;
 
     return normalized;
+}
+
+export function getSavedStatuses(): SavedStatus[] {
+    const normalized = normalizeSavedStatuses(settings.store.savedStatuses);
+
+    if (JSON.stringify(normalized) !== JSON.stringify(settings.store.savedStatuses))
+        settings.store.savedStatuses = normalized;
+
+    return normalized;
+}
+
+export function rememberSavedStatus(text: string) {
+    const next = rememberStatusInLibrary(getSavedStatuses(), text);
+    settings.store.savedStatuses = next;
 }
 
 export async function savePresets(presets: StatusPreset[]) {

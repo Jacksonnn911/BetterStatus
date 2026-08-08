@@ -58,12 +58,13 @@ The guided installer detects your tools, reuses existing Vencord source code, bu
 | ♾️ | **Unlimited presets** | Create focused profiles for work, gaming, sleep, streaming, or anything else. |
 | 🧠 | **Fixed + Memory modes** | Apply exact text every time or remember your most recently used custom status. |
 | 🟢 | **Full presence control** | Set Online, Idle, Do Not Disturb, or Invisible alongside custom status text. |
+| ⭐ | **Saved status library** | Recall up to 1,000 previously applied statuses and pin favorites above recent history. |
 | 🎛️ | **Polished dashboard** | Collapse, duplicate, activate, enable, and edit presets from a responsive interface. |
 | 🔄 | **Optional auto updates** | Download successful releases, rebuild safely, and roll back automatically on failure. |
 | 🧰 | **All-in-one installer** | Detect Node, Bun, Yarn, and pnpm; acquire missing build tools privately when needed. |
 
 <p align="center">
-  Crafted by <a href="https://github.com/Jacksonnn911"><strong>Jacksonnn911</strong></a> (<code>nik_jandaaa27829</code>) and <a href="https://github.com/misaliba"><strong>misaliba</strong></a> (<code>qtmisaliba</code>).
+  Crafted by <a href="https://github.com/Jacksonnn911"><strong>Jacksonnn911</strong></a> (<code>nik_jandaaa27829</code>) and <a href="https://github.com/qtmisaliba"><strong>qtmisaliba</strong></a> (<code>qtmisaliba</code>).
 </p>
 
 ## Requirements
@@ -162,7 +163,7 @@ Open **User Settings > Vencord > Plugins**, find **BetterStatus**, and click the
 
 To create a preset:
 
-1. Click **+ Add Status**.
+1. Click **+ Add preset**.
 2. Enter a preset name.
 3. Select **Fixed** or **Memory** behavior.
 4. Enter the initial custom status and select a presence.
@@ -174,6 +175,12 @@ Changes are saved immediately. Press the shortcut from any application to activa
 To receive new BetterStatus releases automatically, enable **Auto Update** at the top of the plugin settings. BetterStatus checks GitHub when Discord starts, downloads only files from the latest successful rolling release, and rebuilds the existing Vencord source installation. The currently running Discord session is not interrupted; restart Discord when the update notification appears. Auto Update is off by default, and the one-command installer remains the manual recovery/update method.
 
 Press `Escape` while recording to cancel. A preset can be temporarily disabled with its **Enabled** switch or permanently removed with **Delete Status**.
+
+### Presence and saved statuses
+
+The presence field uses a Discord-style switcher with the familiar Online, Idle, Do Not Disturb, and Invisible indicators and descriptions. Open **Saved statuses** at the bottom of that switcher to search your history, apply a saved status to the current preset, mark favorites, or delete entries.
+
+BetterStatus remembers non-empty custom statuses when a preset is activated. Exact duplicates update their usage count and recency instead of creating another entry. Favorites are always listed before recent statuses. The library stores at most 1,000 entries; once full, the oldest non-favorite is replaced. If all 1,000 entries are favorites, BetterStatus keeps them and does not add another status until one is unfavorited or deleted.
 
 ### Fixed and Memory presets
 
@@ -199,7 +206,7 @@ These defaults are designed for macOS. On Windows or Linux—or if the combinati
 
 When Vencord starts the plugin, BetterStatus loads your presets and registers every enabled shortcut through Electron's `globalShortcut` API. When a shortcut is pressed, the native process tells the Vencord renderer which preset to activate. Before switching, the plugin saves the current text for the active Memory preset. It then updates Discord's custom-status and presence settings through Vencord's `UserSettingsAPI`.
 
-Presets are stored through Vencord's typed `definePluginSettings` API. The preset list is a custom persisted option and the editor is an `OptionType.COMPONENT`, so it appears and updates inside Vencord's standard plugin settings modal. Old `StatusHotkeys` settings are migrated with Vencord's supported migration helper. Disabling or deleting a preset immediately rebuilds the registered shortcut list, and disabling the plugin unregisters all of its shortcuts.
+Presets and saved-status history are stored through Vencord's typed `definePluginSettings` API. The preset list and capped saved library are custom persisted options, and the editor is an `OptionType.COMPONENT`, so it appears and updates inside Vencord's standard plugin settings modal. Old `StatusHotkeys` settings are migrated with Vencord's supported migration helper. Disabling or deleting a preset immediately rebuilds the registered shortcut list, and disabling the plugin unregisters all of its shortcuts.
 
 Discord state is read and written through Vencord's `UserSettingsAPI`; the plugin declares that dependency so Vencord enables it automatically. The small `native.ts` helper runs in Electron's main process only to register system-wide shortcuts. This follows Vencord's documented user-plugin layout: `index.tsx`, `native.ts`, and the plugin `README.md` live together in `src/userplugins/betterStatus` after installation.
 
@@ -274,6 +281,8 @@ The main files are:
 
 - `src/index.tsx` — plugin lifecycle, preset storage, and Discord setting updates
 - `src/Settings.tsx` — preset editor and shortcut recorder
+- `src/StatusSwitcher.tsx` — Discord-style presence menu and saved-status library
+- `src/savedStatuses.ts` — saved-history normalization, deduplication, and retention policy
 - `src/native.ts` — Electron global shortcut registration
 - `src/types.ts` — shared preset and presence types
 

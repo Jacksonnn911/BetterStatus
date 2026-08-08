@@ -191,7 +191,7 @@ tar -xzf "$temporary_dir/better-status.tar.gz" -C "$temporary_dir/plugin"
 
 plugin_dir="$vencord_dir/src/userplugins/$PLUGIN_NAME"
 mkdir -p "$plugin_dir"
-for plugin_file in index.tsx Settings.tsx native.ts types.ts README.md; do
+for plugin_file in index.tsx Settings.tsx StatusSwitcher.tsx savedStatuses.ts native.ts types.ts README.md; do
     cp "$temporary_dir/plugin/$plugin_file" "$plugin_dir/$plugin_file"
 done
 rm -f "$plugin_dir/styles.css"

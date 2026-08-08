@@ -18,6 +18,8 @@ const REPOSITORY = "Jacksonnn911/BetterStatus";
 const UPDATE_FILES = [
     { localName: "index.tsx", remotePath: "src/index.tsx" },
     { localName: "Settings.tsx", remotePath: "src/Settings.tsx" },
+    { localName: "StatusSwitcher.tsx", remotePath: "src/StatusSwitcher.tsx" },
+    { localName: "savedStatuses.ts", remotePath: "src/savedStatuses.ts" },
     { localName: "native.ts", remotePath: "src/native.ts" },
     { localName: "types.ts", remotePath: "src/types.ts" },
     { localName: "styles.css", remotePath: "src/styles.css" },
@@ -90,13 +92,16 @@ async function performUpdate(): Promise<UpdateResult> {
 
     const stagingDir = join(PLUGIN_SOURCE_DIR, `.update-${Date.now()}`);
     const backupDir = join(stagingDir, "backup");
+    const originalFiles = new Set<string>();
     await mkdir(backupDir, { recursive: true });
 
     try {
         for (const { localName, remotePath } of UPDATE_FILES) {
             const currentFile = join(PLUGIN_SOURCE_DIR, localName);
-            if (await exists(currentFile))
+            if (await exists(currentFile)) {
+                originalFiles.add(localName);
                 await copyFile(currentFile, join(backupDir, localName));
+            }
 
             const contents = await fetchText(`https://raw.githubusercontent.com/${REPOSITORY}/${version}/${remotePath}`);
             await writeFile(join(stagingDir, localName), contents, "utf8");
@@ -128,6 +133,8 @@ async function performUpdate(): Promise<UpdateResult> {
             const backup = join(backupDir, localName);
             if (await exists(backup))
                 await copyFile(backup, join(PLUGIN_SOURCE_DIR, localName));
+            else if (!originalFiles.has(localName))
+                await rm(join(PLUGIN_SOURCE_DIR, localName), { force: true });
         }
 
         return {

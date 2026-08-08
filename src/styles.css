@@ -735,13 +735,17 @@
 
 .bs-preset-card {
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     border: 1px solid var(--bs-card-border);
     border-radius: 15px;
     background:
         linear-gradient(145deg, color-mix(in srgb, var(--bs-presence-color) 3%, var(--background-secondary)), var(--background-secondary));
     box-shadow: 0 10px 28px rgb(0 0 0 / 12%), inset 0 1px 0 rgb(255 255 255 / 3%);
     transition: border-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease, transform 150ms ease;
+}
+
+.bs-preset-card:focus-within {
+    z-index: 20;
 }
 
 .bs-preset-card::before {
@@ -959,6 +963,427 @@
 .bs-field-status,
 .bs-field-hotkey {
     grid-column: 1 / -1;
+}
+
+/* Discord-style presence and saved-status switcher */
+.bs-status-switcher {
+    position: relative;
+    text-align: left;
+    text-transform: none;
+}
+
+.bs-status-trigger {
+    display: grid;
+    width: 100%;
+    min-height: 54px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 12px;
+    border: 1px solid var(--input-border, var(--background-modifier-accent));
+    border-radius: 8px;
+    color: var(--interactive-normal);
+    background: var(--input-background, var(--background-tertiary));
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.bs-status-trigger:hover,
+.bs-status-trigger[aria-expanded="true"] {
+    border-color: var(--interactive-muted);
+    color: var(--interactive-hover);
+    background: var(--background-modifier-hover);
+}
+
+.bs-status-trigger:focus-visible {
+    border-color: var(--brand-500);
+    outline: 2px solid color-mix(in srgb, var(--brand-500) 40%, transparent);
+    outline-offset: 1px;
+}
+
+.bs-status-trigger > svg,
+.bs-status-menu-item > svg {
+    color: var(--interactive-normal);
+}
+
+.bs-status-trigger-copy,
+.bs-status-item-copy {
+    display: flex;
+    overflow: hidden;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.bs-status-trigger-copy strong,
+.bs-status-item-copy strong {
+    overflow: hidden;
+    color: var(--header-primary);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bs-status-trigger-copy small,
+.bs-status-item-copy small {
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bs-status-indicator {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+}
+
+.bs-status-indicator-online {
+    background: var(--green-360);
+}
+
+.bs-status-indicator-idle {
+    overflow: hidden;
+    background: var(--yellow-300);
+}
+
+.bs-status-indicator-idle::after {
+    position: absolute;
+    top: -4px;
+    left: 6px;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    background: var(--background-floating);
+    content: "";
+}
+
+.bs-status-trigger .bs-status-indicator-idle::after {
+    background: var(--input-background, var(--background-tertiary));
+}
+
+.bs-status-trigger:hover .bs-status-indicator-idle::after,
+.bs-status-trigger[aria-expanded="true"] .bs-status-indicator-idle::after {
+    background: var(--background-modifier-hover);
+}
+
+.bs-status-indicator-dnd {
+    background: var(--red-400);
+}
+
+.bs-status-indicator-dnd::after {
+    position: absolute;
+    top: 8px;
+    right: 4px;
+    left: 4px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--background-floating);
+    content: "";
+}
+
+.bs-status-trigger .bs-status-indicator-dnd::after {
+    background: var(--input-background, var(--background-tertiary));
+}
+
+.bs-status-trigger:hover .bs-status-indicator-dnd::after,
+.bs-status-trigger[aria-expanded="true"] .bs-status-indicator-dnd::after {
+    background: var(--background-modifier-hover);
+}
+
+.bs-status-indicator-invisible {
+    border: 5px solid var(--interactive-muted);
+    background: transparent;
+}
+
+.bs-status-menu {
+    position: absolute;
+    z-index: 100;
+    top: calc(100% + 7px);
+    right: 0;
+    overflow: hidden;
+    width: min(390px, calc(100vw - 48px));
+    padding: 8px;
+    border: 1px solid var(--background-modifier-accent);
+    border-radius: 12px;
+    color: var(--interactive-normal);
+    background: var(--background-floating);
+    box-shadow: 0 16px 40px rgb(0 0 0 / 40%), 0 0 0 1px rgb(0 0 0 / 12%);
+}
+
+.bs-status-menu-label {
+    padding: 5px 10px 7px;
+    color: var(--channels-default);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.bs-status-menu-item {
+    display: grid;
+    width: 100%;
+    min-height: 54px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 13px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 7px;
+    color: var(--interactive-normal);
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.bs-status-menu-item:hover,
+.bs-status-menu-item:focus-visible {
+    color: var(--interactive-hover);
+    background: var(--background-modifier-hover);
+    outline: none;
+}
+
+.bs-status-menu-item-selected {
+    background: color-mix(in srgb, var(--brand-500) 10%, transparent);
+}
+
+.bs-status-check {
+    display: grid;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    color: white;
+    background: var(--brand-500);
+    font-size: 12px;
+    font-weight: 800;
+    place-items: center;
+}
+
+.bs-status-menu-divider {
+    height: 1px;
+    margin: 7px 8px;
+    background: var(--background-modifier-accent);
+}
+
+.bs-saved-status-icon {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    color: var(--brand-360);
+    place-items: center;
+}
+
+.bs-saved-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 3px 9px;
+    border-bottom: 1px solid var(--background-modifier-accent);
+}
+
+.bs-saved-back {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    color: var(--interactive-normal);
+    background: transparent;
+    cursor: pointer;
+    place-items: center;
+}
+
+.bs-saved-back svg {
+    transform: rotate(180deg);
+}
+
+.bs-saved-back:hover {
+    color: var(--interactive-hover);
+    background: var(--background-modifier-hover);
+}
+
+.bs-saved-header > div {
+    display: flex;
+    flex: 1;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.bs-saved-header strong {
+    color: var(--header-primary);
+    font-size: 15px;
+}
+
+.bs-saved-header small {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.bs-saved-current {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    margin: 9px 0 8px;
+    padding: 9px 10px;
+    border: 1px solid color-mix(in srgb, var(--brand-500) 18%, var(--background-modifier-accent));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--brand-500) 6%, transparent);
+}
+
+.bs-saved-current > span {
+    overflow: hidden;
+    color: var(--header-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bs-save-current {
+    padding: 5px 8px;
+    border: 0;
+    border-radius: 5px;
+    color: white;
+    background: var(--brand-500);
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.bs-save-current:disabled {
+    color: var(--interactive-muted);
+    background: var(--background-modifier-accent);
+    cursor: not-allowed;
+}
+
+.bs-saved-search {
+    margin-bottom: 8px;
+}
+
+.bs-saved-list {
+    display: flex;
+    overflow-y: auto;
+    max-height: 310px;
+    flex-direction: column;
+    gap: 2px;
+    scrollbar-gutter: stable;
+}
+
+.bs-saved-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    border-radius: 7px;
+}
+
+.bs-saved-row:hover,
+.bs-saved-row:focus-within {
+    background: var(--background-modifier-hover);
+}
+
+.bs-saved-select {
+    display: flex;
+    overflow: hidden;
+    min-height: 48px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 7px 9px;
+    border: 0;
+    color: var(--header-primary);
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.bs-saved-select > span,
+.bs-saved-select > small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bs-saved-select > span {
+    font-size: 13px;
+    font-weight: 550;
+}
+
+.bs-saved-select > small {
+    color: var(--text-muted);
+    font-size: 10px;
+}
+
+.bs-saved-action {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    color: var(--interactive-muted);
+    background: transparent;
+    cursor: pointer;
+    place-items: center;
+}
+
+.bs-saved-action:hover {
+    color: var(--interactive-hover);
+    background: var(--background-modifier-selected);
+}
+
+.bs-saved-favorite-active {
+    color: var(--yellow-300);
+}
+
+.bs-saved-delete:hover {
+    color: var(--red-400);
+}
+
+.bs-saved-empty {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: 4px;
+    padding: 30px 14px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.bs-saved-empty-icon {
+    margin-bottom: 5px;
+    color: var(--interactive-muted);
+}
+
+.bs-saved-empty strong {
+    color: var(--header-secondary);
+    font-size: 13px;
+}
+
+.bs-saved-empty span,
+.bs-saved-limit {
+    font-size: 11px;
+}
+
+.bs-saved-limit {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    color: var(--yellow-300);
+    background: color-mix(in srgb, var(--yellow-300) 8%, transparent);
+    line-height: 1.35;
 }
 
 .bs-hotkey {

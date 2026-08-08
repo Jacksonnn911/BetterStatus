@@ -17,3 +17,12 @@ export interface StatusPreset {
     hotkey: string;
     enabled: boolean;
 }
+
+export interface SavedStatus {
+    id: string;
+    text: string;
+    favorite: boolean;
+    createdAt: number;
+    lastUsedAt: number;
+    useCount: number;
+}

@@ -10,7 +10,7 @@ import { Link } from "@components/Link";
 import { Paragraph } from "@components/Paragraph";
 import definePlugin from "@utils/types";
 
-import { getPresets, savePresets, settings } from "./Settings";
+import { getPresets, rememberSavedStatus, savePresets, settings } from "./Settings";
 import type { StatusPreset } from "./types";
 
 interface CustomStatus {
@@ -42,6 +42,7 @@ async function setDiscordState(preset: StatusPreset) {
     });
 
     await StatusSettings.updateSetting(preset.presence);
+    rememberSavedStatus(text);
 }
 
 
@@ -60,6 +61,7 @@ async function rememberActivePreset() {
     const currentStatus = CustomStatusSettings.getSetting();
     const rememberedText = currentStatus?.text ?? "";
 
+    rememberSavedStatus(rememberedText);
     await savePresets(presets.map(preset =>
         preset.id === activePresetId
             ? { ...preset, rememberedText }
