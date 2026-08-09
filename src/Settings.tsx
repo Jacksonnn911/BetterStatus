@@ -1751,7 +1751,7 @@ export default function SettingsComponent() {
                         <div className="bs-timepoint-title">
                           <span>END</span>
                           <div className="bs-end-time-heading">
-                            {schedule.endsAt && <strong>{timeInputValue(schedule.endsAt)}</strong>}
+                            {schedule.endsAt && <strong>Ends at {timeInputValue(schedule.endsAt)}</strong>}
                             <FormSwitch title="Use end time" value={Boolean(schedule.endsAt)} onChange={enabled => updateSchedule(schedule.id, enabled
                               ? { endsAt: endTime, endBehavior: schedule.endBehavior === "keep" ? "restore" : schedule.endBehavior }
                               : { endsAt: undefined, endBehavior: "keep" })} hideBorder />
