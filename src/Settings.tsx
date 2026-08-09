@@ -995,10 +995,10 @@ export default function SettingsComponent() {
 
   async function resyncFromServer() {
     setSyncBusy(true);
-    setSyncStatus("Downloading the latest server revision…");
+    setSyncStatus("Reconciling local and server changes…");
     try {
       await pluginRuntime().resyncCloudSync();
-      setSyncStatus("Synchronized from server · listening for live updates");
+      setSyncStatus("Synchronized with server · listening for live updates");
     } catch (error) {
       setSyncStatus(error instanceof Error ? error.message : String(error));
     } finally {
@@ -1639,7 +1639,7 @@ export default function SettingsComponent() {
             {syncConnected ? (
               <>
                 <button type="button" className="bs-secondary-button" disabled={syncBusy} onClick={resyncFromServer}>
-                  {syncBusy ? "Synchronizing…" : "Resync from server"}
+                  {syncBusy ? "Synchronizing…" : "Resync now"}
                 </button>
                 <button type="button" className="bs-danger-button" disabled={syncBusy} onClick={disconnectSync}>Disconnect</button>
               </>

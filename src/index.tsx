@@ -39,6 +39,7 @@ let cloudSyncRevision = 0;
 let cloudSyncBaseDocument: SyncDocument | undefined;
 let cloudSyncObservedDocument: SyncDocument | undefined;
 let cloudSyncUserId = "";
+let cloudSyncServer = "";
 let cloudSyncOperation = Promise.resolve();
 let cloudSyncGeneration = 0;
 let cloudSyncForcePush = false;
@@ -431,6 +432,7 @@ function stopCloudSync() {
     cloudSyncBaseDocument = undefined;
     cloudSyncObservedDocument = undefined;
     cloudSyncUserId = "";
+    cloudSyncServer = "";
     cloudSyncForcePush = false;
     cloudSyncLocked = false;
 }
@@ -537,20 +539,23 @@ async function receiveCloudSnapshot(snapshot: { revision: number; document: unkn
     await enqueueCloudOperation(() => reconcileCloudSnapshot(snapshot));
 }
 
-async function pullCloudChanges() {
+async function pullCloudChanges(forceReconcile = false) {
     await enqueueCloudOperation(async () => {
         const snapshot = await VencordNative.pluginHelpers.BetterStatus.pullCloudSync(getSyncServerURL());
-        await reconcileCloudSnapshot(snapshot);
+        await reconcileCloudSnapshot(snapshot, false, forceReconcile);
     });
 }
 
-async function configureCloudSync(forcePull = false) {
+async function configureCloudSync() {
+    const requestedServer = getSyncServerURL();
+    if (settings.store.syncEnabled && cloudSyncUserId && cloudSyncServer === requestedServer && cloudSyncTimer !== undefined)
+        return;
     stopCloudSync();
     if (!settings.store.syncEnabled) return;
     try {
-        const server = getSyncServerURL();
+        const server = requestedServer;
         const savedState = settings.store.cloudSyncState;
-        const preferRemote = forcePull || settings.store.cloudSyncPullOnConnect === true;
+        const preferRemote = settings.store.cloudSyncPullOnConnect === true;
         settings.store.cloudSyncPullOnConnect = false;
         const result = await VencordNative.pluginHelpers.BetterStatus.startCloudSync(getSyncServerURL());
         if (!result.connected) {
@@ -558,6 +563,7 @@ async function configureCloudSync(forcePull = false) {
             return;
         }
         cloudSyncUserId = result.discordUserId;
+        cloudSyncServer = server;
         if (savedState?.server === server && savedState.discordUserId === result.discordUserId) {
             cloudSyncRevision = savedState.revision;
             cloudSyncBaseDocument = savedState.document;
@@ -875,7 +881,11 @@ export default definePlugin({
 
     async resyncCloudSync() {
         settings.store.syncEnabled = true;
-        await configureCloudSync(true);
+        if (!cloudSyncUserId) {
+            await configureCloudSync();
+            return;
+        }
+        await pullCloudChanges(true);
     },
 
     async changeCloudEncryptionPassword(password?: string) {
