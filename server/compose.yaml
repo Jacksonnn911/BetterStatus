@@ -8,16 +8,27 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
     volumes:
       - betterstatus-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U betterstatus -d betterstatus"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   sync:
     build: .
     restart: unless-stopped
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       LISTEN_ADDR: :8080
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://betterstatus.misaliba.eu}
-      DATABASE_URL: postgres://betterstatus:${POSTGRES_PASSWORD}@postgres:5432/betterstatus?sslmode=disable
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: betterstatus
+      PGUSER: betterstatus
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      PGSSLMODE: disable
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:?set DISCORD_CLIENT_ID}
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:?set DISCORD_CLIENT_SECRET}
       SESSION_TTL: 4320h

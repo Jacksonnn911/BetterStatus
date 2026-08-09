@@ -42,10 +42,37 @@ Required environment variables:
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string |
+| `DATABASE_URL` | PostgreSQL connection string when not using separate `PG*` fields |
 | `DISCORD_CLIENT_ID` | Discord application ID |
 | `DISCORD_CLIENT_SECRET` | Discord application secret |
 | `PUBLIC_BASE_URL` | Public HTTPS origin used for the OAuth callback |
+
+Docker Compose passes `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, and
+`PGPASSWORD` separately. The server constructs and URL-escapes the connection
+string, so generated passwords may safely contain `@`, `:`, `/`, `+`, `?`, `#`,
+or `%`. `DATABASE_URL` remains supported for external database providers and
+takes precedence when present.
+
+If an `.env` value contains `$`, wrap the whole value in single quotes so Docker
+Compose does not treat it as interpolation, for example:
+
+```dotenv
+POSTGRES_PASSWORD='a-long-password-containing-$-and-@'
+```
+
+Changing `POSTGRES_PASSWORD` does not update an already initialized PostgreSQL
+volume. To preserve existing sync data, change the role password interactively:
+
+```sh
+docker compose up -d postgres
+docker compose exec postgres psql -U betterstatus -d betterstatus
+\password betterstatus
+```
+
+Then enter the new password twice, leave `psql` with `\q`, update `.env`, and
+start the stack. For a brand-new deployment with no data to preserve,
+`docker compose down -v` removes the database volume so the next start initializes
+it from the new password; this permanently deletes existing sync data.
 
 Optional variables are `LISTEN_ADDR` (default `:8080`), `SESSION_TTL` (default
 `4320h`), and `MAX_DOCUMENT_BYTES` (default 4 MiB, including encrypted-envelope
