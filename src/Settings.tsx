@@ -505,6 +505,8 @@ const UPDATE_FREQUENCY_OPTIONS: Array<{
   label: string;
   value: UpdateCheckFrequency;
 }> = [
+  { label: "Every 1 minute", value: 1 },
+  { label: "Every 5 minutes", value: 5 },
   { label: "Every 15 minutes", value: 15 },
   { label: "Every 30 minutes", value: 30 },
   { label: "Every hour", value: 60 },

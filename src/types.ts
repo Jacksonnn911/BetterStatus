@@ -7,7 +7,7 @@
 export type PresenceStatus = "online" | "idle" | "dnd" | "invisible";
 export type PresetType = "fixed" | "memory";
 export type UpdateChannel = "prod" | "dev";
-export type UpdateCheckFrequency = 0 | 15 | 30 | 60 | 180 | 360 | 720 | 1440;
+export type UpdateCheckFrequency = 0 | 1 | 5 | 15 | 30 | 60 | 180 | 360 | 720 | 1440;
 export type ScheduleRepeat = "once" | "daily" | "weekdays" | "weekends" | "weekly" | "custom";
 export type ScheduleStartBehavior = "preset" | "custom";
 export type ScheduleEndBehavior = "keep" | "restore" | "preset" | "custom";
