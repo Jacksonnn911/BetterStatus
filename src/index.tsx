@@ -45,6 +45,7 @@ let cloudSyncGeneration = 0;
 let cloudSyncForcePush = false;
 let applyingCloudSnapshot = false;
 let cloudSyncLocked = false;
+let capturingCloudSyncChanges = false;
 const SCHEDULE_GRACE_MS = 5 * 60_000;
 
 function scheduleRepeatDays(schedule: StatusSchedule) {
@@ -328,7 +329,7 @@ function captureCollectionEvents<T extends { id: string; }>(
 }
 
 /** Convert local mutations into append-only events before talking to the server. */
-function captureLocalSyncEvents() {
+function captureLocalSyncEventsNow() {
     const current = buildSyncDocument();
     const previous = cloudSyncObservedDocument;
     if (!previous) {
@@ -350,6 +351,17 @@ function captureLocalSyncEvents() {
     const observed = materializeSyncEvents({ ...current, events });
     cloudSyncObservedDocument = cloneSyncValue(observed);
     return observed;
+}
+
+function captureLocalSyncEvents() {
+    if (capturingCloudSyncChanges)
+        return cloudSyncObservedDocument ?? buildSyncDocument();
+    capturingCloudSyncChanges = true;
+    try {
+        return captureLocalSyncEventsNow();
+    } finally {
+        capturingCloudSyncChanges = false;
+    }
 }
 
 function mergeSyncValue<T>(base: T, local: T, remote: T): T {
@@ -503,15 +515,13 @@ async function reconcileCloudSnapshot(
 
     const local = captureLocalSyncEvents();
     const base = cloudSyncBaseDocument;
-    const hasLocalChanges = base !== undefined && syncDocumentHash(local) !== syncDocumentHash(base);
-    const preserveUntrackedLocalState = initial && !base && !preferRemote;
+    const baseEventIds = new Set(base?.events?.map(event => event.id) ?? []);
+    const hasLocalChanges = local.events?.some(event => !baseEventIds.has(event.id)) === true;
     const next = preferRemote
         ? remote.document
         : hasLocalChanges
-            ? mergeSyncDocuments(base, local, remote.document)
-            : preserveUntrackedLocalState
-                ? local
-                : remote.document;
+            ? mergeSyncDocuments(base ?? remote.document, local, remote.document)
+            : remote.document;
 
     applyingCloudSnapshot = true;
     try {
@@ -567,10 +577,10 @@ async function configureCloudSync() {
         if (savedState?.server === server && savedState.discordUserId === result.discordUserId) {
             cloudSyncRevision = savedState.revision;
             cloudSyncBaseDocument = savedState.document;
-            cloudSyncObservedDocument = cloneSyncValue(savedState.document);
-        } else {
-            cloudSyncObservedDocument = cloneSyncValue(buildSyncDocument());
         }
+        // Local intent is represented by persisted events. Start observation at
+        // the loaded state so stale values are never invented as fresh edits.
+        cloudSyncObservedDocument = cloneSyncValue(buildSyncDocument());
         if (result.snapshot?.revision > 0)
             await enqueueCloudOperation(() => reconcileCloudSnapshot(result.snapshot, preferRemote, true));
         else {
@@ -886,6 +896,13 @@ export default definePlugin({
             return;
         }
         await pullCloudChanges(true);
+    },
+
+    recordCloudSyncChanges() {
+        if (applyingCloudSnapshot) return;
+        captureLocalSyncEvents();
+        if (settings.store.syncEnabled && cloudSyncUserId)
+            void pushCloudChanges().catch(error => console.error("[BetterStatus] Immediate cloud sync failed", error));
     },
 
     async changeCloudEncryptionPassword(password?: string) {
