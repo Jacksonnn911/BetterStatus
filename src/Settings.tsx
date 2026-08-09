@@ -870,6 +870,7 @@ export default function SettingsComponent() {
     try {
       const status = await Native.authorizeCloudSync(getSyncServerURL());
       settings.store.syncEnabled = true;
+      settings.store.cloudSyncPullOnConnect = true;
       setSyncStatus(`Connected as Discord user ${status.discordUserId} · expires ${new Date(status.expiresAt).toLocaleDateString()}`);
       await pluginRuntime().configureCloudSync();
     } catch (error) {
@@ -1959,6 +1960,13 @@ export const settings = definePluginSettings({
   scheduleEndRuns?: Record<string, number>;
   autoRestartHistory?: number[];
   autoRestartPausedUntil?: number;
+  cloudSyncPullOnConnect?: boolean;
+  cloudSyncState?: {
+    server: string;
+    discordUserId: string;
+    revision: number;
+    document: SyncDocument;
+  };
   schedulePreviousStates?: Record<string, {
     occurrence: number;
     customStatus: {

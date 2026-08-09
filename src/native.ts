@@ -822,10 +822,11 @@ export async function pushCloudSync(
             method: "PUT",
             body: JSON.stringify({ base_revision: baseRevision, document: outgoingDocument })
         });
-        return await response.json() as SyncSnapshot;
+        return { ...await response.json() as SyncSnapshot, conflict: false };
     } catch (error) {
         const conflict = error as Error & { status?: number; current?: SyncSnapshot; };
-        if (conflict.status === 409 && conflict.current) return conflict.current;
+        if (conflict.status === 409 && conflict.current)
+            return { ...conflict.current, conflict: true };
         throw error;
     }
 }
