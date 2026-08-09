@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "commit": "a1708adb933d6e7582d7c106545b00800f9bd8c2",
-  "generatedAt": "2026-08-09T00:58:44.348Z",
+  "commit": "c30b9d75a32c9018ac7bad59068a957308b18558",
+  "generatedAt": "2026-08-09T01:05:50.213Z",
   "files": [
     {
       "source": "src/index.tsx",
       "target": "index.tsx",
-      "sha256": "da6e729bbca3ff8e0df2302041574265bcce8901f2d9bce47ec128000f65b29d"
+      "sha256": "517863d1ccb2953a040c230bc46cb70ff286e30df01be808690c6f95378335d3"
     },
     {
       "source": "src/native.ts",
       "target": "native.ts",
-      "sha256": "8c82335a94142ccba4e0b6a35ab2b2322ecc151a05955f047696d2875a35f65a"
+      "sha256": "9cc33ea1256372ee7d19744a4577fe5c89f9a469aa5e0064cd912270fdbd2bf3"
     },
     {
       "source": "README.md",
@@ -26,7 +26,7 @@
     {
       "source": "src/Settings.tsx",
       "target": "Settings.tsx",
-      "sha256": "4077c93d0910e2c5910e93b0ab01d2c3af75d462b98b1f8fcf6cae36db8d89a6"
+      "sha256": "1f27bd596e9aa79963cb0824d4638a2d36e7415089fe73c370e041f275b7a5be"
     },
     {
       "source": "src/StatusHistory.tsx",
