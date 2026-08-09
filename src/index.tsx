@@ -10,7 +10,7 @@ import { Link } from "@components/Link";
 import { relaunch } from "@utils/native";
 import definePlugin from "@utils/types";
 
-import { applySyncDocument, buildSyncDocument, getPresets, getSchedules, getSyncServerURL, getUpdateChannel, getUpdateCheckFrequency, rememberSavedStatus, savePresets, settings, showUpdateFailureNotification } from "./Settings";
+import { applySyncDocument, buildSyncDocument, getPresets, getSchedules, getSyncServerURL, getUpdateChannel, getUpdateCheckFrequency, rememberSavedStatus, requestSyncPassword, savePresets, settings, showUpdateFailureNotification } from "./Settings";
 import { startStatusHistoryModalObserver, stopStatusHistoryModalObserver } from "./StatusHistory";
 import type { StatusPreset, SyncDocument } from "./types";
 
@@ -37,6 +37,7 @@ let cloudSyncTimer: number | undefined;
 let cloudSyncRevision = 0;
 let cloudSyncHash = "";
 let applyingCloudSnapshot = false;
+let cloudSyncLocked = false;
 const SCHEDULE_GRACE_MS = 5 * 60_000;
 
 function occurrenceAtOrAfter(startsAt: number, repeat: "once" | "daily" | "weekly", threshold: number) {
@@ -91,25 +92,33 @@ function stopCloudSync() {
     cloudSyncTimer = undefined;
     cloudSyncRevision = 0;
     cloudSyncHash = "";
+    cloudSyncLocked = false;
 }
 
 async function pushCloudChanges() {
-    if (!settings.store.syncEnabled || applyingCloudSnapshot) return;
+    if (!settings.store.syncEnabled || applyingCloudSnapshot || cloudSyncLocked) return;
     const document = buildSyncDocument();
     const hash = syncDocumentHash(document);
     if (hash === cloudSyncHash) return;
     const snapshot = await VencordNative.pluginHelpers.BetterStatus.pushCloudSync(
         getSyncServerURL(), cloudSyncRevision, document
     );
-    cloudSyncRevision = snapshot.revision;
-    if (snapshot.document?.version === 1 && syncDocumentHash(snapshot.document) !== hash)
-        await receiveCloudSnapshot(snapshot);
-    else cloudSyncHash = hash;
+    cloudSyncHash = hash;
+    await receiveCloudSnapshot(snapshot);
 }
 
-async function receiveCloudSnapshot(snapshot: { revision: number; document: SyncDocument; }) {
+function reportCloudProtection(encrypted: boolean, locked: boolean) {
+    window.dispatchEvent(new CustomEvent("betterstatus-sync-protection", { detail: { encrypted, locked } }));
+}
+
+async function applyDecodedCloudSnapshot(
+    snapshot: { revision: number; document: SyncDocument; },
+    encrypted: boolean
+) {
     if (!settings.store.syncEnabled || snapshot.revision < cloudSyncRevision || snapshot.document?.version !== 1) return;
     const hash = syncDocumentHash(snapshot.document);
+    reportCloudProtection(encrypted, false);
+    cloudSyncLocked = false;
     if (snapshot.revision === cloudSyncRevision && hash === cloudSyncHash) return;
     applyingCloudSnapshot = true;
     try {
@@ -122,6 +131,27 @@ async function receiveCloudSnapshot(snapshot: { revision: number; document: Sync
     }
 }
 
+async function unlockCloudSyncPassword(password: string) {
+    const decoded = await VencordNative.pluginHelpers.BetterStatus.unlockCloudSync(getSyncServerURL(), password);
+    await applyDecodedCloudSnapshot(decoded.snapshot as { revision: number; document: SyncDocument; }, true);
+}
+
+async function receiveCloudSnapshot(snapshot: { revision: number; document: unknown; }) {
+    if (!settings.store.syncEnabled || snapshot.revision < cloudSyncRevision) return;
+    const decoded = await VencordNative.pluginHelpers.BetterStatus.decodeCloudSyncSnapshot(getSyncServerURL(), snapshot);
+    if (decoded.locked) {
+        cloudSyncRevision = snapshot.revision;
+        cloudSyncLocked = true;
+        reportCloudProtection(true, true);
+        requestSyncPassword(unlockCloudSyncPassword);
+        return;
+    }
+    await applyDecodedCloudSnapshot(
+        decoded.snapshot as { revision: number; document: SyncDocument; },
+        decoded.encrypted
+    );
+}
+
 async function configureCloudSync() {
     stopCloudSync();
     if (!settings.store.syncEnabled) return;
@@ -131,7 +161,7 @@ async function configureCloudSync() {
             settings.store.syncEnabled = false;
             return;
         }
-        if (result.snapshot?.document?.version === 1)
+        if (result.snapshot?.revision > 0)
             await receiveCloudSnapshot(result.snapshot);
         else {
             cloudSyncRevision = result.snapshot?.revision ?? 0;
@@ -421,6 +451,20 @@ export default definePlugin({
     },
 
     configureCloudSync,
+
+    async changeCloudEncryptionPassword(password?: string) {
+        if (cloudSyncRevision === 0) throw new Error("Connect and finish the first sync before adding a password.");
+        if (cloudSyncLocked) throw new Error("Unlock the current encrypted configuration before changing its password.");
+        if (password)
+            await VencordNative.pluginHelpers.BetterStatus.setCloudEncryptionPassword(getSyncServerURL(), password);
+        else
+            await VencordNative.pluginHelpers.BetterStatus.clearCloudEncryptionPassword(getSyncServerURL());
+        cloudSyncHash = "";
+        await pushCloudChanges();
+        reportCloudProtection(Boolean(password), false);
+    },
+
+    unlockCloudSyncPassword,
 
     receiveCloudSnapshot,
 

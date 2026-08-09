@@ -48,7 +48,21 @@ Required environment variables:
 | `PUBLIC_BASE_URL` | Public HTTPS origin used for the OAuth callback |
 
 Optional variables are `LISTEN_ADDR` (default `:8080`), `SESSION_TTL` (default
-`4320h`), and `MAX_DOCUMENT_BYTES` (default 2 MiB).
+`4320h`), and `MAX_DOCUMENT_BYTES` (default 4 MiB, including encrypted-envelope
+encoding overhead).
+
+## Client-side password protection
+
+Password protection is end-to-end between BetterStatus clients. A client uses
+`scrypt` with a random 128-bit salt to derive an AES-256-GCM key, then uploads a
+versioned envelope containing only the salt, nonce, authentication tag, and
+ciphertext. The password never appears in a request and is kept on each unlocked
+device in Electron's OS-encrypted credential storage.
+
+The service intentionally treats encrypted and unencrypted documents as opaque
+JSON. It cannot recover a forgotten password. Changing the password decrypts the
+current configuration locally and publishes a new encrypted revision; removing
+the password publishes a normal readable JSON revision.
 
 ## Protocol
 

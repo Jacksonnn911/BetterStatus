@@ -29,7 +29,7 @@ func LoadConfig() (Config, error) {
 		DiscordClientSecret: os.Getenv("DISCORD_CLIENT_SECRET"),
 		SessionTTL:          180 * 24 * time.Hour,
 		AuthRequestTTL:      10 * time.Minute,
-		MaxDocumentBytes:    2 << 20,
+		MaxDocumentBytes:    4 << 20,
 	}
 
 	if value := os.Getenv("SESSION_TTL"); value != "" {

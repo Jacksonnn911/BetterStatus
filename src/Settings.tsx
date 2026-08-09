@@ -45,13 +45,131 @@ const Native = VencordNative.pluginHelpers.BetterStatus as PluginNative<
 >;
 
 interface BetterStatusRuntime {
+  changeCloudEncryptionPassword(password?: string): Promise<void>;
   configureCloudSync(): Promise<void>;
   configureSchedules(): void;
   configureUpdateChecks(checkNow?: boolean, retryAt?: number): void;
+  unlockCloudSyncPassword(password: string): Promise<void>;
 }
 
 function pluginRuntime() {
   return Vencord.Plugins.plugins.BetterStatus as unknown as BetterStatusRuntime;
+}
+
+let syncPasswordPromptOpen = false;
+
+function SyncPasswordModal({
+  modalProps,
+  onUnlock,
+}: {
+  modalProps: RenderModalProps;
+  onUnlock(password: string): Promise<void>;
+}) {
+  const [password, setPassword] = React.useState("");
+
+  return (
+    <ConfirmModal
+      {...modalProps}
+      title="Unlock BetterStatus sync"
+      confirmText="Unlock"
+      cancelText="Not now"
+      variant="primary"
+      onCancel={() => (syncPasswordPromptOpen = false)}
+      onConfirm={async setError => {
+        try {
+          await onUnlock(password);
+          syncPasswordPromptOpen = false;
+        } catch (error) {
+          setError(error instanceof Error ? error.message : String(error));
+          throw error;
+        }
+      }}
+    >
+      <div className="bs-password-modal">
+        <Forms.FormText>
+          This account contains client-side encrypted configuration. Enter its
+          sync password to decrypt it on this device. The password is never sent
+          to the sync server.
+        </Forms.FormText>
+        <input
+          autoFocus
+          className="bs-password-input"
+          type="password"
+          value={password}
+          placeholder="Sync password"
+          onChange={event => setPassword(event.currentTarget.value)}
+        />
+      </div>
+    </ConfirmModal>
+  );
+}
+
+export function requestSyncPassword(onUnlock: (password: string) => Promise<void>) {
+  if (syncPasswordPromptOpen) return;
+  syncPasswordPromptOpen = true;
+  openModal(modalProps => <SyncPasswordModal modalProps={modalProps} onUnlock={onUnlock} />);
+}
+
+function CloudProtectionModal({
+  modalProps,
+  changing,
+  onSave,
+}: {
+  modalProps: RenderModalProps;
+  changing: boolean;
+  onSave(password: string): Promise<void>;
+}) {
+  const [password, setPassword] = React.useState("");
+  const [confirmation, setConfirmation] = React.useState("");
+
+  return (
+    <ConfirmModal
+      {...modalProps}
+      title={changing ? "Change sync password" : "Protect cloud sync"}
+      confirmText={changing ? "Change password" : "Encrypt sync"}
+      cancelText="Cancel"
+      variant="primary"
+      onConfirm={async setError => {
+        if (password.length < 12) {
+          setError("Use at least 12 characters.");
+          throw new Error("Sync password is too short.");
+        }
+        if (password !== confirmation) {
+          setError("The passwords do not match.");
+          throw new Error("Sync passwords do not match.");
+        }
+        try {
+          await onSave(password);
+        } catch (error) {
+          setError(error instanceof Error ? error.message : String(error));
+          throw error;
+        }
+      }}
+    >
+      <div className="bs-password-modal">
+        <Forms.FormText>
+          BetterStatus will encrypt the complete configuration on this device
+          before uploading it. Other clients must enter the same password.
+          Forgotten passwords cannot be recovered by the server.
+        </Forms.FormText>
+        <input
+          autoFocus
+          className="bs-password-input"
+          type="password"
+          value={password}
+          placeholder="New password · at least 12 characters"
+          onChange={event => setPassword(event.currentTarget.value)}
+        />
+        <input
+          className="bs-password-input"
+          type="password"
+          value={confirmation}
+          placeholder="Confirm password"
+          onChange={event => setConfirmation(event.currentTarget.value)}
+        />
+      </div>
+    </ConfirmModal>
+  );
 }
 
 interface UpdateInfo {
@@ -464,6 +582,8 @@ export default function SettingsComponent() {
   const [backupStatus, setBackupStatus] = React.useState<string | null>(null);
   const [syncStatus, setSyncStatus] = React.useState<string>("Not connected");
   const [syncBusy, setSyncBusy] = React.useState(false);
+  const [syncEncrypted, setSyncEncrypted] = React.useState(false);
+  const [syncLocked, setSyncLocked] = React.useState(false);
   const selectedUpdateChannel: UpdateChannel =
     updateChannel === "dev" ? "dev" : "prod";
   const selectedUpdateFrequency =
@@ -490,11 +610,62 @@ export default function SettingsComponent() {
 
   React.useEffect(() => {
     Native.getCloudSyncStatus(getSyncServerURL()).then(status => {
+      setSyncEncrypted(Boolean(status.encryptionPasswordSet));
+      setSyncLocked(false);
       setSyncStatus(status.connected
         ? `Connected as Discord user ${status.discordUserId} · expires ${new Date(status.expiresAt!).toLocaleDateString()}`
         : "Not connected");
     }).catch(error => setSyncStatus(error instanceof Error ? error.message : String(error)));
   }, [syncProvider, syncServerUrl]);
+
+  React.useEffect(() => {
+    const updateProtection = (event: Event) => {
+      const { detail } = event as CustomEvent<{ encrypted: boolean; locked: boolean; }>;
+      setSyncEncrypted(detail.encrypted);
+      setSyncLocked(detail.locked);
+      if (detail.locked) setSyncStatus("Encrypted configuration is locked on this device.");
+    };
+    window.addEventListener("betterstatus-sync-protection", updateProtection);
+    return () => window.removeEventListener("betterstatus-sync-protection", updateProtection);
+  }, []);
+
+  function changeSyncPassword() {
+    openModal(modalProps => (
+      <CloudProtectionModal
+        modalProps={modalProps}
+        changing={syncEncrypted}
+        onSave={async password => {
+          await pluginRuntime().changeCloudEncryptionPassword(password);
+          setSyncEncrypted(true);
+          setSyncLocked(false);
+          setSyncStatus("Configuration encrypted client-side. Password updated on the server ciphertext.");
+        }}
+      />
+    ));
+  }
+
+  function removeSyncPassword() {
+    openModal(modalProps => (
+      <ConfirmModal
+        {...modalProps}
+        title="Remove sync password?"
+        confirmText="Remove protection"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={async () => {
+          await pluginRuntime().changeCloudEncryptionPassword();
+          setSyncEncrypted(false);
+          setSyncLocked(false);
+          setSyncStatus("Client-side password protection removed.");
+        }}
+      >
+        <Forms.FormText>
+          The next sync revision will contain readable JSON on the server. Your
+          Discord-authorized connection will still use HTTPS and authenticated sessions.
+        </Forms.FormText>
+      </ConfirmModal>
+    ));
+  }
 
   React.useEffect(() => {
     const refresh = () => {
@@ -1079,6 +1250,31 @@ export default function SettingsComponent() {
           </div>
         </div>
         <div className="bs-sync-status" role="status">{syncStatus}</div>
+        <div className="bs-sync-protection">
+          <div>
+            <strong>{syncEncrypted ? (syncLocked ? "Password required" : "Client-side encrypted") : "Password protection off"}</strong>
+            <span>{syncEncrypted
+              ? "The server stores only authenticated ciphertext."
+              : "Optionally encrypt all synchronized configuration before upload."}</span>
+          </div>
+        <div className="bs-sync-protection-actions">
+            <button
+              type="button"
+              className="bs-secondary-button"
+              disabled={!syncEnabled || syncBusy}
+              onClick={() => syncLocked
+                ? requestSyncPassword(password => pluginRuntime().unlockCloudSyncPassword(password))
+                : changeSyncPassword()}
+            >
+              {syncLocked ? "Unlock" : syncEncrypted ? "Change password" : "Add password"}
+            </button>
+            {syncEncrypted && !syncLocked && (
+              <button type="button" className="bs-secondary-button bs-danger-text" disabled={syncBusy} onClick={removeSyncPassword}>
+                Remove password
+              </button>
+            )}
+          </div>
+        </div>
         {syncProvider === "custom" && (
           <Forms.FormText>Your self-hosted server needs its own Discord OAuth application and callback URL.</Forms.FormText>
         )}

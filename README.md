@@ -227,6 +227,13 @@ using Electron's encrypted credential storage and applies accepted changes to
 other connected clients over WebSocket. The BetterStatus session lasts 180 days
 by default and can be revoked immediately with **Disconnect**.
 
+After connecting, **Add password** can protect the entire synchronized
+configuration before it leaves the client. Other devices detect the encrypted
+envelope and ask for the same password. **Change password** decrypts locally and
+re-encrypts the next revision with a fresh salt and nonce; **Remove password**
+explicitly returns the account to readable server-side JSON. Passwords are never
+sent to the sync service and cannot be recovered by its operator.
+
 Discord's OAuth access token is used by the server only to identify the account;
 it is not the 180-day sync credential and is not retained. Self-hosting
 instructions and the REST/WebSocket protocol are documented in

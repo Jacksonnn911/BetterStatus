@@ -52,3 +52,14 @@ export interface SyncDocument {
     updateCheckFrequency: UpdateCheckFrequency;
     updateChannel: UpdateChannel;
 }
+
+export interface EncryptedSyncDocument {
+    format: "betterstatus-encrypted-sync";
+    version: 1;
+    kdf: "scrypt";
+    cipher: "aes-256-gcm";
+    salt: string;
+    iv: string;
+    authTag: string;
+    ciphertext: string;
+}

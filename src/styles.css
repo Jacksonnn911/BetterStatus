@@ -227,6 +227,57 @@
   font-size: 13px;
 }
 
+.bs-sync-protection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 14px;
+  border: 1px solid var(--background-modifier-accent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--background-primary) 88%, transparent);
+}
+
+.bs-sync-protection > div:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bs-sync-protection strong { color: var(--header-primary); }
+.bs-sync-protection span { color: var(--text-muted); font-size: 12px; }
+
+.bs-sync-protection-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.bs-danger-text { color: var(--text-danger) !important; }
+
+.bs-password-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.bs-password-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--input-border-default, var(--background-modifier-accent));
+  border-radius: 8px;
+  outline: none;
+  color: var(--text-normal);
+  background: var(--input-background, var(--background-secondary));
+  font: inherit;
+}
+
+.bs-password-input:focus { border-color: var(--brand-500); }
+
 .bs-section-heading {
   display: flex;
   align-items: center;
@@ -2666,6 +2717,7 @@
   .bs-schedule-actions { justify-content: space-between; }
   .bs-sync-controls { grid-template-columns: 1fr 1fr; }
   .bs-sync-actions { grid-column: 1 / -1; }
+  .bs-sync-protection { align-items: stretch; flex-direction: column; }
 }
 
 @media (width <= 620px) {
@@ -2727,6 +2779,7 @@
   .bs-schedule-main { grid-template-columns: 1fr; }
   .bs-sync-controls { grid-template-columns: 1fr; }
   .bs-sync-actions { grid-column: auto; flex-direction: column; }
+  .bs-sync-protection-actions { flex-direction: column; }
 
   .bs-backup-actions {
     grid-column: 1 / -1;
