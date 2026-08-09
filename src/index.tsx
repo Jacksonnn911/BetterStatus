@@ -10,7 +10,7 @@ import { Link } from "@components/Link";
 import { relaunch } from "@utils/native";
 import definePlugin from "@utils/types";
 
-import { applySyncDocument, buildSyncDocument, getPresets, getSchedules, getSyncServerURL, getUpdateChannel, getUpdateCheckFrequency, rememberSavedStatus, requestSyncPassword, savePresets, settings, showUpdateFailureNotification } from "./Settings";
+import { applySyncDocument, buildSyncDocument, getPresets, getSchedules, getSyncServerURL, getUpdateChannel, getUpdateCheckFrequency, initializeAutoRestartGuard, prepareAutoRestart, rememberSavedStatus, requestSyncPassword, savePresets, settings, showUpdateFailureNotification } from "./Settings";
 import { startStatusHistoryModalObserver, stopStatusHistoryModalObserver } from "./StatusHistory";
 import type { StatusPreset, StatusSchedule, SyncDocument } from "./types";
 
@@ -291,13 +291,16 @@ function runAutomaticUpdateCheck() {
     )
         .then(result => {
             if (result.status === "updated") {
+                const willRestart = prepareAutoRestart();
                 showNotification({
                     title: "BetterStatus updated",
-                    body: settings.store.autoRestart
+                    body: willRestart
                         ? "Discord will restart automatically."
+                        : settings.store.autoRestart
+                            ? "Restart loop protection is active. Restart Discord manually."
                         : "Restart Discord to use the new version."
                 });
-                if (settings.store.autoRestart)
+                if (willRestart)
                     window.setTimeout(relaunch, 1_500);
             } else if (result.status === "failed") {
                 retryAt = result.retryAt;
@@ -487,6 +490,17 @@ export default definePlugin({
     async start() {
         updateSchedulerActive = true;
         statusScheduleActive = true;
+        const restartGuard = initializeAutoRestartGuard();
+        if (restartGuard.newlyPaused && restartGuard.pausedUntil !== undefined) {
+            const resumeTime = new Date(restartGuard.pausedUntil).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+            showNotification({
+                title: "BetterStatus auto restart paused",
+                body: `Discord restarted twice within five minutes. Automatic restart is disabled until ${resumeTime}; updates will still install.`
+            });
+        }
         const presets = getPresets();
         await savePresets(presets);
         startStatusHistoryModalObserver();

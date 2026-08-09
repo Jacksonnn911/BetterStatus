@@ -60,6 +60,72 @@ function pluginRuntime() {
 
 let syncPasswordPromptOpen = false;
 
+const AUTO_RESTART_WINDOW_MS = 5 * 60_000;
+const AUTO_RESTART_COOLDOWN_MS = 60 * 60_000;
+let autoRestartScheduledThisProcess = false;
+
+export interface AutoRestartGuardState {
+  newlyPaused: boolean;
+  pausedUntil?: number;
+}
+
+export function initializeAutoRestartGuard(now = Date.now()): AutoRestartGuardState {
+  const existingPause = settings.store.autoRestartPausedUntil;
+  if (typeof existingPause === "number" && existingPause > now)
+    return { newlyPaused: false, pausedUntil: existingPause };
+
+  if (existingPause !== undefined)
+    settings.store.autoRestartPausedUntil = undefined;
+
+  const history = (settings.store.autoRestartHistory ?? [])
+    .filter(timestamp =>
+      Number.isFinite(timestamp) &&
+      timestamp <= now &&
+      timestamp >= now - AUTO_RESTART_WINDOW_MS,
+    )
+    .sort((left, right) => left - right)
+    .slice(-2);
+
+  settings.store.autoRestartHistory = history;
+  if (history.length < 2)
+    return { newlyPaused: false };
+
+  const pausedUntil = history[history.length - 1] + AUTO_RESTART_COOLDOWN_MS;
+  if (pausedUntil <= now) {
+    settings.store.autoRestartHistory = [];
+    return { newlyPaused: false };
+  }
+
+  settings.store.autoRestartPausedUntil = pausedUntil;
+  return { newlyPaused: true, pausedUntil };
+}
+
+/** Reserve one updater-triggered relaunch and reject it when loop protection is active. */
+export function prepareAutoRestart(now = Date.now()) {
+  if (!settings.store.autoRestart || autoRestartScheduledThisProcess)
+    return false;
+
+  const guard = initializeAutoRestartGuard(now);
+  if (guard.pausedUntil !== undefined)
+    return false;
+
+  settings.store.autoRestartHistory = [
+    ...(settings.store.autoRestartHistory ?? []),
+    now,
+  ]
+    .filter(timestamp => timestamp >= now - AUTO_RESTART_WINDOW_MS)
+    .slice(-2);
+  autoRestartScheduledThisProcess = true;
+  return true;
+}
+
+function formatAutoRestartPause(pausedUntil: number) {
+  return new Date(pausedUntil).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function SyncPasswordModal({
   modalProps,
   onUnlock,
@@ -599,6 +665,7 @@ export default function SettingsComponent() {
     autoRestart,
     updateCheckFrequency,
     updateChannel,
+    autoRestartPausedUntil,
     activePresetId,
     syncEnabled,
     syncProvider,
@@ -608,6 +675,7 @@ export default function SettingsComponent() {
     "autoRestart",
     "updateCheckFrequency",
     "updateChannel",
+    "autoRestartPausedUntil",
     "activePresetId",
     "syncEnabled",
     "syncProvider",
@@ -769,18 +837,24 @@ export default function SettingsComponent() {
       const result = await Native.checkForUpdates(true, selectedUpdateChannel);
 
       if (result.status === "updated") {
+        const willRestart = prepareAutoRestart();
+        const restartPaused = autoRestart && !willRestart;
         setUpdateStatus(
-          autoRestart
+          willRestart
             ? "Update installed — restarting Discord…"
-            : "Update installed — restart Discord to apply it.",
+            : restartPaused
+              ? "Update installed — automatic restart is temporarily paused. Restart Discord manually."
+              : "Update installed — restart Discord to apply it.",
         );
         showNotification({
           title: "BetterStatus updated",
-          body: autoRestart
+          body: willRestart
             ? "Discord will restart automatically."
+            : restartPaused
+              ? "Restart loop protection is active. Restart Discord manually."
             : "Restart Discord to use the new version.",
         });
-        if (autoRestart) window.setTimeout(relaunch, 1_500);
+        if (willRestart) window.setTimeout(relaunch, 1_500);
       } else if (result.status === "current") {
         setUpdateStatus("You already have the latest channel build.");
         showNotification({
@@ -1243,11 +1317,18 @@ export default function SettingsComponent() {
               />
             </div>
             <FormSwitch
-              title="Auto restart Discord"
+              title={autoRestartPausedUntil && autoRestartPausedUntil > Date.now()
+                ? `Auto restart Discord (paused until ${formatAutoRestartPause(autoRestartPausedUntil)})`
+                : "Auto restart Discord"}
               value={autoRestart}
               onChange={value => (settings.store.autoRestart = value)}
               hideBorder
             />
+            {autoRestartPausedUntil && autoRestartPausedUntil > Date.now() && (
+              <div className="bs-restart-guard" role="status">
+                Restart loop protection is active. Updates still install, but Discord must be restarted manually.
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1800,6 +1881,8 @@ export const settings = definePluginSettings({
   activePresetId?: string;
   scheduleRuns?: Record<string, number>;
   scheduleEndRuns?: Record<string, number>;
+  autoRestartHistory?: number[];
+  autoRestartPausedUntil?: number;
   schedulePreviousStates?: Record<string, {
     occurrence: number;
     customStatus: {

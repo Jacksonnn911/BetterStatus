@@ -157,6 +157,13 @@
   white-space: nowrap;
 }
 
+.bs-restart-guard {
+  width: min(320px, 100%);
+  color: var(--text-warning);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .bs-backup-panel {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
