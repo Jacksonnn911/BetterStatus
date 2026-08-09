@@ -755,6 +755,9 @@ export default function SettingsComponent() {
   const [schedules, setSchedules] = React.useState<StatusSchedule[]>(() => [
     ...getSchedules(),
   ]);
+  const [collapsedScheduleIds, setCollapsedScheduleIds] = React.useState<Set<string>>(
+    () => new Set(schedules.map(schedule => schedule.id)),
+  );
   const [collapsedIds, setCollapsedIds] = React.useState<Set<string>>(
     () => new Set(presets.map(preset => preset.id)),
   );
@@ -1160,7 +1163,7 @@ export default function SettingsComponent() {
     startsAt.setMinutes(startsAt.getMinutes() + 5, 0, 0);
     const endsAt = new Date(startsAt);
     endsAt.setHours(endsAt.getHours() + 1);
-    commitSchedules([...schedules, {
+    const schedule: StatusSchedule = {
       id: createId(),
       name: `${preset.name || "Status"} schedule`,
       presetId: preset.id,
@@ -1171,11 +1174,34 @@ export default function SettingsComponent() {
       endText: "",
       endPresence: "online",
       enabled: true,
-    }]);
+    };
+    commitSchedules([...schedules, schedule]);
+    setCollapsedScheduleIds(current => {
+      const next = new Set(current);
+      next.delete(schedule.id);
+      return next;
+    });
   }
 
   function updateSchedule(id: string, patch: Partial<StatusSchedule>) {
     commitSchedules(schedules.map(schedule => schedule.id === id ? { ...schedule, ...patch } : schedule));
+  }
+
+  function toggleScheduleCollapsed(id: string) {
+    setCollapsedScheduleIds(current => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllSchedulesCollapsed() {
+    const allSchedulesCollapsed = schedules.length > 0 &&
+      schedules.every(schedule => collapsedScheduleIds.has(schedule.id));
+    setCollapsedScheduleIds(allSchedulesCollapsed
+      ? new Set()
+      : new Set(schedules.map(schedule => schedule.id)));
   }
 
   function toggleCollapsed(id: string) {
@@ -1245,6 +1271,9 @@ export default function SettingsComponent() {
   const allCollapsed =
     presets.length > 0 &&
     presets.every(preset => collapsedIds.has(preset.id));
+  const allSchedulesCollapsed =
+    schedules.length > 0 &&
+    schedules.every(schedule => collapsedScheduleIds.has(schedule.id));
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const visiblePresets = normalizedQuery
     ? presets.filter(preset =>
@@ -1538,7 +1567,15 @@ export default function SettingsComponent() {
               should show when it ends. Times use this computer&apos;s local time.
             </Forms.FormText>
           </div>
-          <Button disabled={!presets.length} onClick={addSchedule}>+ Schedule status</Button>
+          <div className="bs-section-actions">
+            {!!schedules.length && (
+              <button type="button" className="bs-secondary-button" onClick={toggleAllSchedulesCollapsed}>
+                <ChevronIcon collapsed={!allSchedulesCollapsed} />
+                {allSchedulesCollapsed ? "Expand all" : "Collapse all"}
+              </button>
+            )}
+            <Button disabled={!presets.length} onClick={addSchedule}>+ Schedule status</Button>
+          </div>
         </div>
         <div className="bs-calendar-week" aria-label="Upcoming seven days">
           {calendarDays.map(({ day, schedules: daySchedules }, index) => (
@@ -1564,8 +1601,10 @@ export default function SettingsComponent() {
             {schedules.map(schedule => {
               const startPreset = presets.find(preset => preset.id === schedule.presetId);
               const endTime = schedule.endsAt ?? schedule.startsAt + 60 * 60_000;
+              const collapsed = collapsedScheduleIds.has(schedule.id);
+              const contentId = `bs-schedule-${schedule.id}`;
               return (
-                <article className={`bs-schedule-card bs-presence-${startPreset?.presence ?? "online"}${schedule.enabled ? "" : " bs-schedule-disabled"}`} key={schedule.id}>
+                <article className={`bs-schedule-card bs-presence-${startPreset?.presence ?? "online"}${schedule.enabled ? "" : " bs-schedule-disabled"}${collapsed ? " bs-schedule-collapsed" : ""}`} key={schedule.id}>
                   <header className="bs-schedule-header">
                     <div className="bs-schedule-date" aria-hidden="true">
                       <span>{new Date(schedule.startsAt).toLocaleDateString([], { month: "short" })}</span>
@@ -1578,10 +1617,21 @@ export default function SettingsComponent() {
                     <div className="bs-schedule-actions">
                       <FormSwitch title="Enabled" value={schedule.enabled} onChange={enabled => updateSchedule(schedule.id, { enabled })} hideBorder />
                       <button type="button" className="bs-schedule-delete" aria-label={`Delete ${schedule.name}`} onClick={() => commitSchedules(schedules.filter(item => item.id !== schedule.id))}>×</button>
+                      <button
+                        type="button"
+                        className="bs-collapse-button"
+                        aria-controls={contentId}
+                        aria-expanded={!collapsed}
+                        aria-label={`${collapsed ? "Expand" : "Collapse"} ${schedule.name || "calendar event"}`}
+                        title={collapsed ? "Expand calendar event" : "Collapse calendar event"}
+                        onClick={() => toggleScheduleCollapsed(schedule.id)}
+                      >
+                        <ChevronIcon collapsed={collapsed} />
+                      </button>
                     </div>
                   </header>
 
-                  <div className="bs-schedule-timeline">
+                  {!collapsed && <div id={contentId} className="bs-schedule-timeline">
                     <section className="bs-timepoint bs-timepoint-start">
                       <div className="bs-timepoint-marker"><i /></div>
                       <div className="bs-timepoint-content">
@@ -1658,7 +1708,7 @@ export default function SettingsComponent() {
                         ) : <div className="bs-no-end-copy">The scheduled preset stays active until something else changes it.</div>}
                       </div>
                     </section>
-                  </div>
+                  </div>}
                 </article>
               );
             })}

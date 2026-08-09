@@ -327,6 +327,13 @@
 .bs-section-heading h5 { margin: 0 0 4px; }
 .bs-section-heading > div { min-width: 0; }
 
+.bs-section-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
 .bs-calendar-empty {
   padding: 22px;
   border: 1px dashed var(--background-modifier-accent);
@@ -352,6 +359,7 @@
 }
 
 .bs-schedule-disabled { opacity: 0.58; }
+.bs-schedule-collapsed .bs-schedule-header { border-bottom: 0; }
 
 .bs-calendar-week {
   display: grid;
@@ -2351,13 +2359,17 @@
 }
 
 .bs-preset-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr));
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 16px;
 }
 
 .bs-preset-card {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 430px;
   overflow: visible;
   border: 1px solid var(--bs-card-border);
   border-radius: 15px;
@@ -3041,6 +3053,7 @@
   }
 
   .bs-section-heading { align-items: stretch; flex-direction: column; }
+  .bs-section-actions { align-items: stretch; flex-direction: column; }
   .bs-calendar-week {
     grid-template-columns: repeat(7, 72px);
     overflow-x: auto;
