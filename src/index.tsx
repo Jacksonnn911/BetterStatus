@@ -12,7 +12,7 @@ import definePlugin from "@utils/types";
 
 import { applySyncDocument, buildSyncDocument, getPresets, getSchedules, getSyncServerURL, getUpdateChannel, getUpdateCheckFrequency, rememberSavedStatus, requestSyncPassword, savePresets, settings, showUpdateFailureNotification } from "./Settings";
 import { startStatusHistoryModalObserver, stopStatusHistoryModalObserver } from "./StatusHistory";
-import type { StatusPreset, SyncDocument } from "./types";
+import type { StatusPreset, StatusSchedule, SyncDocument } from "./types";
 
 interface CustomStatus {
     text?: string;
@@ -61,24 +61,100 @@ function configureStatusSchedule() {
 
     const now = Date.now();
     const lastRuns = settings.store.scheduleRuns ?? {};
-    const occurrences = getSchedules()
-        .filter(schedule => schedule.enabled && getPresets().some(preset => preset.id === schedule.presetId && preset.enabled))
-        .map(schedule => {
-            const lastRun = lastRuns[schedule.id] ?? 0;
-            const occurrence = occurrenceAtOrAfter(schedule.startsAt, schedule.repeat, Math.max(lastRun + 1, now - SCHEDULE_GRACE_MS));
-            return occurrence === undefined ? undefined : { schedule, occurrence };
-        })
-        .filter((value): value is NonNullable<typeof value> => value !== undefined)
-        .sort((left, right) => left.occurrence - right.occurrence);
+    const endRuns = settings.store.scheduleEndRuns ?? {};
+    const schedules = getSchedules();
+    const candidates: Array<{
+        schedule: StatusSchedule;
+        occurrence: number;
+        type: "start" | "end";
+        startOccurrence: number;
+    }> = [];
+    const missedOneTimeSchedules = new Set<string>();
 
-    const next = occurrences[0];
+    for (const schedule of schedules.filter(item => item.enabled && getPresets().some(preset => preset.id === item.presetId && preset.enabled))) {
+        const lastRun = lastRuns[schedule.id] ?? 0;
+        if (schedule.repeat === "once" && lastRun > 0 && !schedule.endsAt) {
+            missedOneTimeSchedules.add(schedule.id);
+            continue;
+        }
+        if (schedule.endsAt && lastRun > 0 && (endRuns[schedule.id] ?? 0) < lastRun) {
+            const endOccurrence = lastRun + (schedule.endsAt - schedule.startsAt);
+            if (endOccurrence >= now - SCHEDULE_GRACE_MS)
+                candidates.push({ schedule, occurrence: endOccurrence, type: "end", startOccurrence: lastRun });
+            else {
+                settings.store.scheduleEndRuns = { ...(settings.store.scheduleEndRuns ?? {}), [schedule.id]: lastRun };
+                const previousStates = { ...(settings.store.schedulePreviousStates ?? {}) };
+                delete previousStates[schedule.id];
+                settings.store.schedulePreviousStates = previousStates;
+                if (schedule.repeat === "once") missedOneTimeSchedules.add(schedule.id);
+            }
+        }
+
+        if (schedule.repeat === "once" && lastRun === 0 && schedule.startsAt < now - SCHEDULE_GRACE_MS) {
+            missedOneTimeSchedules.add(schedule.id);
+            continue;
+        }
+
+        const occurrence = occurrenceAtOrAfter(schedule.startsAt, schedule.repeat, Math.max(lastRun + 1, now - SCHEDULE_GRACE_MS));
+        if (occurrence !== undefined)
+            candidates.push({ schedule, occurrence, type: "start", startOccurrence: occurrence });
+    }
+
+    if (missedOneTimeSchedules.size)
+        settings.store.schedules = schedules.map(schedule => missedOneTimeSchedules.has(schedule.id) ? { ...schedule, enabled: false } : schedule);
+
+    const next = candidates.sort((left, right) => left.occurrence - right.occurrence)[0];
     if (!next) return;
     statusScheduleTimer = window.setTimeout(async () => {
-        const runs = { ...(settings.store.scheduleRuns ?? {}), [next.schedule.id]: next.occurrence };
-        settings.store.scheduleRuns = runs;
-        await triggerPresetById(next.schedule.presetId);
-        if (next.schedule.repeat === "once")
-            settings.store.schedules = getSchedules().map(schedule => schedule.id === next.schedule.id ? { ...schedule, enabled: false } : schedule);
+        if (next.occurrence > Date.now() + 1_000) {
+            configureStatusSchedule();
+            return;
+        }
+        if (next.type === "start") {
+            if (next.schedule.endsAt && next.schedule.endBehavior === "restore") {
+                settings.store.schedulePreviousStates = {
+                    ...(settings.store.schedulePreviousStates ?? {}),
+                    [next.schedule.id]: {
+                        occurrence: next.occurrence,
+                        customStatus: CustomStatusSettings.getSetting() ?? {
+                            text: "",
+                            emojiId: "0",
+                            emojiName: "",
+                            expiresAtMs: "0",
+                            createdAtMs: Date.now().toString()
+                        },
+                        presence: (StatusSettings.getSetting() ?? "online") as StatusPreset["presence"],
+                        activePresetId: settings.store.activePresetId
+                    }
+                };
+            }
+            settings.store.scheduleRuns = { ...(settings.store.scheduleRuns ?? {}), [next.schedule.id]: next.occurrence };
+            await triggerPresetById(next.schedule.presetId);
+            if (next.schedule.repeat === "once" && !next.schedule.endsAt)
+                settings.store.schedules = getSchedules().map(schedule => schedule.id === next.schedule.id ? { ...schedule, enabled: false } : schedule);
+        } else {
+            const previous = settings.store.schedulePreviousStates?.[next.schedule.id];
+            if (next.schedule.endBehavior === "restore" && previous?.occurrence === next.startOccurrence) {
+                await CustomStatusSettings.updateSetting(previous.customStatus);
+                await StatusSettings.updateSetting(previous.presence);
+                settings.store.activePresetId = previous.activePresetId && getPresets().some(preset => preset.id === previous.activePresetId && preset.enabled)
+                    ? previous.activePresetId
+                    : undefined;
+            } else if (next.schedule.endBehavior === "preset" && next.schedule.endPresetId) {
+                await triggerPresetById(next.schedule.endPresetId);
+            } else if (next.schedule.endBehavior === "custom") {
+                await setCustomStatusText(next.schedule.endText ?? "");
+                await StatusSettings.updateSetting(next.schedule.endPresence ?? "online");
+                settings.store.activePresetId = undefined;
+                rememberSavedStatus(next.schedule.endText ?? "");
+            }
+            settings.store.scheduleEndRuns = { ...(settings.store.scheduleEndRuns ?? {}), [next.schedule.id]: next.startOccurrence };
+            const previousStates = { ...(settings.store.schedulePreviousStates ?? {}) };
+            delete previousStates[next.schedule.id];
+            settings.store.schedulePreviousStates = previousStates;
+            if (next.schedule.repeat === "once")
+                settings.store.schedules = getSchedules().map(schedule => schedule.id === next.schedule.id ? { ...schedule, enabled: false } : schedule);
+        }
         configureStatusSchedule();
     }, Math.min(2_147_000_000, Math.max(0, next.occurrence - now)));
 }

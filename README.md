@@ -215,10 +215,16 @@ Import validates the file before changing anything and refuses unsupported, malf
 
 ### Status calendar and cloud sync
 
-The **Status calendar** schedules any enabled preset for a local date and time.
-A schedule can run once, every day, or every week. BetterStatus records each
-occurrence locally so restarting Discord or waking the computer does not fire the
-same occurrence twice; events delayed by up to five minutes are still applied.
+The **Status calendar** is a visual seven-day agenda with presence-colored event
+markers and start/end timelines. A schedule can run once, every day, or every
+week. Its optional end time can keep the scheduled status, restore the exact
+previous custom status, emoji, expiration, presence, and active preset, activate
+another preset, or apply custom text and presence. Recurring schedules reuse the
+configured start-to-end duration for every occurrence.
+
+BetterStatus records starts, ends, and restoration state locally so restarting
+Discord or waking the computer does not fire the same transition twice. Events
+delayed by up to five minutes are still applied.
 
 The **Cloud sync** panel defaults to `https://betterstatus.misaliba.eu` and can
 instead use a custom HTTPS server. Click **Connect Discord** to authorize the
