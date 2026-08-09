@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "commit": "8667b284bc9e897b4b80e89ddfe3e061250f3c05",
-  "generatedAt": "2026-08-09T01:08:20.763Z",
+  "commit": "0b97cb251af082ba2553748664c078801dadebc1",
+  "generatedAt": "2026-08-09T01:11:08.059Z",
   "files": [
     {
       "source": "src/index.tsx",
@@ -26,7 +26,7 @@
     {
       "source": "src/Settings.tsx",
       "target": "Settings.tsx",
-      "sha256": "a91fec57712b287df39531e0d80b3c7fd4962c4b69260a1988546b3a9e17088e"
+      "sha256": "f9588487bcfc7fe6451366cb5d8054bb78fc0b1e195b4e7cbc0101b01aabcb89"
     },
     {
       "source": "src/StatusHistory.tsx",
@@ -41,7 +41,7 @@
     {
       "source": "src/styles.css",
       "target": "styles.css",
-      "sha256": "ea322cb623d7ef5803c731315e27256c18054d16ae60f2f889b7b4e59130c9be"
+      "sha256": "543aa7ec2372d5fd9228478b4df996349631d033a3bf4f2a42cad449e277c8ba"
     },
     {
       "source": "src/types.ts",
