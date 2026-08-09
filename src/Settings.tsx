@@ -2389,7 +2389,7 @@ export function normalizeUpdateCheckFrequency(
 ): UpdateCheckFrequency {
   const frequency = Number(value);
   const validFrequencies: UpdateCheckFrequency[] = [
-    0, 15, 30, 60, 180, 360, 720, 1440,
+    0, 1, 5, 15, 30, 60, 180, 360, 720, 1440,
   ];
 
   return validFrequencies.includes(frequency as UpdateCheckFrequency)
