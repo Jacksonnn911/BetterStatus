@@ -7,6 +7,7 @@
 import { showNotification } from "@api/Notifications";
 import { getUserSettingLazy } from "@api/UserSettings";
 import { Link } from "@components/Link";
+import { openPluginModal } from "@components/settings/tabs";
 import { relaunch } from "@utils/native";
 import definePlugin from "@utils/types";
 
@@ -47,6 +48,27 @@ let applyingCloudSnapshot = false;
 let cloudSyncLocked = false;
 let capturingCloudSyncChanges = false;
 const SCHEDULE_GRACE_MS = 5 * 60_000;
+
+function reopenPluginSettingsAfterRestart() {
+    if (!settings.store.openSettingsAfterRestart) return;
+    let attempts = 0;
+    const open = () => {
+        attempts++;
+        try {
+            const plugin = Vencord.Plugins.plugins.BetterStatus;
+            if (!plugin) throw new Error("BetterStatus has not loaded yet.");
+            openPluginModal(plugin);
+            settings.store.openSettingsAfterRestart = false;
+        } catch (error) {
+            if (attempts < 15) {
+                window.setTimeout(open, 1_000);
+                return;
+            }
+            console.error("[BetterStatus] Could not reopen plugin settings after the branch switch", error);
+        }
+    };
+    window.setTimeout(open, 1_500);
+}
 
 function scheduleRepeatDays(schedule: StatusSchedule) {
     if (schedule.repeat === "daily") return new Set([0, 1, 2, 3, 4, 5, 6]);
@@ -863,6 +885,7 @@ export default definePlugin({
         runAutomaticUpdateCheck();
         configureStatusSchedule();
         await configureCloudSync();
+        reopenPluginSettingsAfterRestart();
 
         console.log(
             `[BetterStatus] Registered ${presets.length} presets`

@@ -1014,6 +1014,41 @@ export default function SettingsComponent() {
     }
   }
 
+  async function switchUpdateChannel(channel: UpdateChannel) {
+    if (checkingForUpdates || channel === selectedUpdateChannel) return;
+    setCheckingForUpdates(true);
+    setLastUpdateFailed(false);
+    setUpdateStatus(`Downloading the latest ${channel === "dev" ? "development" : "production"} branch build…`);
+    try {
+      // A branch is a user-selected source of truth. Force mode intentionally
+      // permits moving to an older commit and verifies every downloaded file.
+      const result = await Native.checkForUpdates(true, channel, true);
+      if (result.status !== "updated" && result.status !== "current") {
+        const message = result.error ?? "The selected branch could not be installed.";
+        setUpdateStatus(`Branch switch failed: ${message}`);
+        setLastUpdateFailed(true);
+        showUpdateFailureNotification(result, channel);
+        return;
+      }
+
+      settings.store.updateChannel = channel;
+      settings.store.openSettingsAfterRestart = true;
+      setUpdateStatus(`${channel === "dev" ? "Development" : "Production"} installed — restarting Discord…`);
+      showNotification({
+        title: "BetterStatus branch switched",
+        body: `The latest ${channel === "dev" ? "development" : "production"} build was installed. Discord will restart and reopen BetterStatus settings.`,
+      });
+      window.setTimeout(relaunch, 750);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setUpdateStatus(`Branch switch failed: ${message}`);
+      setLastUpdateFailed(true);
+      showUpdateFailureNotification({ error: message }, channel);
+    } finally {
+      setCheckingForUpdates(false);
+    }
+  }
+
   async function checkForUpdates(force = false) {
     if (checkingForUpdates) return;
 
@@ -1507,8 +1542,7 @@ export default function SettingsComponent() {
               options={UPDATE_CHANNEL_OPTIONS}
               select={channel => {
                 if (channel !== "dev") {
-                  settings.store.updateChannel = "prod";
-                  setUpdateStatus(null);
+                  void switchUpdateChannel("prod");
                   return;
                 }
 
@@ -1516,14 +1550,14 @@ export default function SettingsComponent() {
                   <DevelopmentChannelPrompt
                     modalProps={modalProps}
                     onAccept={() => {
-                      settings.store.updateChannel = "dev";
-                      setUpdateStatus(null);
+                      void switchUpdateChannel("dev");
                     }}
                   />
                 ));
               }}
               serialize={value => value}
               isSelected={value => value === selectedUpdateChannel}
+              isDisabled={checkingForUpdates}
               closeOnSelect
             />
           </div>
@@ -2223,6 +2257,7 @@ export const settings = definePluginSettings({
   cloudSyncPullOnConnect?: boolean;
   cloudSyncClientId?: string;
   cloudSyncEvents?: SyncEvent[];
+  openSettingsAfterRestart?: boolean;
   cloudSyncState?: {
     server: string;
     discordUserId: string;
