@@ -2992,6 +2992,13 @@
     0 0 0 1px rgb(0 0 0 / 12%);
 }
 
+.bs-status-menu-portal {
+  position: fixed;
+  z-index: 10000;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .theme-light .bs-status-menu {
   background-color: #fff !important;
 }
