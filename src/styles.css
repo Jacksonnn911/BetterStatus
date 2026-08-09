@@ -891,6 +891,33 @@
   box-shadow: 0 0 8px color-mix(in srgb, var(--yellow-300) 60%, transparent);
 }
 
+.bs-version-restart-button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--white-500);
+  background: var(--brand-500);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.bs-version-restart-button:hover:not(:disabled) {
+  background: var(--brand-560);
+}
+
+.bs-version-restart-button:focus-visible {
+  outline: 2px solid var(--focus-primary);
+  outline-offset: 2px;
+}
+
+.bs-version-restart-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .bs-version-commits {
   display: flex;
   align-items: center;

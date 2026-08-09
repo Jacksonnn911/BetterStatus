@@ -760,6 +760,7 @@ export default function SettingsComponent() {
   );
   const [searchQuery, setSearchQuery] = React.useState("");
   const [checkingForUpdates, setCheckingForUpdates] = React.useState(false);
+  const [restartingDiscord, setRestartingDiscord] = React.useState(false);
   const [lastUpdateFailed, setLastUpdateFailed] = React.useState(false);
   const [updateStatus, setUpdateStatus] = React.useState<string | null>(null);
   const [updateInfo, setUpdateInfo] = React.useState<UpdateInfo | null>(null);
@@ -790,6 +791,13 @@ export default function SettingsComponent() {
       );
       setLastCheckedAt(new Date());
     }
+  }
+
+  function restartDiscordNow() {
+    if (restartingDiscord) return;
+    setRestartingDiscord(true);
+    setUpdateStatus("Restarting Discord to apply the BetterStatus update…");
+    window.setTimeout(relaunch, 250);
   }
 
   React.useEffect(() => {
@@ -1287,6 +1295,16 @@ export default function SettingsComponent() {
                       ? "Version unavailable"
                       : "Checking version"}
             </span>
+            {updateInfo?.status === "restartRequired" && (
+              <button
+                type="button"
+                className="bs-version-restart-button"
+                disabled={restartingDiscord}
+                onClick={restartDiscordNow}
+              >
+                {restartingDiscord ? "Restarting…" : "Restart Discord"}
+              </button>
+            )}
             {updateInfo && (
               <span className="bs-version-commits">
                 <span>
