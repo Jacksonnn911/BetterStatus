@@ -251,6 +251,13 @@ BetterStatus checks for new releases automatically unless you opt out with **Aut
 
 The update panel includes a manual **Check for updates** button and reports the selected channel, installed commit, latest commit, last-check time, and a direct link to the exact GitHub commit. Its state badge distinguishes **Up to date**, **Update available**, **Restart required**, and **Version unavailable**. After a successful development build, GitHub Actions publishes a channel-neutral `files.json` manifest containing every managed file and its SHA-256 hash. BetterStatus compares those hashes with the installed files, downloads only changed or newly listed files from the manifest's immutable commit, verifies every download, and rebuilds Vencord with rollback on failure.
 
+Update checks do not depend on GitHub's rate-limited REST API. BetterStatus tries
+`raw.githubusercontent.com`, GitHub's web raw-file route, and then jsDelivr's
+GitHub CDN. Each source file is addressed by the manifest's immutable commit and
+must match its SHA-256 hash before installation. Manifests include generation
+timestamps; a cached CDN manifest older than the locally accepted manifest is
+rejected, preventing fallback transport from downgrading the plugin.
+
 The currently running Discord session is not interrupted by default; enable the opt-in **Auto Restart Discord** switch if Discord should relaunch immediately after an update is installed. The production one-command installer remains the manual recovery/update method.
 
 If GitHub responds with HTTP 403, BetterStatus reads GitHub's retry deadline, reports how long update information will remain unavailable, and pauses automatic checks until that deadline instead of repeatedly retrying.

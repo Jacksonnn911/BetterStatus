@@ -192,13 +192,8 @@ interface ManifestFile {
 interface UpdateManifest {
     version: 1;
     commit: string;
+    generatedAt?: string;
     files: ManifestFile[];
-}
-
-interface GitHubBranchReference {
-    object?: {
-        sha?: unknown;
-    };
 }
 
 interface UpdateResult {
@@ -229,7 +224,7 @@ class GitHubRateLimitError extends Error {
             minute: "2-digit"
         });
 
-        super(`GitHub returned HTTP 403. Update checks are unavailable for ${remaining}, until ${deadline}.`);
+        super(`All BetterStatus update mirrors are unavailable or rate-limited. Update checks will resume in ${remaining}, at ${deadline}.`);
         this.name = "GitHubRateLimitError";
     }
 }
@@ -265,15 +260,6 @@ function rateLimitDeadline(response: Response) {
 function throwIfGitHubRateLimited() {
     if (githubRetryAt > Date.now())
         throw new GitHubRateLimitError(githubRetryAt);
-}
-
-function handleFetchFailure(response: Response): never {
-    if (response.status === 403) {
-        githubRetryAt = rateLimitDeadline(response);
-        throw new GitHubRateLimitError(githubRetryAt);
-    }
-
-    throw new Error(`Download failed (${response.status} ${response.statusText})`);
 }
 
 function updateFailure(error: unknown): UpdateResult {
@@ -312,48 +298,93 @@ async function findNode() {
     throw new Error("Node.js was not found. Run the BetterStatus installer once to repair the build tools.");
 }
 
-async function fetchText(url: string) {
+function updateMirrorURLs(reference: string, source: string) {
+    const path = source.split("/").map(encodeURIComponent).join("/");
+    const encodedReference = reference.split("/").map(encodeURIComponent).join("/");
+    return [
+        `https://raw.githubusercontent.com/${REPOSITORY}/${encodedReference}/${path}`,
+        `https://github.com/${REPOSITORY}/raw/${encodedReference}/${path}`,
+        `https://cdn.jsdelivr.net/gh/${REPOSITORY}@${encodedReference}/${path}`
+    ];
+}
+
+async function fetchFromUpdateMirrors<T>(
+    urls: string[],
+    read: (response: Response, url: string) => Promise<T>
+): Promise<T> {
     throwIfGitHubRateLimited();
-    const response = await fetch(url, {
-        cache: "no-store",
-        headers: {
-            Accept: "application/vnd.github+json",
-            "User-Agent": "BetterStatus-AutoUpdater"
+
+    const failures: string[] = [];
+    const retryDeadlines: number[] = [];
+    for (const url of urls) {
+        try {
+            const response = await fetch(url, {
+                cache: "no-store",
+                headers: {
+                    Accept: "application/octet-stream, application/json;q=0.9, text/plain;q=0.8",
+                    "User-Agent": "BetterStatus-AutoUpdater"
+                }
+            });
+            if (!response.ok) {
+                failures.push(`${new URL(url).hostname}: HTTP ${response.status}`);
+                if (response.status === 403 || response.status === 429)
+                    retryDeadlines.push(rateLimitDeadline(response));
+                continue;
+            }
+
+            try {
+                const value = await read(response, url);
+                if (url !== urls[0])
+                    console.info(`[BetterStatus] Update mirror fallback succeeded through ${new URL(url).hostname}.`);
+                githubRetryAt = 0;
+                return value;
+            } catch (error) {
+                failures.push(`${new URL(url).hostname}: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        } catch (error) {
+            failures.push(`${new URL(url).hostname}: ${error instanceof Error ? error.message : String(error)}`);
         }
-    });
+    }
 
-    if (!response.ok)
-        handleFetchFailure(response);
-
-    return response.text();
+    if (retryDeadlines.length) {
+        githubRetryAt = Math.min(...retryDeadlines);
+        throw new GitHubRateLimitError(githubRetryAt);
+    }
+    throw new Error(`All update mirrors failed: ${failures.join("; ")}`);
 }
 
 async function fetchManifest(channel: UpdateChannel) {
-    const reference = JSON.parse(await fetchText(
-        `https://api.github.com/repos/${REPOSITORY}/git/ref/heads/${channel}`
-    )) as GitHubBranchReference;
-    const head = reference.object?.sha;
-
-    if (typeof head !== "string" || !/^[0-9a-f]{40}$/i.test(head))
-        throw new Error(`GitHub returned an invalid ${channel} branch reference.`);
-
-    return parseManifest(
-        JSON.parse(await fetchText(
-            `https://raw.githubusercontent.com/${REPOSITORY}/${head}/files.json`
-        ))
+    const localManifest = await readFile(MANIFEST_STATE_FILE, "utf8")
+        .then(value => JSON.parse(value) as Partial<UpdateManifest>)
+        .catch(() => undefined);
+    const installed = parseInstalledVersion(await readFile(VERSION_FILE, "utf8").catch(() => ""));
+    return fetchFromUpdateMirrors(
+        updateMirrorURLs(channel, "files.json"),
+        async (response, url) => {
+            const manifest = parseManifest(JSON.parse(await response.text()));
+            if (new URL(url).hostname === "cdn.jsdelivr.net") {
+                const localTimestamp = Date.parse(localManifest?.generatedAt ?? "");
+                const remoteTimestamp = Date.parse(manifest.generatedAt ?? "");
+                if (Number.isFinite(localTimestamp) && (!Number.isFinite(remoteTimestamp) || remoteTimestamp < localTimestamp))
+                    throw new Error("cached manifest is older than the installed manifest");
+                if (!Number.isFinite(localTimestamp) && manifest.commit !== (localManifest?.commit ?? installed.version))
+                    throw new Error("cached manifest freshness cannot be proven yet");
+            }
+            return manifest;
+        }
     );
 }
 
-async function fetchBytes(url: string) {
-    throwIfGitHubRateLimited();
-    const response = await fetch(url, {
-        headers: { "User-Agent": "BetterStatus-AutoUpdater" }
-    });
-
-    if (!response.ok)
-        handleFetchFailure(response);
-
-    return Buffer.from(await response.arrayBuffer());
+async function fetchUpdateFile(reference: string, source: string, expectedSHA256: string) {
+    return fetchFromUpdateMirrors(
+        updateMirrorURLs(reference, source),
+        async response => {
+            const contents = Buffer.from(await response.arrayBuffer());
+            if (sha256(contents) !== expectedSHA256)
+                throw new Error("SHA-256 verification failed");
+            return contents;
+        }
+    );
 }
 
 function sha256(contents: Uint8Array) {
@@ -376,6 +407,8 @@ function parseManifest(value: unknown): UpdateManifest {
         throw new Error("The update manifest uses an unsupported version.");
     if (typeof candidate.commit !== "string" || !/^[0-9a-f]{40}$/i.test(candidate.commit))
         throw new Error("The update manifest contains an invalid commit SHA.");
+    if (candidate.generatedAt !== undefined && (typeof candidate.generatedAt !== "string" || !Number.isFinite(Date.parse(candidate.generatedAt))))
+        throw new Error("The update manifest contains an invalid generation time.");
     if (!Array.isArray(candidate.files) || candidate.files.length === 0)
         throw new Error("The update manifest does not contain any files.");
 
@@ -405,6 +438,9 @@ function parseManifest(value: unknown): UpdateManifest {
     return {
         version: 1,
         commit: candidate.commit.toLowerCase(),
+        generatedAt: typeof candidate.generatedAt === "string" && Number.isFinite(Date.parse(candidate.generatedAt))
+            ? new Date(candidate.generatedAt).toISOString()
+            : undefined,
         files
     };
 }
@@ -512,9 +548,7 @@ async function performUpdate(channel: UpdateChannel): Promise<UpdateResult> {
                 await copyWithParents(currentFile, join(backupDir, file.target));
             }
 
-            const contents = await fetchBytes(`https://raw.githubusercontent.com/${REPOSITORY}/${manifest.commit}/${file.source}`);
-            if (sha256(contents) !== file.sha256)
-                throw new Error(`SHA-256 verification failed for ${file.target}.`);
+            const contents = await fetchUpdateFile(manifest.commit, file.source, file.sha256);
 
             const stagedFile = join(stagingDir, "files", file.target);
             await mkdir(dirname(stagedFile), { recursive: true });
