@@ -353,7 +353,7 @@ async function fetchFromUpdateMirrors<T>(
     throw new Error(`All update mirrors failed: ${failures.join("; ")}`);
 }
 
-async function fetchManifest(channel: UpdateChannel) {
+async function fetchManifest(channel: UpdateChannel, force = false) {
     const localManifest = await readFile(MANIFEST_STATE_FILE, "utf8")
         .then(value => JSON.parse(value) as Partial<UpdateManifest>)
         .catch(() => undefined);
@@ -364,11 +364,11 @@ async function fetchManifest(channel: UpdateChannel) {
             const manifest = parseManifest(JSON.parse(await response.text()));
             const localTimestamp = Date.parse(localManifest?.generatedAt ?? "");
             const remoteTimestamp = Date.parse(manifest.generatedAt ?? "");
-            if (Number.isFinite(localTimestamp) && (!Number.isFinite(remoteTimestamp) || remoteTimestamp < localTimestamp))
+            if (!force && Number.isFinite(localTimestamp) && (!Number.isFinite(remoteTimestamp) || remoteTimestamp < localTimestamp))
                 throw new Error("manifest is older than the locally accepted manifest");
-            if (!Number.isFinite(remoteTimestamp) && installed.version && manifest.commit !== installed.version)
+            if (!force && !Number.isFinite(remoteTimestamp) && installed.version && manifest.commit !== installed.version)
                 throw new Error("legacy manifest cannot safely replace a different installed version");
-            if (new URL(url).hostname === "cdn.jsdelivr.net" && !Number.isFinite(remoteTimestamp) && manifest.commit !== installed.version)
+            if (!force && new URL(url).hostname === "cdn.jsdelivr.net" && !Number.isFinite(remoteTimestamp) && manifest.commit !== installed.version)
                 throw new Error("cached manifest freshness cannot be proven");
             return manifest;
         }
@@ -507,8 +507,8 @@ async function copyWithParents(source: string, destination: string) {
     await copyFile(source, destination);
 }
 
-async function performUpdate(channel: UpdateChannel): Promise<UpdateResult> {
-    const manifest = await fetchManifest(channel);
+async function performUpdate(channel: UpdateChannel, force = false): Promise<UpdateResult> {
+    const manifest = await fetchManifest(channel, force);
     const remoteTargets = new Set(manifest.files.map(file => file.target));
     const previousTargets = await readPreviousTargets();
     const obsoleteTargets = [...new Set([
@@ -519,7 +519,7 @@ async function performUpdate(channel: UpdateChannel): Promise<UpdateResult> {
 
     for (const file of manifest.files) {
         const contents = await readFile(pluginPath(file.target)).catch(() => undefined);
-        if (!contents || sha256(contents) !== file.sha256)
+        if (force || !contents || sha256(contents) !== file.sha256)
             changedFiles.push(file);
     }
 
@@ -605,14 +605,15 @@ async function performUpdate(channel: UpdateChannel): Promise<UpdateResult> {
 export function checkForUpdates(
     _event: IpcMainInvokeEvent,
     enabled: boolean,
-    requestedChannel: UpdateChannel = "prod"
+    requestedChannel: UpdateChannel = "prod",
+    force = false
 ) {
     if (!enabled)
         return Promise.resolve<UpdateResult>({ status: "disabled" });
 
     const channel: UpdateChannel = requestedChannel === "dev" ? "dev" : "prod";
 
-    return updatePromise ??= performUpdate(channel)
+    return updatePromise ??= performUpdate(channel, force)
         .catch(updateFailure)
         .finally(() => {
             updatePromise = undefined;

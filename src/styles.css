@@ -164,6 +164,38 @@
   line-height: 1.35;
 }
 
+.bs-update-failure-notification {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+}
+
+.bs-force-update-notification-button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border-radius: 6px;
+  color: var(--white-500);
+  background: var(--status-danger);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.bs-force-update-notification-button:hover,
+.bs-force-update-notification-button:focus-visible {
+  filter: brightness(1.1);
+}
+
+.bs-force-update-notification-button:focus-visible {
+  outline: 2px solid var(--focus-primary);
+  outline-offset: 2px;
+}
+
 .bs-backup-panel {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;

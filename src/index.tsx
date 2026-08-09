@@ -304,7 +304,7 @@ function runAutomaticUpdateCheck() {
                     window.setTimeout(relaunch, 1_500);
             } else if (result.status === "failed") {
                 retryAt = result.retryAt;
-                showUpdateFailureNotification(result);
+                showUpdateFailureNotification(result, getUpdateChannel());
             }
         })
         .finally(() => {

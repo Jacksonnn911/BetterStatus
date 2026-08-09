@@ -254,8 +254,50 @@ interface UpdateFailure {
 }
 
 let lastRateLimitNotificationRetryAt = 0;
+let forcedUpdateInProgress = false;
 
-export function showUpdateFailureNotification(failure: UpdateFailure) {
+async function forceUpdateFromNotification(channel: UpdateChannel) {
+  if (forcedUpdateInProgress) return;
+  forcedUpdateInProgress = true;
+
+  try {
+    const result = await Native.checkForUpdates(true, channel, true);
+    if (result.status === "updated") {
+      const willRestart = prepareAutoRestart();
+      showNotification({
+        title: "BetterStatus force update installed",
+        body: willRestart
+          ? "Discord will restart automatically."
+          : settings.store.autoRestart
+            ? "Automatic restart is temporarily paused. Restart Discord manually."
+            : "Restart Discord to use the reinstalled version.",
+      });
+      if (willRestart) window.setTimeout(relaunch, 1_500);
+      return;
+    }
+
+    if (result.status === "current") {
+      showNotification({
+        title: "BetterStatus force update completed",
+        body: "The selected channel files were verified. No restart is required.",
+      });
+      return;
+    }
+
+    showUpdateFailureNotification(result, channel);
+  } catch (error) {
+    showUpdateFailureNotification({
+      error: error instanceof Error ? error.message : String(error),
+    }, channel);
+  } finally {
+    forcedUpdateInProgress = false;
+  }
+}
+
+export function showUpdateFailureNotification(
+  failure: UpdateFailure,
+  channel: UpdateChannel = getUpdateChannel(),
+) {
   const isRateLimited = failure.retryAt !== undefined;
   if (isRateLimited && failure.retryAt === lastRateLimitNotificationRetryAt)
     return;
@@ -268,6 +310,30 @@ export function showUpdateFailureNotification(failure: UpdateFailure) {
       ? "BetterStatus update checks paused"
       : "BetterStatus update failed",
     body: failure.error ?? "Run the BetterStatus installer to update manually.",
+    richBody: (
+      <div className="bs-update-failure-notification">
+        <div>{failure.error ?? "Run the BetterStatus installer to update manually."}</div>
+        <span
+          className="bs-force-update-notification-button"
+          role="button"
+          tabIndex={0}
+          onClick={event => {
+            event.preventDefault();
+            event.stopPropagation();
+            void forceUpdateFromNotification(channel);
+          }}
+          onKeyDown={event => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            event.stopPropagation();
+            void forceUpdateFromNotification(channel);
+          }}
+        >
+          Force update
+        </span>
+      </div>
+    ),
+    dismissOnClick: false,
     noPersist: isRateLimited,
   });
 }
@@ -694,6 +760,7 @@ export default function SettingsComponent() {
   );
   const [searchQuery, setSearchQuery] = React.useState("");
   const [checkingForUpdates, setCheckingForUpdates] = React.useState(false);
+  const [lastUpdateFailed, setLastUpdateFailed] = React.useState(false);
   const [updateStatus, setUpdateStatus] = React.useState<string | null>(null);
   const [updateInfo, setUpdateInfo] = React.useState<UpdateInfo | null>(null);
   const [updateInfoError, setUpdateInfoError] = React.useState<string | null>(
@@ -824,17 +891,18 @@ export default function SettingsComponent() {
     }
   }
 
-  async function checkForUpdates() {
+  async function checkForUpdates(force = false) {
     if (checkingForUpdates) return;
 
     let retryAt: number | undefined;
     setCheckingForUpdates(true);
+    setLastUpdateFailed(false);
     setUpdateStatus(
-      `Checking the ${selectedUpdateChannel === "dev" ? "development" : "production"} channel…`,
+      `${force ? "Force updating from" : "Checking"} the ${selectedUpdateChannel === "dev" ? "development" : "production"} channel…`,
     );
 
     try {
-      const result = await Native.checkForUpdates(true, selectedUpdateChannel);
+      const result = await Native.checkForUpdates(true, selectedUpdateChannel, force);
 
       if (result.status === "updated") {
         const willRestart = prepareAutoRestart();
@@ -867,15 +935,14 @@ export default function SettingsComponent() {
         if (retryAt !== undefined)
           pluginRuntime().configureUpdateChecks(false, retryAt);
         setUpdateStatus(`Update failed: ${message}`);
-        showUpdateFailureNotification(result);
+        setLastUpdateFailed(true);
+        showUpdateFailureNotification(result, selectedUpdateChannel);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setUpdateStatus(`Update failed: ${message}`);
-      showNotification({
-        title: "BetterStatus update failed",
-        body: message,
-      });
+      setLastUpdateFailed(true);
+      showUpdateFailureNotification({ error: message }, selectedUpdateChannel);
     } finally {
       if (retryAt === undefined)
         await refreshUpdateInfo(selectedUpdateChannel);
@@ -1284,9 +1351,18 @@ export default function SettingsComponent() {
               closeOnSelect
             />
           </div>
-          <Button disabled={checkingForUpdates} onClick={checkForUpdates}>
+          <Button disabled={checkingForUpdates} onClick={() => checkForUpdates(false)}>
             {checkingForUpdates ? "Checking…" : "Check for updates"}
           </Button>
+          {lastUpdateFailed && (
+            <Button
+              color={Button.Colors.RED}
+              disabled={checkingForUpdates}
+              onClick={() => checkForUpdates(true)}
+            >
+              Force update
+            </Button>
+          )}
           <div className="bs-update-switches">
             <FormSwitch
               title="Auto update"
