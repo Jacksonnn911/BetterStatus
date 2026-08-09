@@ -97,9 +97,9 @@ async function decryptSyncDocument(envelope: EncryptedSyncDocument, password: st
         decipher.setAAD(SYNC_ENCRYPTION_AAD);
         decipher.setAuthTag(tag);
         const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
-        const document = JSON.parse(plaintext.toString("utf8")) as SyncDocument;
-        if (document?.version !== 1) throw new Error("Unsupported decrypted sync document.");
-        return document;
+        const document = JSON.parse(plaintext.toString("utf8")) as Omit<SyncDocument, "version"> & { version: number; };
+        if (document?.version !== 1 && document?.version !== 2) throw new Error("Unsupported decrypted sync document.");
+        return document as SyncDocument;
     } catch {
         throw new Error("The sync password is incorrect or the encrypted data is damaged.");
     }

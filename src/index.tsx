@@ -12,7 +12,7 @@ import definePlugin from "@utils/types";
 
 import { applySyncDocument, buildSyncDocument, getPresets, getSchedules, getSyncServerURL, getUpdateChannel, getUpdateCheckFrequency, initializeAutoRestartGuard, prepareAutoRestart, rememberSavedStatus, requestSyncPassword, savePresets, settings, showUpdateFailureNotification } from "./Settings";
 import { startStatusHistoryModalObserver, stopStatusHistoryModalObserver } from "./StatusHistory";
-import type { StatusPreset, StatusSchedule, SyncDocument } from "./types";
+import type { StatusPreset, StatusSchedule, SyncDocument, SyncEvent } from "./types";
 
 interface CustomStatus {
     text?: string;
@@ -37,6 +37,7 @@ let cloudSyncTimer: number | undefined;
 let cloudSyncPullTimer: number | undefined;
 let cloudSyncRevision = 0;
 let cloudSyncBaseDocument: SyncDocument | undefined;
+let cloudSyncObservedDocument: SyncDocument | undefined;
 let cloudSyncUserId = "";
 let cloudSyncOperation = Promise.resolve();
 let cloudSyncGeneration = 0;
@@ -196,6 +197,160 @@ function syncValuesEqual(left: unknown, right: unknown) {
     return JSON.stringify(left) === JSON.stringify(right);
 }
 
+const SYNC_SETTING_KEYS = [
+    "activePresetId",
+    "autoUpdate",
+    "autoRestart",
+    "updateCheckFrequency",
+    "updateChannel"
+] as const;
+
+type SyncSettingKey = typeof SYNC_SETTING_KEYS[number];
+type SyncCollectionEventEntity = Exclude<SyncEvent["entity"], "setting">;
+
+function cloneSyncValue<T>(value: T): T {
+    return value === undefined ? value : JSON.parse(JSON.stringify(value));
+}
+
+function normalizeSyncEvents(events: unknown): SyncEvent[] {
+    if (!Array.isArray(events)) return [];
+    const byId = new Map<string, SyncEvent>();
+    for (const candidate of events) {
+        const event = candidate as Partial<SyncEvent>;
+        if (!event || typeof event !== "object" || typeof event.id !== "string" || !event.id ||
+            typeof event.clientId !== "string" || !event.clientId || !Number.isSafeInteger(event.clock) || event.clock! < 1 ||
+            typeof event.createdAt !== "number" || !Number.isFinite(event.createdAt) ||
+            !["preset", "savedStatus", "schedule", "setting"].includes(event.entity ?? "") ||
+            typeof event.key !== "string" || !event.key || !["set", "delete"].includes(event.operation ?? ""))
+            continue;
+        byId.set(event.id, cloneSyncValue(event as SyncEvent));
+    }
+    return [...byId.values()].sort((left, right) => left.clock - right.clock || left.id.localeCompare(right.id));
+}
+
+function mergeSyncEvents(...documents: SyncDocument[]) {
+    return normalizeSyncEvents(documents.flatMap(document => document.events ?? []));
+}
+
+function materializeSyncEvents(document: SyncDocument): SyncDocument {
+    const events = normalizeSyncEvents(document.events);
+    const presets = new Map(document.presets.map(item => [item.id, cloneSyncValue(item)]));
+    const savedStatuses = new Map(document.savedStatuses.map(item => [item.id, cloneSyncValue(item)]));
+    const schedules = new Map(document.schedules.map(item => [item.id, cloneSyncValue(item)]));
+    const settingsValues: Pick<SyncDocument, SyncSettingKey> = {
+        activePresetId: document.activePresetId,
+        autoUpdate: document.autoUpdate,
+        autoRestart: document.autoRestart,
+        updateCheckFrequency: document.updateCheckFrequency,
+        updateChannel: document.updateChannel
+    };
+
+    for (const event of events) {
+        if (event.entity === "setting") {
+            if (!SYNC_SETTING_KEYS.includes(event.key as SyncSettingKey)) continue;
+            const key = event.key as SyncSettingKey;
+            if (event.operation === "delete") {
+                if (key === "activePresetId") settingsValues.activePresetId = undefined;
+                continue;
+            }
+            (settingsValues as Record<string, unknown>)[key] = cloneSyncValue(event.value);
+            continue;
+        }
+
+        const collection = event.entity === "preset"
+            ? presets
+            : event.entity === "savedStatus"
+                ? savedStatuses
+                : schedules;
+        if (event.operation === "delete") {
+            collection.delete(event.key);
+            continue;
+        }
+        const value = event.value as { id?: unknown; } | undefined;
+        if (value && typeof value === "object" && value.id === event.key)
+            (collection as Map<string, typeof value>).set(event.key, cloneSyncValue(value));
+    }
+
+    return {
+        ...document,
+        version: 2,
+        ...settingsValues,
+        presets: [...presets.values()],
+        savedStatuses: [...savedStatuses.values()],
+        schedules: [...schedules.values()],
+        events
+    };
+}
+
+function getCloudSyncClientId() {
+    if (!settings.store.cloudSyncClientId)
+        settings.store.cloudSyncClientId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return settings.store.cloudSyncClientId;
+}
+
+function createSyncEvent(
+    events: SyncEvent[],
+    entity: SyncEvent["entity"],
+    key: string,
+    operation: SyncEvent["operation"],
+    value?: unknown
+) {
+    const clientId = getCloudSyncClientId();
+    const clock = events.reduce((maximum, event) => Math.max(maximum, event.clock), 0) + 1;
+    const event: SyncEvent = {
+        id: `${clientId}:${clock}:${Math.random().toString(36).slice(2)}`,
+        clientId,
+        clock,
+        createdAt: Date.now(),
+        entity,
+        key,
+        operation
+    };
+    if (operation === "set") event.value = cloneSyncValue(value);
+    events.push(event);
+}
+
+function captureCollectionEvents<T extends { id: string; }>(
+    events: SyncEvent[],
+    entity: SyncCollectionEventEntity,
+    previous: T[],
+    current: T[]
+) {
+    const previousById = new Map(previous.map(item => [item.id, item]));
+    const currentById = new Map(current.map(item => [item.id, item]));
+    for (const id of new Set([...previousById.keys(), ...currentById.keys()])) {
+        const before = previousById.get(id);
+        const after = currentById.get(id);
+        if (syncValuesEqual(before, after)) continue;
+        createSyncEvent(events, entity, id, after === undefined ? "delete" : "set", after);
+    }
+}
+
+/** Convert local mutations into append-only events before talking to the server. */
+function captureLocalSyncEvents() {
+    const current = buildSyncDocument();
+    const previous = cloudSyncObservedDocument;
+    if (!previous) {
+        cloudSyncObservedDocument = cloneSyncValue(current);
+        return current;
+    }
+
+    const events = mergeSyncEvents(previous, current);
+    captureCollectionEvents(events, "preset", previous.presets, current.presets);
+    captureCollectionEvents(events, "savedStatus", previous.savedStatuses, current.savedStatuses);
+    captureCollectionEvents(events, "schedule", previous.schedules, current.schedules);
+    for (const key of SYNC_SETTING_KEYS) {
+        if (syncValuesEqual(previous[key], current[key])) continue;
+        const value = current[key];
+        createSyncEvent(events, "setting", key, value === undefined ? "delete" : "set", value);
+    }
+
+    settings.store.cloudSyncEvents = events;
+    const observed = materializeSyncEvents({ ...current, events });
+    cloudSyncObservedDocument = cloneSyncValue(observed);
+    return observed;
+}
+
 function mergeSyncValue<T>(base: T, local: T, remote: T): T {
     if (syncValuesEqual(local, base)) return remote;
     if (syncValuesEqual(remote, base) || syncValuesEqual(local, remote)) return local;
@@ -228,18 +383,19 @@ function mergeSyncCollection<T extends { id: string; }>(base: T[], local: T[], r
 
 /** Rebase local edits onto a newer server snapshot. Local changes win only where both sides changed the same value. */
 export function mergeSyncDocuments(base: SyncDocument, local: SyncDocument, remote: SyncDocument): SyncDocument {
-    return {
-        version: 1,
+    return materializeSyncEvents({
+        version: 2,
         modifiedAt: Date.now(),
         presets: mergeSyncCollection(base.presets, local.presets, remote.presets),
         savedStatuses: mergeSyncCollection(base.savedStatuses, local.savedStatuses, remote.savedStatuses),
         schedules: mergeSyncCollection(base.schedules, local.schedules, remote.schedules),
+        events: mergeSyncEvents(base, local, remote),
         activePresetId: mergeSyncValue(base.activePresetId, local.activePresetId, remote.activePresetId),
         autoUpdate: mergeSyncValue(base.autoUpdate, local.autoUpdate, remote.autoUpdate),
         autoRestart: mergeSyncValue(base.autoRestart, local.autoRestart, remote.autoRestart),
         updateCheckFrequency: mergeSyncValue(base.updateCheckFrequency, local.updateCheckFrequency, remote.updateCheckFrequency),
         updateChannel: mergeSyncValue(base.updateChannel, local.updateChannel, remote.updateChannel)
-    };
+    });
 }
 
 function rememberCloudBaseline(revision: number, document: SyncDocument) {
@@ -273,6 +429,7 @@ function stopCloudSync() {
     cloudSyncOperation = Promise.resolve();
     cloudSyncRevision = 0;
     cloudSyncBaseDocument = undefined;
+    cloudSyncObservedDocument = undefined;
     cloudSyncUserId = "";
     cloudSyncForcePush = false;
     cloudSyncLocked = false;
@@ -281,7 +438,7 @@ function stopCloudSync() {
 async function pushCloudChangesNow() {
     if (!settings.store.syncEnabled || applyingCloudSnapshot || cloudSyncLocked) return;
     for (let attempt = 0; attempt < 4; attempt++) {
-        const document = buildSyncDocument();
+        const document = captureLocalSyncEvents();
         if (!cloudSyncForcePush && cloudSyncBaseDocument && syncDocumentHash(document) === syncDocumentHash(cloudSyncBaseDocument)) return;
 
         const result = await VencordNative.pluginHelpers.BetterStatus.pushCloudSync(
@@ -290,6 +447,7 @@ async function pushCloudChangesNow() {
         if (!result.conflict) {
             cloudSyncForcePush = false;
             rememberCloudBaseline(result.revision, document);
+            cloudSyncObservedDocument = cloneSyncValue(document);
             return;
         }
 
@@ -300,6 +458,7 @@ async function pushCloudChangesNow() {
         applyingCloudSnapshot = true;
         try {
             await applySyncDocument(merged);
+            cloudSyncObservedDocument = cloneSyncValue(merged);
             rememberCloudBaseline(remote.revision, remote.document);
         } finally {
             applyingCloudSnapshot = false;
@@ -324,11 +483,11 @@ async function decodeCloudSnapshot(snapshot: { revision: number; document: unkno
         requestSyncPassword(unlockCloudSyncPassword);
         return undefined;
     }
-    const document = decoded.snapshot.document as SyncDocument;
-    if (document?.version !== 1) return undefined;
+    const document = decoded.snapshot.document as Omit<SyncDocument, "version"> & { version: number; };
+    if (document?.version !== 1 && document?.version !== 2) return undefined;
     reportCloudProtection(decoded.encrypted, false);
     cloudSyncLocked = false;
-    return { revision: snapshot.revision, document };
+    return { revision: snapshot.revision, document: materializeSyncEvents(document as SyncDocument) };
 }
 
 async function reconcileCloudSnapshot(
@@ -340,7 +499,7 @@ async function reconcileCloudSnapshot(
     const remote = await decodeCloudSnapshot(snapshot);
     if (!remote) return;
 
-    const local = buildSyncDocument();
+    const local = captureLocalSyncEvents();
     const base = cloudSyncBaseDocument;
     const hasLocalChanges = base !== undefined && syncDocumentHash(local) !== syncDocumentHash(base);
     const preserveUntrackedLocalState = initial && !base && !preferRemote;
@@ -356,6 +515,7 @@ async function reconcileCloudSnapshot(
     try {
         if (syncDocumentHash(local) !== syncDocumentHash(next))
             await applySyncDocument(next);
+        cloudSyncObservedDocument = cloneSyncValue(next);
         rememberCloudBaseline(remote.revision, remote.document);
         configureStatusSchedule();
     } finally {
@@ -401,6 +561,9 @@ async function configureCloudSync(forcePull = false) {
         if (savedState?.server === server && savedState.discordUserId === result.discordUserId) {
             cloudSyncRevision = savedState.revision;
             cloudSyncBaseDocument = savedState.document;
+            cloudSyncObservedDocument = cloneSyncValue(savedState.document);
+        } else {
+            cloudSyncObservedDocument = cloneSyncValue(buildSyncDocument());
         }
         if (result.snapshot?.revision > 0)
             await enqueueCloudOperation(() => reconcileCloudSnapshot(result.snapshot, preferRemote, true));
