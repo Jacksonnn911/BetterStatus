@@ -343,12 +343,18 @@ func (s *Server) putSync(w http.ResponseWriter, r *http.Request) {
 INSERT INTO sync_documents (discord_user_id,revision,document)
 SELECT $1,1,$2 WHERE $3=0
 ON CONFLICT (discord_user_id) DO UPDATE SET revision=sync_documents.revision+1,document=excluded.document,updated_at=now()
-WHERE sync_documents.revision=$3
+WHERE sync_documents.revision=$3 AND sync_documents.document IS DISTINCT FROM excluded.document
 RETURNING revision,document,updated_at`, userID, body.Document, body.BaseRevision).Scan(&document.Revision, &document.Document, &document.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		current, readErr := s.readDocument(r.Context(), userID)
 		if readErr != nil {
 			writeError(w, http.StatusConflict, "sync conflict")
+			return
+		}
+		if current.Revision == body.BaseRevision {
+			// An idempotent retry is already committed. Do not create another
+			// revision or WebSocket broadcast for the same JSON document.
+			writeJSON(w, http.StatusOK, current)
 			return
 		}
 		writeJSON(w, http.StatusConflict, map[string]any{"error": "sync conflict", "current": current})

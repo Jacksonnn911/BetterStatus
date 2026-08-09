@@ -273,6 +273,7 @@ function materializeSyncEvents(document: SyncDocument): SyncDocument {
 
     return {
         ...document,
+        version: 2,
         ...settingsValues,
         presets: [...presets.values()],
         savedStatuses: [...savedStatuses.values()],
@@ -383,7 +384,7 @@ function mergeSyncCollection<T extends { id: string; }>(base: T[], local: T[], r
 /** Rebase local edits onto a newer server snapshot. Local changes win only where both sides changed the same value. */
 export function mergeSyncDocuments(base: SyncDocument, local: SyncDocument, remote: SyncDocument): SyncDocument {
     return materializeSyncEvents({
-        version: 1,
+        version: 2,
         modifiedAt: Date.now(),
         presets: mergeSyncCollection(base.presets, local.presets, remote.presets),
         savedStatuses: mergeSyncCollection(base.savedStatuses, local.savedStatuses, remote.savedStatuses),
@@ -482,11 +483,11 @@ async function decodeCloudSnapshot(snapshot: { revision: number; document: unkno
         requestSyncPassword(unlockCloudSyncPassword);
         return undefined;
     }
-    const document = decoded.snapshot.document as SyncDocument;
-    if (document?.version !== 1) return undefined;
+    const document = decoded.snapshot.document as Omit<SyncDocument, "version"> & { version: number; };
+    if (document?.version !== 1 && document?.version !== 2) return undefined;
     reportCloudProtection(decoded.encrypted, false);
     cloudSyncLocked = false;
-    return { revision: snapshot.revision, document: materializeSyncEvents(document) };
+    return { revision: snapshot.revision, document: materializeSyncEvents(document as SyncDocument) };
 }
 
 async function reconcileCloudSnapshot(

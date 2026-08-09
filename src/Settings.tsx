@@ -2288,7 +2288,7 @@ export function getSchedules(): StatusSchedule[] {
 
 export function buildSyncDocument(): SyncDocument {
   return {
-    version: 1,
+    version: 2,
     modifiedAt: Date.now(),
     presets: getPresets(),
     savedStatuses: getSavedStatuses(),
@@ -2303,7 +2303,7 @@ export function buildSyncDocument(): SyncDocument {
 }
 
 export async function applySyncDocument(document: SyncDocument) {
-  if (!document || document.version !== 1) throw new Error("Unsupported sync document.");
+  if (!document || document.version !== 2) throw new Error("Unsupported sync document.");
   const presetIds = new Set(document.presets.map(preset => preset.id));
   settings.store.presets = document.presets;
   settings.store.savedStatuses = normalizeSavedStatuses(document.savedStatuses);

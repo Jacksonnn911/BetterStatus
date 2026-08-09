@@ -63,7 +63,7 @@ export interface SyncEvent {
 }
 
 export interface SyncDocument {
-    version: 1;
+    version: 2;
     modifiedAt: number;
     presets: StatusPreset[];
     savedStatuses: SavedStatus[];
