@@ -502,6 +502,17 @@
 .bs-timepoint-title > span { color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: 0.12em; }
 .bs-timepoint-title > strong { color: var(--header-primary); font-size: 18px; }
 
+.bs-end-time-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.bs-end-time-heading > strong {
+  color: var(--header-primary);
+  font-size: 18px;
+}
+
 .bs-timeline-rail {
   display: flex;
   height: 28px;
@@ -545,6 +556,59 @@
 
 .bs-compact-field input:focus { border-color: var(--brand-500); }
 .bs-end-action-field { grid-column: span 2; }
+
+.bs-weekday-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-accent);
+}
+
+.bs-weekday-picker > span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.bs-weekday-picker > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bs-weekday-picker button {
+  min-width: 42px;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--background-modifier-accent);
+  border-radius: 999px;
+  color: var(--interactive-normal);
+  background: var(--background-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.bs-weekday-picker button:hover {
+  color: var(--interactive-hover);
+  background: var(--background-modifier-hover);
+}
+
+.bs-weekday-picker button.bs-weekday-selected {
+  border-color: color-mix(in srgb, var(--brand-500) 55%, var(--background-modifier-accent));
+  color: var(--white-500);
+  background: var(--brand-500);
+}
+
+.bs-weekday-picker button:focus-visible {
+  outline: 2px solid var(--focus-primary);
+  outline-offset: 2px;
+}
 
 .bs-end-detail {
   display: grid;

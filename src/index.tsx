@@ -44,13 +44,27 @@ let applyingCloudSnapshot = false;
 let cloudSyncLocked = false;
 const SCHEDULE_GRACE_MS = 5 * 60_000;
 
-function occurrenceAtOrAfter(startsAt: number, repeat: "once" | "daily" | "weekly", threshold: number) {
-    if (repeat === "once") return startsAt >= threshold ? startsAt : undefined;
+function scheduleRepeatDays(schedule: StatusSchedule) {
+    if (schedule.repeat === "daily") return new Set([0, 1, 2, 3, 4, 5, 6]);
+    if (schedule.repeat === "weekdays") return new Set([1, 2, 3, 4, 5]);
+    if (schedule.repeat === "weekends") return new Set([0, 6]);
+    if (schedule.repeat === "custom" && schedule.repeatDays?.length)
+        return new Set(schedule.repeatDays);
+    return new Set([new Date(schedule.startsAt).getDay()]);
+}
 
-    const candidate = new Date(startsAt);
-    const days = repeat === "daily" ? 1 : 7;
-    while (candidate.getTime() < threshold)
-        candidate.setDate(candidate.getDate() + days);
+function occurrenceAtOrAfter(schedule: StatusSchedule, threshold: number) {
+    if (schedule.repeat === "once")
+        return schedule.startsAt >= threshold ? schedule.startsAt : undefined;
+
+    const candidate = new Date(schedule.startsAt);
+    if (candidate.getTime() < threshold) {
+        const approximateDays = Math.max(0, Math.floor((threshold - candidate.getTime()) / 86_400_000) - 1);
+        candidate.setDate(candidate.getDate() + approximateDays);
+    }
+    const repeatDays = scheduleRepeatDays(schedule);
+    while (candidate.getTime() < threshold || !repeatDays.has(candidate.getDay()))
+        candidate.setDate(candidate.getDate() + 1);
     return candidate.getTime();
 }
 
@@ -99,7 +113,7 @@ function configureStatusSchedule() {
             continue;
         }
 
-        const occurrence = occurrenceAtOrAfter(schedule.startsAt, schedule.repeat, Math.max(lastRun + 1, now - SCHEDULE_GRACE_MS));
+        const occurrence = occurrenceAtOrAfter(schedule, Math.max(lastRun + 1, now - SCHEDULE_GRACE_MS));
         if (occurrence !== undefined)
             candidates.push({ schedule, occurrence, type: "start", startOccurrence: occurrence });
     }

@@ -508,8 +508,25 @@ const UPDATE_FREQUENCY_OPTIONS: Array<{
 const SCHEDULE_REPEAT_OPTIONS = [
   { label: "Once", value: "once" },
   { label: "Every day", value: "daily" },
+  { label: "Weekdays", value: "weekdays" },
+  { label: "Weekends", value: "weekends" },
   { label: "Every week", value: "weekly" },
+  { label: "Specific days", value: "custom" },
 ];
+
+const WEEKDAY_OPTIONS = [
+  { label: "Mon", value: 1 },
+  { label: "Tue", value: 2 },
+  { label: "Wed", value: 3 },
+  { label: "Thu", value: 4 },
+  { label: "Fri", value: 5 },
+  { label: "Sat", value: 6 },
+  { label: "Sun", value: 0 },
+];
+
+const SCHEDULE_REPEAT_VALUES = new Set<ScheduleRepeat>([
+  "once", "daily", "weekdays", "weekends", "weekly", "custom",
+]);
 
 const SCHEDULE_END_OPTIONS = [
   { label: "Keep scheduled status", value: "keep" },
@@ -544,8 +561,14 @@ function validateSchedules(value: unknown, presetIds: Set<string>): StatusSchedu
       throw new Error(`Schedule ${index + 1} references a missing preset.`);
     if (typeof schedule.startsAt !== "number" || !Number.isFinite(schedule.startsAt))
       throw new Error(`Schedule ${index + 1} has an invalid start time.`);
-    if (!(["once", "daily", "weekly"] as unknown[]).includes(schedule.repeat))
+    if (!SCHEDULE_REPEAT_VALUES.has(schedule.repeat as ScheduleRepeat))
       throw new Error(`Schedule ${index + 1} has an invalid recurrence.`);
+
+    const repeatDays = [...new Set((schedule.repeatDays ?? [])
+      .filter(day => Number.isInteger(day) && day >= 0 && day <= 6))]
+      .sort((left, right) => left - right);
+    if (schedule.repeat === "custom" && repeatDays.length === 0)
+      repeatDays.push(new Date(schedule.startsAt).getDay());
 
     const endBehavior: ScheduleEndBehavior = ["keep", "restore", "preset", "custom"].includes(schedule.endBehavior ?? "")
       ? schedule.endBehavior as ScheduleEndBehavior
@@ -566,6 +589,7 @@ function validateSchedules(value: unknown, presetIds: Set<string>): StatusSchedu
       startsAt: schedule.startsAt,
       endsAt,
       repeat: schedule.repeat as ScheduleRepeat,
+      repeatDays,
       endBehavior,
       endPresetId: schedule.endPresetId,
       endText: typeof schedule.endText === "string" ? schedule.endText.slice(0, 10_000) : "",
@@ -604,8 +628,21 @@ function scheduleOccursOnDay(schedule: StatusSchedule, day: Date) {
   const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
   if (dayStart < startDay) return false;
   if (schedule.repeat === "daily") return true;
+  if (schedule.repeat === "weekdays") return day.getDay() >= 1 && day.getDay() <= 5;
+  if (schedule.repeat === "weekends") return day.getDay() === 0 || day.getDay() === 6;
   if (schedule.repeat === "weekly") return day.getDay() === start.getDay();
+  if (schedule.repeat === "custom") return (schedule.repeatDays ?? []).includes(day.getDay());
   return dayStart === startDay;
+}
+
+function scheduleRepeatLabel(schedule: StatusSchedule) {
+  if (schedule.repeat === "once") return "One time";
+  if (schedule.repeat === "daily") return "Repeats every day";
+  if (schedule.repeat === "weekdays") return "Repeats on weekdays";
+  if (schedule.repeat === "weekends") return "Repeats on weekends";
+  if (schedule.repeat === "weekly") return `Repeats every ${new Date(schedule.startsAt).toLocaleDateString([], { weekday: "long" })}`;
+  const selected = WEEKDAY_OPTIONS.filter(day => (schedule.repeatDays ?? []).includes(day.value));
+  return `Repeats ${selected.map(day => day.label).join(", ") || "on selected days"}`;
 }
 
 function createId() {
@@ -1170,6 +1207,7 @@ export default function SettingsComponent() {
       startsAt: startsAt.getTime(),
       endsAt: endsAt.getTime(),
       repeat: "once",
+      repeatDays: [],
       endBehavior: "restore",
       endText: "",
       endPresence: "online",
@@ -1185,6 +1223,17 @@ export default function SettingsComponent() {
 
   function updateSchedule(id: string, patch: Partial<StatusSchedule>) {
     commitSchedules(schedules.map(schedule => schedule.id === id ? { ...schedule, ...patch } : schedule));
+  }
+
+  function toggleScheduleDay(schedule: StatusSchedule, day: number) {
+    const selected = new Set(schedule.repeatDays ?? []);
+    if (selected.has(day)) {
+      if (selected.size === 1) return;
+      selected.delete(day);
+    } else {
+      selected.add(day);
+    }
+    updateSchedule(schedule.id, { repeatDays: [...selected].sort((left, right) => left - right) });
   }
 
   function toggleScheduleCollapsed(id: string) {
@@ -1612,7 +1661,7 @@ export default function SettingsComponent() {
                     </div>
                     <label className="bs-schedule-name">
                       <TextInput value={schedule.name} placeholder="Schedule name" onChange={name => updateSchedule(schedule.id, { name })} />
-                      <span>{schedule.repeat === "once" ? "One time" : schedule.repeat === "daily" ? "Repeats daily" : "Repeats weekly"}</span>
+                      <span>{scheduleRepeatLabel(schedule)}</span>
                     </label>
                     <div className="bs-schedule-actions">
                       <FormSwitch title="Enabled" value={schedule.enabled} onChange={enabled => updateSchedule(schedule.id, { enabled })} hideBorder />
@@ -1659,9 +1708,38 @@ export default function SettingsComponent() {
                           </div>
                           <div className="bs-compact-field bs-compact-select">
                             <span>Repeat</span>
-                            <Select options={SCHEDULE_REPEAT_OPTIONS} select={repeat => updateSchedule(schedule.id, { repeat: repeat as ScheduleRepeat })} serialize={value => value} isSelected={value => value === schedule.repeat} closeOnSelect />
+                            <Select options={SCHEDULE_REPEAT_OPTIONS} select={repeat => {
+                              const nextRepeat = repeat as ScheduleRepeat;
+                              updateSchedule(schedule.id, {
+                                repeat: nextRepeat,
+                                repeatDays: nextRepeat === "custom" && !(schedule.repeatDays?.length)
+                                  ? [new Date(schedule.startsAt).getDay()]
+                                  : schedule.repeatDays,
+                              });
+                            }} serialize={value => value} isSelected={value => value === schedule.repeat} closeOnSelect />
                           </div>
                         </div>
+                        {schedule.repeat === "custom" && (
+                          <div className="bs-weekday-picker" aria-label="Repeat on specific days">
+                            <span>Repeat on</span>
+                            <div>
+                              {WEEKDAY_OPTIONS.map(day => {
+                                const selected = (schedule.repeatDays ?? []).includes(day.value);
+                                return (
+                                  <button
+                                    type="button"
+                                    className={selected ? "bs-weekday-selected" : ""}
+                                    aria-pressed={selected}
+                                    key={day.value}
+                                    onClick={() => toggleScheduleDay(schedule, day.value)}
+                                  >
+                                    {day.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </section>
 
@@ -1672,9 +1750,12 @@ export default function SettingsComponent() {
                       <div className="bs-timepoint-content">
                         <div className="bs-timepoint-title">
                           <span>END</span>
-                          <FormSwitch title="Use end time" value={Boolean(schedule.endsAt)} onChange={enabled => updateSchedule(schedule.id, enabled
-                            ? { endsAt: endTime, endBehavior: schedule.endBehavior === "keep" ? "restore" : schedule.endBehavior }
-                            : { endsAt: undefined, endBehavior: "keep" })} hideBorder />
+                          <div className="bs-end-time-heading">
+                            {schedule.endsAt && <strong>{timeInputValue(schedule.endsAt)}</strong>}
+                            <FormSwitch title="Use end time" value={Boolean(schedule.endsAt)} onChange={enabled => updateSchedule(schedule.id, enabled
+                              ? { endsAt: endTime, endBehavior: schedule.endBehavior === "keep" ? "restore" : schedule.endBehavior }
+                              : { endsAt: undefined, endBehavior: "keep" })} hideBorder />
+                          </div>
                         </div>
                         {schedule.endsAt ? (
                           <>
@@ -2086,6 +2167,12 @@ export function getSchedules(): StatusSchedule[] {
     )
     .map(schedule => ({
       ...schedule,
+      repeat: SCHEDULE_REPEAT_VALUES.has(schedule.repeat)
+        ? schedule.repeat
+        : "once" as const,
+      repeatDays: [...new Set((schedule.repeatDays ?? [])
+        .filter(day => Number.isInteger(day) && day >= 0 && day <= 6))]
+        .sort((left, right) => left - right),
       endBehavior: ["keep", "restore", "preset", "custom"].includes(schedule.endBehavior)
         ? schedule.endBehavior
         : "keep" as const,
