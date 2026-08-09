@@ -3005,7 +3005,7 @@
 
 .bs-status-menu-label {
   padding: 5px 10px 7px;
-  color: var(--channels-default);
+  color: #f2f3f5;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -3022,11 +3022,29 @@
   padding: 8px 10px;
   border: 0;
   border-radius: 7px;
-  color: var(--interactive-normal);
+  color: #f2f3f5;
   background: transparent;
   cursor: pointer;
   font: inherit;
   text-align: left;
+}
+
+.bs-status-menu .bs-status-item-copy strong {
+  color: #fff;
+}
+
+.bs-status-menu .bs-status-item-copy small {
+  color: rgb(255 255 255 / 78%);
+}
+
+.theme-light .bs-status-menu-label,
+.theme-light .bs-status-menu-item,
+.theme-light .bs-status-menu .bs-status-item-copy strong {
+  color: #060607;
+}
+
+.theme-light .bs-status-menu .bs-status-item-copy small {
+  color: rgb(6 6 7 / 72%);
 }
 
 .bs-status-menu-item:hover,

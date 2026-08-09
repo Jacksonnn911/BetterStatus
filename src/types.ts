@@ -51,12 +51,24 @@ export interface StatusSchedule {
     enabled: boolean;
 }
 
+export interface SyncEvent {
+    id: string;
+    clientId: string;
+    clock: number;
+    createdAt: number;
+    entity: "preset" | "savedStatus" | "schedule" | "setting";
+    key: string;
+    operation: "set" | "delete";
+    value?: unknown;
+}
+
 export interface SyncDocument {
     version: 1;
     modifiedAt: number;
     presets: StatusPreset[];
     savedStatuses: SavedStatus[];
     schedules: StatusSchedule[];
+    events?: SyncEvent[];
     activePresetId?: string;
     autoUpdate: boolean;
     autoRestart: boolean;

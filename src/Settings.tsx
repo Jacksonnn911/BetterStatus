@@ -39,6 +39,7 @@ import type {
   StatusPreset,
   StatusSchedule,
   SyncDocument,
+  SyncEvent,
   SyncProvider,
   UpdateChannel,
   UpdateCheckFrequency,
@@ -871,8 +872,8 @@ export default function SettingsComponent() {
         : "Not connected");
       if (status.connected) {
         settings.store.syncEnabled = true;
-        await pluginRuntime().resyncCloudSync();
-        setSyncStatus(`Connected as Discord user ${status.discordUserId} · synchronized from server`);
+        await pluginRuntime().configureCloudSync();
+        setSyncStatus(`Connected as Discord user ${status.discordUserId} · synchronized and listening`);
       }
     }).catch(error => setSyncStatus(error instanceof Error ? error.message : String(error)));
   }, [syncProvider, syncServerUrl]);
@@ -2205,6 +2206,8 @@ export const settings = definePluginSettings({
   autoRestartHistory?: number[];
   autoRestartPausedUntil?: number;
   cloudSyncPullOnConnect?: boolean;
+  cloudSyncClientId?: string;
+  cloudSyncEvents?: SyncEvent[];
   cloudSyncState?: {
     server: string;
     discordUserId: string;
@@ -2290,6 +2293,7 @@ export function buildSyncDocument(): SyncDocument {
     presets: getPresets(),
     savedStatuses: getSavedStatuses(),
     schedules: getSchedules(),
+    events: settings.store.cloudSyncEvents ?? [],
     activePresetId: settings.store.activePresetId,
     autoUpdate: settings.store.autoUpdate,
     autoRestart: settings.store.autoRestart,
@@ -2304,6 +2308,7 @@ export async function applySyncDocument(document: SyncDocument) {
   settings.store.presets = document.presets;
   settings.store.savedStatuses = normalizeSavedStatuses(document.savedStatuses);
   settings.store.schedules = validateSchedules(document.schedules, presetIds);
+  settings.store.cloudSyncEvents = Array.isArray(document.events) ? document.events : [];
   settings.store.activePresetId = document.activePresetId && presetIds.has(document.activePresetId)
     ? document.activePresetId
     : undefined;
