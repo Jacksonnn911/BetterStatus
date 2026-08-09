@@ -362,14 +362,14 @@ async function fetchManifest(channel: UpdateChannel) {
         updateMirrorURLs(channel, "files.json"),
         async (response, url) => {
             const manifest = parseManifest(JSON.parse(await response.text()));
-            if (new URL(url).hostname === "cdn.jsdelivr.net") {
-                const localTimestamp = Date.parse(localManifest?.generatedAt ?? "");
-                const remoteTimestamp = Date.parse(manifest.generatedAt ?? "");
-                if (Number.isFinite(localTimestamp) && (!Number.isFinite(remoteTimestamp) || remoteTimestamp < localTimestamp))
-                    throw new Error("cached manifest is older than the installed manifest");
-                if (!Number.isFinite(localTimestamp) && manifest.commit !== (localManifest?.commit ?? installed.version))
-                    throw new Error("cached manifest freshness cannot be proven yet");
-            }
+            const localTimestamp = Date.parse(localManifest?.generatedAt ?? "");
+            const remoteTimestamp = Date.parse(manifest.generatedAt ?? "");
+            if (Number.isFinite(localTimestamp) && (!Number.isFinite(remoteTimestamp) || remoteTimestamp < localTimestamp))
+                throw new Error("manifest is older than the locally accepted manifest");
+            if (!Number.isFinite(remoteTimestamp) && installed.version && manifest.commit !== installed.version)
+                throw new Error("legacy manifest cannot safely replace a different installed version");
+            if (new URL(url).hostname === "cdn.jsdelivr.net" && !Number.isFinite(remoteTimestamp) && manifest.commit !== installed.version)
+                throw new Error("cached manifest freshness cannot be proven");
             return manifest;
         }
     );
