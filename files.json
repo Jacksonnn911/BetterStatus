@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "commit": "4aeac04f86c4ee43824d6612054464a7cdaecf72",
-  "generatedAt": "2026-08-09T02:46:01.790Z",
+  "commit": "eb4b83b508bcfbf67b72d5e26f2c11c6d1b25b5b",
+  "generatedAt": "2026-08-09T11:22:55.404Z",
   "files": [
     {
       "source": "src/index.tsx",
@@ -16,7 +16,7 @@
     {
       "source": "README.md",
       "target": "README.md",
-      "sha256": "6036326451d4a00e21742484632f45e5f79b075bb86ebc7b10cbcdf663fcb5e0"
+      "sha256": "8c8c79822dc3008c1b090b29f2db3cf14d57f87466802760b5a4373615147322"
     },
     {
       "source": "src/savedStatuses.ts",
