@@ -34,6 +34,7 @@ let updateSchedulerActive = false;
 let statusScheduleTimer: number | undefined;
 let statusScheduleActive = false;
 let cloudSyncTimer: number | undefined;
+let cloudSyncPullTimer: number | undefined;
 let cloudSyncRevision = 0;
 let cloudSyncBaseDocument: SyncDocument | undefined;
 let cloudSyncUserId = "";
@@ -265,7 +266,9 @@ function enqueueCloudOperation<T>(operation: () => Promise<T>) {
 
 function stopCloudSync() {
     if (cloudSyncTimer !== undefined) window.clearInterval(cloudSyncTimer);
+    if (cloudSyncPullTimer !== undefined) window.clearInterval(cloudSyncPullTimer);
     cloudSyncTimer = undefined;
+    cloudSyncPullTimer = undefined;
     cloudSyncGeneration++;
     cloudSyncOperation = Promise.resolve();
     cloudSyncRevision = 0;
@@ -341,11 +344,13 @@ async function reconcileCloudSnapshot(
     const base = cloudSyncBaseDocument;
     const hasLocalChanges = base !== undefined && syncDocumentHash(local) !== syncDocumentHash(base);
     const preserveUntrackedLocalState = initial && !base && !preferRemote;
-    const next = hasLocalChanges
-        ? mergeSyncDocuments(base, local, remote.document)
-        : preserveUntrackedLocalState
-            ? local
-            : remote.document;
+    const next = preferRemote
+        ? remote.document
+        : hasLocalChanges
+            ? mergeSyncDocuments(base, local, remote.document)
+            : preserveUntrackedLocalState
+                ? local
+                : remote.document;
 
     applyingCloudSnapshot = true;
     try {
@@ -372,13 +377,20 @@ async function receiveCloudSnapshot(snapshot: { revision: number; document: unkn
     await enqueueCloudOperation(() => reconcileCloudSnapshot(snapshot));
 }
 
-async function configureCloudSync() {
+async function pullCloudChanges() {
+    await enqueueCloudOperation(async () => {
+        const snapshot = await VencordNative.pluginHelpers.BetterStatus.pullCloudSync(getSyncServerURL());
+        await reconcileCloudSnapshot(snapshot);
+    });
+}
+
+async function configureCloudSync(forcePull = false) {
     stopCloudSync();
     if (!settings.store.syncEnabled) return;
     try {
         const server = getSyncServerURL();
         const savedState = settings.store.cloudSyncState;
-        const preferRemote = settings.store.cloudSyncPullOnConnect === true;
+        const preferRemote = forcePull || settings.store.cloudSyncPullOnConnect === true;
         settings.store.cloudSyncPullOnConnect = false;
         const result = await VencordNative.pluginHelpers.BetterStatus.startCloudSync(getSyncServerURL());
         if (!result.connected) {
@@ -399,6 +411,9 @@ async function configureCloudSync() {
         cloudSyncTimer = window.setInterval(() => void pushCloudChanges().catch(error =>
             console.error("[BetterStatus] Cloud sync failed", error)
         ), 500);
+        cloudSyncPullTimer = window.setInterval(() => void pullCloudChanges().catch(error =>
+            console.error("[BetterStatus] Cloud sync revision pull failed", error)
+        ), 10_000);
     } catch (error) {
         console.error("[BetterStatus] Could not start cloud sync", error);
     }
@@ -694,6 +709,11 @@ export default definePlugin({
     },
 
     configureCloudSync,
+
+    async resyncCloudSync() {
+        settings.store.syncEnabled = true;
+        await configureCloudSync(true);
+    },
 
     async changeCloudEncryptionPassword(password?: string) {
         if (cloudSyncRevision === 0) throw new Error("Connect and finish the first sync before adding a password.");

@@ -17,6 +17,7 @@ import {
   Button,
   ConfirmModal,
   Forms,
+  OAuth2AuthorizeModal,
   openModal,
   React,
   Select,
@@ -52,6 +53,7 @@ interface BetterStatusRuntime {
   configureCloudSync(): Promise<void>;
   configureSchedules(): void;
   configureUpdateChecks(checkNow?: boolean, retryAt?: number): void;
+  resyncCloudSync(): Promise<void>;
   unlockCloudSyncPassword(password: string): Promise<void>;
 }
 
@@ -824,6 +826,7 @@ export default function SettingsComponent() {
   const [lastCheckedAt, setLastCheckedAt] = React.useState<Date | null>(null);
   const [backupStatus, setBackupStatus] = React.useState<string | null>(null);
   const [syncStatus, setSyncStatus] = React.useState<string>("Not connected");
+  const [syncConnected, setSyncConnected] = React.useState(false);
   const [syncBusy, setSyncBusy] = React.useState(false);
   const [syncEncrypted, setSyncEncrypted] = React.useState(false);
   const [syncLocked, setSyncLocked] = React.useState(false);
@@ -859,12 +862,18 @@ export default function SettingsComponent() {
   }, [selectedUpdateChannel]);
 
   React.useEffect(() => {
-    Native.getCloudSyncStatus(getSyncServerURL()).then(status => {
+    Native.getCloudSyncStatus(getSyncServerURL()).then(async status => {
+      setSyncConnected(status.connected);
       setSyncEncrypted(Boolean(status.encryptionPasswordSet));
       setSyncLocked(false);
       setSyncStatus(status.connected
         ? `Connected as Discord user ${status.discordUserId} · expires ${new Date(status.expiresAt!).toLocaleDateString()}`
         : "Not connected");
+      if (status.connected) {
+        settings.store.syncEnabled = true;
+        await pluginRuntime().resyncCloudSync();
+        setSyncStatus(`Connected as Discord user ${status.discordUserId} · synchronized from server`);
+      }
     }).catch(error => setSyncStatus(error instanceof Error ? error.message : String(error)));
   }, [syncProvider, syncServerUrl]);
 
@@ -930,9 +939,37 @@ export default function SettingsComponent() {
     setSyncBusy(true);
     setSyncStatus("Waiting for Discord authorization in your browser…");
     try {
-      const status = await Native.authorizeCloudSync(getSyncServerURL());
+      const request = await Native.beginCloudSyncAuthorization(getSyncServerURL());
+      const status = await new Promise<Awaited<ReturnType<typeof Native.completeCloudSyncAuthorization>>>((resolve, reject) => {
+        openModal(modalProps => (
+          <OAuth2AuthorizeModal
+            {...modalProps}
+            scopes={["identify"]}
+            responseType="code"
+            redirectUri={request.redirectUri}
+            state={request.state}
+            permissions={0n}
+            clientId={request.clientId}
+            cancelCompletesFlow={false}
+            callback={async ({ location }: { location?: string; }) => {
+              if (!location) {
+                reject(new Error("Discord authorization was cancelled."));
+                return;
+              }
+              try {
+                resolve(await Native.completeCloudSyncAuthorization(
+                  getSyncServerURL(), request.requestId, location,
+                ));
+              } catch (error) {
+                reject(error);
+              }
+            }}
+          />
+        ));
+      });
       settings.store.syncEnabled = true;
       settings.store.cloudSyncPullOnConnect = true;
+      setSyncConnected(true);
       setSyncStatus(`Connected as Discord user ${status.discordUserId} · expires ${new Date(status.expiresAt).toLocaleDateString()}`);
       await pluginRuntime().configureCloudSync();
     } catch (error) {
@@ -947,8 +984,22 @@ export default function SettingsComponent() {
     try {
       await Native.disconnectCloudSync(getSyncServerURL());
       settings.store.syncEnabled = false;
+      setSyncConnected(false);
       setSyncStatus("Not connected");
       await pluginRuntime().configureCloudSync();
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+
+  async function resyncFromServer() {
+    setSyncBusy(true);
+    setSyncStatus("Downloading the latest server revision…");
+    try {
+      await pluginRuntime().resyncCloudSync();
+      setSyncStatus("Synchronized from server · listening for live updates");
+    } catch (error) {
+      setSyncStatus(error instanceof Error ? error.message : String(error));
     } finally {
       setSyncBusy(false);
     }
@@ -1552,15 +1603,6 @@ export default function SettingsComponent() {
               Keep presets, saved statuses, schedules, and preferences current on every client through secure Discord-authorized sync.
             </Forms.FormText>
           </div>
-          <FormSwitch
-            title="Sync enabled"
-            value={syncEnabled}
-            onChange={value => {
-              settings.store.syncEnabled = value;
-              void pluginRuntime().configureCloudSync();
-            }}
-            hideBorder
-          />
         </div>
         <div className="bs-sync-controls">
           <div className="bs-field">
@@ -1570,6 +1612,7 @@ export default function SettingsComponent() {
               select={provider => {
                 settings.store.syncProvider = provider as SyncProvider;
                 settings.store.syncEnabled = false;
+                setSyncConnected(false);
                 void pluginRuntime().configureCloudSync();
               }}
               serialize={value => value}
@@ -1586,13 +1629,22 @@ export default function SettingsComponent() {
                 onChange={value => {
                   settings.store.syncServerUrl = value;
                   settings.store.syncEnabled = false;
+                  setSyncConnected(false);
                 }}
               />
             </label>
           )}
           <div className="bs-sync-actions">
-            <Button disabled={syncBusy} onClick={connectSync}>{syncBusy ? "Connecting…" : "Connect Discord"}</Button>
-            <button type="button" className="bs-secondary-button" disabled={syncBusy} onClick={disconnectSync}>Disconnect</button>
+            {syncConnected ? (
+              <>
+                <button type="button" className="bs-secondary-button" disabled={syncBusy} onClick={resyncFromServer}>
+                  {syncBusy ? "Synchronizing…" : "Resync from server"}
+                </button>
+                <button type="button" className="bs-danger-button" disabled={syncBusy} onClick={disconnectSync}>Disconnect</button>
+              </>
+            ) : (
+              <Button disabled={syncBusy} onClick={connectSync}>{syncBusy ? "Connecting…" : "Connect Discord"}</Button>
+            )}
           </div>
         </div>
         <div className="bs-sync-status" role="status">{syncStatus}</div>

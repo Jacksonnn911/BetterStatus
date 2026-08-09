@@ -261,6 +261,22 @@
   gap: 8px;
 }
 
+.bs-danger-button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--white-500);
+  background: var(--red-400);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+}
+
+.bs-danger-button:hover:not(:disabled) { background: var(--red-430, #c9363f); }
+.bs-danger-button:disabled { cursor: not-allowed; opacity: 0.55; }
+.bs-danger-button:focus-visible { outline: 2px solid var(--focus-primary); outline-offset: 2px; }
+
 .bs-sync-status {
   color: var(--text-muted);
   font-size: 13px;

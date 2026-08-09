@@ -6,7 +6,7 @@
 
 import { execFile } from "child_process";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, scrypt as deriveScrypt } from "crypto";
-import { app, globalShortcut, IpcMainInvokeEvent, safeStorage, shell } from "electron";
+import { app, globalShortcut, IpcMainInvokeEvent, safeStorage } from "electron";
 import { access, copyFile, mkdir, readFile, rename, rm, writeFile } from "fs/promises";
 import { homedir } from "os";
 import { dirname, join } from "path";
@@ -39,6 +39,11 @@ interface SyncSnapshot {
 }
 
 const syncSockets = new Map<string, WebSocket>();
+const pendingCloudAuthorizations = new Map<string, {
+    server: string;
+    verifier: string;
+    expiresAt: number;
+}>();
 const SYNC_ENCRYPTION_AAD = Buffer.from("BetterStatus encrypted sync document v1", "utf8");
 
 function isEncryptedSyncDocument(value: unknown): value is EncryptedSyncDocument {
@@ -163,6 +168,9 @@ function connectCloudSocket(event: IpcMainInvokeEvent, server: string, session: 
     url.pathname = "/v1/sync/ws";
     const socket = new WebSocket(url);
     syncSockets.set(server, socket);
+    const connectTimeout = setTimeout(() => {
+        if (socket.readyState === WebSocket.CONNECTING) socket.close();
+    }, 10_000);
     socket.addEventListener("open", () => socket.send(JSON.stringify({ type: "auth", token: session.token })));
     socket.addEventListener("message", message => {
         try {
@@ -173,6 +181,7 @@ function connectCloudSocket(event: IpcMainInvokeEvent, server: string, session: 
         }
     });
     socket.addEventListener("close", () => {
+        clearTimeout(connectTimeout);
         if (syncSockets.get(server) !== socket) return;
         syncSockets.delete(server);
         setTimeout(async () => {
@@ -181,6 +190,7 @@ function connectCloudSocket(event: IpcMainInvokeEvent, server: string, session: 
             if (resolved) connectCloudSocket(event, server, resolved.session);
         }, 5_000);
     });
+    socket.addEventListener("error", () => socket.close());
 }
 
 interface ManifestFile {
@@ -691,7 +701,7 @@ export async function getCloudSyncStatus(_event: IpcMainInvokeEvent, serverURL: 
         : { connected: false };
 }
 
-export async function authorizeCloudSync(event: IpcMainInvokeEvent, serverURL: string) {
+export async function beginCloudSyncAuthorization(_event: IpcMainInvokeEvent, serverURL: string) {
     const server = normalizeServerURL(serverURL);
     const verifier = randomBytes(32).toString("base64url");
     const challenge = createHash("sha256").update(verifier).digest("base64url");
@@ -702,27 +712,67 @@ export async function authorizeCloudSync(event: IpcMainInvokeEvent, serverURL: s
     });
     if (!requestResponse.ok) throw new Error(`Could not start Discord authorization (HTTP ${requestResponse.status}).`);
     const request = await requestResponse.json() as { request_id: string; authorize_url: string; expires_at: string; };
-    await shell.openExternal(request.authorize_url);
+    const authorizeURL = new URL(request.authorize_url);
+    const clientId = authorizeURL.searchParams.get("client_id");
+    const redirectUri = authorizeURL.searchParams.get("redirect_uri");
+    const state = authorizeURL.searchParams.get("state");
+    if (authorizeURL.origin !== "https://discord.com" || !clientId || !redirectUri || !state)
+        throw new Error("The sync server returned an invalid Discord authorization request.");
 
-    const deadline = Math.min(new Date(request.expires_at).getTime(), Date.now() + 10 * 60_000);
-    while (Date.now() < deadline) {
-        await new Promise(resolve => setTimeout(resolve, 2_000));
-        const response = await fetch(`${server}/v1/auth/requests/${encodeURIComponent(request.request_id)}/exchange`, {
+    const expiresAt = Math.min(new Date(request.expires_at).getTime(), Date.now() + 10 * 60_000);
+    pendingCloudAuthorizations.set(request.request_id, { server, verifier, expiresAt });
+    return { requestId: request.request_id, clientId, redirectUri, state };
+}
+
+export async function completeCloudSyncAuthorization(
+    event: IpcMainInvokeEvent,
+    serverURL: string,
+    requestId: string,
+    callbackLocation: string
+) {
+    const server = normalizeServerURL(serverURL);
+    const pending = pendingCloudAuthorizations.get(requestId);
+    if (!pending || pending.server !== server || pending.expiresAt <= Date.now())
+        throw new Error("Discord authorization expired. Please try again.");
+
+    const callbackURL = new URL(callbackLocation);
+    if (callbackURL.origin !== server || callbackURL.pathname !== "/v1/oauth/callback")
+        throw new Error("Discord returned an invalid sync callback URL.");
+    const callbackResponse = await fetch(callbackURL, { headers: { Accept: "text/html" } });
+    if (!callbackResponse.ok)
+        throw new Error(`Discord authorization callback failed (HTTP ${callbackResponse.status}).`);
+
+    try {
+        while (Date.now() < pending.expiresAt) {
+            const response = await fetch(`${server}/v1/auth/requests/${encodeURIComponent(requestId)}/exchange`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ verifier })
-        });
-        if (response.status === 409) continue;
-        if (!response.ok) throw new Error(`Discord authorization failed (HTTP ${response.status}).`);
+                body: JSON.stringify({ verifier: pending.verifier })
+            });
+            if (response.status === 409) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                continue;
+            }
+            if (!response.ok) throw new Error(`Discord authorization failed (HTTP ${response.status}).`);
 
-        const result = await response.json() as { token: string; expires_at: string; discord_user_id: string; };
-        const sessions = await readCloudSessions();
-        sessions[server] = { token: result.token, expiresAt: result.expires_at, discordUserId: result.discord_user_id };
-        await writeCloudSessions(sessions);
-        connectCloudSocket(event, server, sessions[server]);
-        return { connected: true, discordUserId: result.discord_user_id, expiresAt: result.expires_at };
+            const result = await response.json() as { token: string; expires_at: string; discord_user_id: string; };
+            const sessions = await readCloudSessions();
+            sessions[server] = { token: result.token, expiresAt: result.expires_at, discordUserId: result.discord_user_id };
+            await writeCloudSessions(sessions);
+            connectCloudSocket(event, server, sessions[server]);
+            return { connected: true, discordUserId: result.discord_user_id, expiresAt: result.expires_at };
+        }
+    } finally {
+        pendingCloudAuthorizations.delete(requestId);
     }
     throw new Error("Discord authorization expired. Please try again.");
+}
+
+export async function pullCloudSync(_event: IpcMainInvokeEvent, serverURL: string) {
+    const resolved = await cloudSession(serverURL);
+    if (!resolved) throw new Error("Connect Discord before synchronizing.");
+    const response = await cloudRequest(resolved.server, "/v1/sync", resolved.session.token);
+    return await response.json() as SyncSnapshot;
 }
 
 export async function startCloudSync(event: IpcMainInvokeEvent, serverURL: string) {
