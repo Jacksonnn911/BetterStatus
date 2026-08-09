@@ -5,8 +5,8 @@
  */
 
 import { execFile } from "child_process";
-import { createHash } from "crypto";
-import { globalShortcut, IpcMainInvokeEvent } from "electron";
+import { createHash, randomBytes } from "crypto";
+import { app, globalShortcut, IpcMainInvokeEvent, safeStorage, shell } from "electron";
 import { access, copyFile, mkdir, readFile, rename, rm, writeFile } from "fs/promises";
 import { homedir } from "os";
 import { dirname, join } from "path";
@@ -23,6 +23,104 @@ const VENCORD_SOURCE_DIR = join(__dirname, "..");
 const PLUGIN_SOURCE_DIR = join(VENCORD_SOURCE_DIR, "src", "userplugins", "betterStatus");
 const VERSION_FILE = join(PLUGIN_SOURCE_DIR, "VERSION");
 const MANIFEST_STATE_FILE = join(PLUGIN_SOURCE_DIR, ".files.json");
+const SYNC_SESSION_FILE = join(app.getPath("userData"), "betterstatus-sync-sessions.bin");
+
+interface CloudSession {
+    token: string;
+    expiresAt: string;
+    discordUserId: string;
+}
+
+interface SyncSnapshot {
+    revision: number;
+    document: unknown;
+    updated_at: string;
+}
+
+const syncSockets = new Map<string, WebSocket>();
+
+function normalizeServerURL(value: string) {
+    const url = new URL(value.trim());
+    if (url.protocol !== "https:" && !(url.protocol === "http:" && ["localhost", "127.0.0.1", "::1"].includes(url.hostname)))
+        throw new Error("Sync servers must use HTTPS (HTTP is allowed only for localhost). ");
+    return url.origin;
+}
+
+async function readCloudSessions(): Promise<Record<string, CloudSession>> {
+    try {
+        const encrypted = await readFile(SYNC_SESSION_FILE);
+        if (!safeStorage.isEncryptionAvailable()) throw new Error("Secure credential storage is unavailable.");
+        return JSON.parse(safeStorage.decryptString(encrypted));
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return {};
+        throw error;
+    }
+}
+
+async function writeCloudSessions(sessions: Record<string, CloudSession>) {
+    if (!safeStorage.isEncryptionAvailable()) throw new Error("Secure credential storage is unavailable.");
+    await mkdir(dirname(SYNC_SESSION_FILE), { recursive: true });
+    await writeFile(SYNC_SESSION_FILE, safeStorage.encryptString(JSON.stringify(sessions)), { mode: 0o600 });
+}
+
+async function cloudSession(serverURL: string) {
+    const server = normalizeServerURL(serverURL);
+    const sessions = await readCloudSessions();
+    const session = sessions[server];
+    if (!session || new Date(session.expiresAt).getTime() <= Date.now()) return undefined;
+    return { server, session };
+}
+
+async function cloudRequest(server: string, path: string, token: string, init?: RequestInit) {
+    const response = await fetch(`${server}${path}`, {
+        ...init,
+        headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+            ...init?.headers
+        }
+    });
+    if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as { error?: string; current?: SyncSnapshot; };
+        const error = new Error(body.error ?? `Sync server returned HTTP ${response.status}`) as Error & { status?: number; current?: SyncSnapshot; };
+        error.status = response.status;
+        error.current = body.current;
+        throw error;
+    }
+    return response;
+}
+
+function deliverCloudSnapshot(event: IpcMainInvokeEvent, snapshot: SyncSnapshot) {
+    const encoded = JSON.stringify(snapshot);
+    event.sender.executeJavaScript(`Vencord.Plugins.plugins.BetterStatus.receiveCloudSnapshot(${encoded})`).catch(console.error);
+}
+
+function connectCloudSocket(event: IpcMainInvokeEvent, server: string, session: CloudSession) {
+    syncSockets.get(server)?.close();
+    const url = new URL(server);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    url.pathname = "/v1/sync/ws";
+    const socket = new WebSocket(url);
+    syncSockets.set(server, socket);
+    socket.addEventListener("open", () => socket.send(JSON.stringify({ type: "auth", token: session.token })));
+    socket.addEventListener("message", message => {
+        try {
+            const payload = JSON.parse(String(message.data));
+            if (payload.type === "sync" && payload.snapshot) deliverCloudSnapshot(event, payload.snapshot);
+        } catch (error) {
+            console.error("[BetterStatus] Invalid sync WebSocket message", error);
+        }
+    });
+    socket.addEventListener("close", () => {
+        if (syncSockets.get(server) !== socket) return;
+        syncSockets.delete(server);
+        setTimeout(async () => {
+            if (event.sender.isDestroyed() || syncSockets.has(server)) return;
+            const resolved = await cloudSession(server).catch(() => undefined);
+            if (resolved) connectCloudSocket(event, server, resolved.session);
+        }, 5_000);
+    });
+}
 
 interface ManifestFile {
     source: string;
@@ -328,7 +426,7 @@ async function performUpdate(channel: UpdateChannel): Promise<UpdateResult> {
             changedFiles.push(file);
     }
 
-    const obsoleteFiles = [];
+    const obsoleteFiles: string[] = [];
     for (const target of obsoleteTargets) {
         if (await exists(pluginPath(target)))
             obsoleteFiles.push(target);
@@ -483,4 +581,94 @@ export function registerHotkeys(
     }
 
     return results;
+}
+
+export async function getCloudSyncStatus(_event: IpcMainInvokeEvent, serverURL: string) {
+    const resolved = await cloudSession(serverURL);
+    return resolved
+        ? { connected: true, discordUserId: resolved.session.discordUserId, expiresAt: resolved.session.expiresAt }
+        : { connected: false };
+}
+
+export async function authorizeCloudSync(event: IpcMainInvokeEvent, serverURL: string) {
+    const server = normalizeServerURL(serverURL);
+    const verifier = randomBytes(32).toString("base64url");
+    const challenge = createHash("sha256").update(verifier).digest("base64url");
+    const requestResponse = await fetch(`${server}/v1/auth/requests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge })
+    });
+    if (!requestResponse.ok) throw new Error(`Could not start Discord authorization (HTTP ${requestResponse.status}).`);
+    const request = await requestResponse.json() as { request_id: string; authorize_url: string; expires_at: string; };
+    await shell.openExternal(request.authorize_url);
+
+    const deadline = Math.min(new Date(request.expires_at).getTime(), Date.now() + 10 * 60_000);
+    while (Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 2_000));
+        const response = await fetch(`${server}/v1/auth/requests/${encodeURIComponent(request.request_id)}/exchange`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ verifier })
+        });
+        if (response.status === 409) continue;
+        if (!response.ok) throw new Error(`Discord authorization failed (HTTP ${response.status}).`);
+
+        const result = await response.json() as { token: string; expires_at: string; discord_user_id: string; };
+        const sessions = await readCloudSessions();
+        sessions[server] = { token: result.token, expiresAt: result.expires_at, discordUserId: result.discord_user_id };
+        await writeCloudSessions(sessions);
+        connectCloudSocket(event, server, sessions[server]);
+        return { connected: true, discordUserId: result.discord_user_id, expiresAt: result.expires_at };
+    }
+    throw new Error("Discord authorization expired. Please try again.");
+}
+
+export async function startCloudSync(event: IpcMainInvokeEvent, serverURL: string) {
+    const resolved = await cloudSession(serverURL);
+    if (!resolved) return { connected: false };
+    const response = await cloudRequest(resolved.server, "/v1/sync", resolved.session.token);
+    const snapshot = await response.json() as SyncSnapshot;
+    connectCloudSocket(event, resolved.server, resolved.session);
+    return {
+        connected: true,
+        discordUserId: resolved.session.discordUserId,
+        expiresAt: resolved.session.expiresAt,
+        snapshot
+    };
+}
+
+export async function pushCloudSync(
+    _event: IpcMainInvokeEvent,
+    serverURL: string,
+    baseRevision: number,
+    document: unknown
+) {
+    const resolved = await cloudSession(serverURL);
+    if (!resolved) throw new Error("Connect Discord before enabling cloud sync.");
+    try {
+        const response = await cloudRequest(resolved.server, "/v1/sync", resolved.session.token, {
+            method: "PUT",
+            body: JSON.stringify({ base_revision: baseRevision, document })
+        });
+        return await response.json() as SyncSnapshot;
+    } catch (error) {
+        const conflict = error as Error & { status?: number; current?: SyncSnapshot; };
+        if (conflict.status === 409 && conflict.current) return conflict.current;
+        throw error;
+    }
+}
+
+export async function disconnectCloudSync(_event: IpcMainInvokeEvent, serverURL: string) {
+    const server = normalizeServerURL(serverURL);
+    const sessions = await readCloudSessions();
+    const session = sessions[server];
+    syncSockets.get(server)?.close();
+    syncSockets.delete(server);
+    if (session) {
+        await cloudRequest(server, "/v1/session", session.token, { method: "DELETE" }).catch(() => undefined);
+        delete sessions[server];
+        await writeCloudSessions(sessions);
+    }
+    return { connected: false };
 }

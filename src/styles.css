@@ -23,6 +23,15 @@
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
 }
 
+[data-mana-component="modal"]:has(.vc-settings-modal-content .bs-settings) {
+  width: min(1440px, calc(100vw - 48px));
+  max-width: 1440px;
+}
+
+.vc-settings-modal-content:has(.bs-settings) {
+  max-width: none;
+}
+
 .bs-control-panel {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -178,6 +187,111 @@
 .bs-backup-copy { min-width: 0; }
 .bs-backup-copy h5 { margin: 0 0 3px; }
 .bs-backup-copy > div { color: var(--text-muted); font-size: 12px; }
+
+.bs-calendar-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--bs-card-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--background-secondary) 92%, var(--brand-500) 8%);
+}
+
+.bs-sync-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, #23a559 35%, var(--background-modifier-accent));
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, #23a559 10%, transparent), transparent 32%),
+    var(--background-secondary);
+}
+
+.bs-sync-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(280px, 1.2fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.bs-sync-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.bs-sync-status {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.bs-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.bs-section-heading h5 { margin: 0 0 4px; }
+.bs-section-heading > div { min-width: 0; }
+
+.bs-calendar-empty {
+  padding: 22px;
+  border: 1px dashed var(--background-modifier-accent);
+  border-radius: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.bs-calendar-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.bs-schedule-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid var(--background-modifier-accent);
+  border-radius: 12px;
+  background: var(--background-primary);
+}
+
+.bs-schedule-disabled { opacity: 0.58; }
+
+.bs-schedule-main {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(190px, 1fr) minmax(160px, 1fr) minmax(140px, 0.8fr);
+  gap: 12px;
+}
+
+.bs-schedule-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 1px;
+}
+
+.bs-datetime-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 12px;
+  border: 1px solid var(--input-border-default, var(--background-modifier-accent));
+  border-radius: 8px;
+  outline: none;
+  color: var(--text-normal);
+  background: var(--input-background, var(--background-secondary));
+  font: inherit;
+}
+
+.bs-datetime-input:focus {
+  border-color: var(--brand-500);
+}
 
 .bs-backup-actions {
   display: flex;
@@ -2546,6 +2660,12 @@
   .bs-about-preview {
     display: none;
   }
+
+  .bs-schedule-card { grid-template-columns: 1fr; }
+  .bs-schedule-main { grid-template-columns: 1fr 1fr; }
+  .bs-schedule-actions { justify-content: space-between; }
+  .bs-sync-controls { grid-template-columns: 1fr 1fr; }
+  .bs-sync-actions { grid-column: 1 / -1; }
 }
 
 @media (width <= 620px) {
@@ -2602,6 +2722,11 @@
   .bs-backup-panel {
     grid-template-columns: auto minmax(0, 1fr);
   }
+
+  .bs-section-heading { align-items: stretch; flex-direction: column; }
+  .bs-schedule-main { grid-template-columns: 1fr; }
+  .bs-sync-controls { grid-template-columns: 1fr; }
+  .bs-sync-actions { grid-column: auto; flex-direction: column; }
 
   .bs-backup-actions {
     grid-column: 1 / -1;
