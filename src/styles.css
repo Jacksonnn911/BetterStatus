@@ -157,6 +157,45 @@
   white-space: nowrap;
 }
 
+.bs-restart-guard {
+  width: min(320px, 100%);
+  color: var(--text-warning);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.bs-update-failure-notification {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+}
+
+.bs-force-update-notification-button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border-radius: 6px;
+  color: var(--white-500);
+  background: var(--status-danger);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.bs-force-update-notification-button:hover,
+.bs-force-update-notification-button:focus-visible {
+  filter: brightness(1.1);
+}
+
+.bs-force-update-notification-button:focus-visible {
+  outline: 2px solid var(--focus-primary);
+  outline-offset: 2px;
+}
+
 .bs-backup-panel {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -221,6 +260,22 @@
   display: flex;
   gap: 8px;
 }
+
+.bs-danger-button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--white-500);
+  background: var(--red-400);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+}
+
+.bs-danger-button:hover:not(:disabled) { background: var(--red-430, #c9363f); }
+.bs-danger-button:disabled { cursor: not-allowed; opacity: 0.55; }
+.bs-danger-button:focus-visible { outline: 2px solid var(--focus-primary); outline-offset: 2px; }
 
 .bs-sync-status {
   color: var(--text-muted);
@@ -288,6 +343,13 @@
 .bs-section-heading h5 { margin: 0 0 4px; }
 .bs-section-heading > div { min-width: 0; }
 
+.bs-section-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
 .bs-calendar-empty {
   padding: 22px;
   border: 1px dashed var(--background-modifier-accent);
@@ -313,6 +375,7 @@
 }
 
 .bs-schedule-disabled { opacity: 0.58; }
+.bs-schedule-collapsed .bs-schedule-header { border-bottom: 0; }
 
 .bs-calendar-week {
   display: grid;
@@ -433,7 +496,17 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--bs-presence-color) 35%, transparent);
 }
 
-.bs-timepoint-end .bs-timepoint-marker i { background: var(--background-accent); box-shadow: none; }
+.bs-timepoint-end .bs-timepoint-marker i {
+  border-color: color-mix(in srgb, var(--brand-360) 40%, var(--background-primary));
+  background: var(--brand-360);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-360) 35%, transparent), 0 0 12px color-mix(in srgb, var(--brand-360) 28%, transparent);
+}
+
+.bs-timepoint-end .bs-timepoint-content {
+  border-color: color-mix(in srgb, var(--brand-360) 24%, var(--background-modifier-accent));
+  background: color-mix(in srgb, var(--background-secondary) 94%, var(--brand-500) 6%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
+}
 
 .bs-timepoint-content {
   min-width: 0;
@@ -452,8 +525,25 @@
   margin-bottom: 10px;
 }
 
-.bs-timepoint-title > span { color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: 0.12em; }
+.bs-timepoint-title > span { color: var(--header-secondary); font-size: 10px; font-weight: 800; letter-spacing: 0.12em; }
 .bs-timepoint-title > strong { color: var(--header-primary); font-size: 18px; }
+
+.bs-end-time-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.bs-end-time-heading > strong {
+  color: var(--header-primary);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.bs-timepoint-end .vc-form-switch-text {
+  color: var(--header-primary);
+  font-weight: 650;
+}
 
 .bs-timeline-rail {
   display: flex;
@@ -480,7 +570,8 @@
 
 .bs-compact-field { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
 .bs-compact-field > span,
-.bs-end-detail > span { color: var(--text-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.bs-end-detail > span,
+.bs-start-detail > span { color: var(--header-secondary); font-size: 10px; font-weight: 750; text-transform: uppercase; }
 
 .bs-compact-field input {
   box-sizing: border-box;
@@ -499,7 +590,67 @@
 .bs-compact-field input:focus { border-color: var(--brand-500); }
 .bs-end-action-field { grid-column: span 2; }
 
-.bs-end-detail {
+.bs-timepoint-end .bs-compact-field input {
+  border-color: color-mix(in srgb, var(--interactive-normal) 35%, var(--background-modifier-accent));
+  color: var(--header-primary);
+  background: var(--background-primary);
+}
+
+.bs-weekday-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-accent);
+}
+
+.bs-weekday-picker > span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.bs-weekday-picker > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bs-weekday-picker button {
+  min-width: 42px;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--background-modifier-accent);
+  border-radius: 999px;
+  color: var(--interactive-normal);
+  background: var(--background-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.bs-weekday-picker button:hover {
+  color: var(--interactive-hover);
+  background: var(--background-modifier-hover);
+}
+
+.bs-weekday-picker button.bs-weekday-selected {
+  border-color: color-mix(in srgb, var(--brand-500) 55%, var(--background-modifier-accent));
+  color: var(--white-500);
+  background: var(--brand-500);
+}
+
+.bs-weekday-picker button:focus-visible {
+  outline: 2px solid var(--focus-primary);
+  outline-offset: 2px;
+}
+
+.bs-end-detail,
+.bs-start-detail {
   display: grid;
   grid-template-columns: 110px minmax(220px, 1fr);
   align-items: center;
@@ -509,7 +660,8 @@
   border-top: 1px solid var(--background-modifier-accent);
 }
 
-.bs-custom-end-grid {
+.bs-custom-end-grid,
+.bs-custom-start-grid {
   display: grid;
   grid-template-columns: minmax(260px, 1.25fr) minmax(220px, 1fr);
   gap: 12px;
@@ -850,6 +1002,33 @@
 .bs-version-restartRequired i {
   background: var(--yellow-300);
   box-shadow: 0 0 8px color-mix(in srgb, var(--yellow-300) 60%, transparent);
+}
+
+.bs-version-restart-button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--white-500);
+  background: var(--brand-500);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.bs-version-restart-button:hover:not(:disabled) {
+  background: var(--brand-560);
+}
+
+.bs-version-restart-button:focus-visible {
+  outline: 2px solid var(--focus-primary);
+  outline-offset: 2px;
+}
+
+.bs-version-restart-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .bs-version-commits {
@@ -1859,13 +2038,14 @@
     justify-content: center;
     flex-direction: column;
     padding: 38px 0 34px 38px;
+    background: linear-gradient(90deg, rgb(12 14 31 / 46%), rgb(12 14 31 / 12%) 82%, transparent);
 }
 
 .bs-atelier-brand {
     display: flex;
     align-items: center;
     gap: 9px;
-    color: var(--header-secondary);
+    color: var(--header-primary);
     font-size: 10px;
     font-weight: 850;
     letter-spacing: .16em;
@@ -1892,7 +2072,7 @@
 
 .bs-atelier-kicker {
     margin-top: 32px;
-    color: #aab7ff;
+    color: #c7d0ff;
     font-size: 9px;
     font-weight: 800;
     letter-spacing: .18em;
@@ -1910,19 +2090,19 @@
 .bs-atelier-copy > p {
     max-width: 380px;
     margin: 0;
-    color: var(--text-muted);
+    color: var(--text-normal);
     font-size: 13px;
     line-height: 1.55;
 }
 
 .bs-atelier-credit {
     margin-top: 18px;
-    color: var(--text-muted);
+    color: var(--header-secondary);
     font-size: 10px;
     line-height: 1.5;
 }
 
-.bs-atelier-credit strong { color: var(--header-secondary); font-weight: 650; }
+.bs-atelier-credit strong { color: var(--header-primary); font-weight: 700; }
 
 .bs-atelier-links {
     display: flex;
@@ -1933,10 +2113,10 @@
 
 .bs-atelier-links a {
     padding: 7px 10px;
-    border: 1px solid color-mix(in srgb, var(--brand-500) 15%, var(--background-modifier-accent));
+    border: 1px solid color-mix(in srgb, var(--brand-360) 34%, var(--background-modifier-accent));
     border-radius: 8px;
-    color: var(--header-secondary);
-    background: color-mix(in srgb, var(--background-primary) 50%, transparent);
+    color: var(--header-primary);
+    background: color-mix(in srgb, var(--background-primary) 86%, transparent);
     font-size: 10px;
     font-weight: 650;
     text-decoration: none;
@@ -2095,10 +2275,19 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    color: var(--text-muted);
+    width: fit-content;
+    margin-inline: auto;
+    padding: 6px 10px;
+    border: 1px solid rgb(190 204 255 / 18%);
+    border-radius: 999px;
+    color: #e1e6ff;
+    background: rgb(11 13 30 / 62%);
+    box-shadow: 0 5px 18px rgb(0 0 0 / 18%);
     font-size: 7px;
     font-weight: 800;
     letter-spacing: .1em;
+    text-shadow: 0 1px 4px rgb(0 0 0 / 75%);
+    backdrop-filter: blur(8px);
 }
 
 .bs-art-caption i { width: 3px; height: 3px; border-radius: 50%; background: #91a4ff; }
@@ -2285,13 +2474,17 @@
 }
 
 .bs-preset-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr));
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 16px;
 }
 
 .bs-preset-card {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 430px;
   overflow: visible;
   border: 1px solid var(--bs-card-border);
   border-radius: 15px;
@@ -2799,6 +2992,13 @@
     0 0 0 1px rgb(0 0 0 / 12%);
 }
 
+.bs-status-menu-portal {
+  position: fixed;
+  z-index: 10000;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .theme-light .bs-status-menu {
   background-color: #fff !important;
 }
@@ -2975,6 +3175,7 @@
   }
 
   .bs-section-heading { align-items: stretch; flex-direction: column; }
+  .bs-section-actions { align-items: stretch; flex-direction: column; }
   .bs-calendar-week {
     grid-template-columns: repeat(7, 72px);
     overflow-x: auto;

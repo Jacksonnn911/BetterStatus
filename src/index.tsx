@@ -10,7 +10,7 @@ import { Link } from "@components/Link";
 import { relaunch } from "@utils/native";
 import definePlugin from "@utils/types";
 
-import { applySyncDocument, buildSyncDocument, getPresets, getSchedules, getSyncServerURL, getUpdateChannel, getUpdateCheckFrequency, rememberSavedStatus, requestSyncPassword, savePresets, settings, showUpdateFailureNotification } from "./Settings";
+import { applySyncDocument, buildSyncDocument, getPresets, getSchedules, getSyncServerURL, getUpdateChannel, getUpdateCheckFrequency, initializeAutoRestartGuard, prepareAutoRestart, rememberSavedStatus, requestSyncPassword, savePresets, settings, showUpdateFailureNotification } from "./Settings";
 import { startStatusHistoryModalObserver, stopStatusHistoryModalObserver } from "./StatusHistory";
 import type { StatusPreset, StatusSchedule, SyncDocument } from "./types";
 
@@ -34,19 +34,38 @@ let updateSchedulerActive = false;
 let statusScheduleTimer: number | undefined;
 let statusScheduleActive = false;
 let cloudSyncTimer: number | undefined;
+let cloudSyncPullTimer: number | undefined;
 let cloudSyncRevision = 0;
-let cloudSyncHash = "";
+let cloudSyncBaseDocument: SyncDocument | undefined;
+let cloudSyncUserId = "";
+let cloudSyncOperation = Promise.resolve();
+let cloudSyncGeneration = 0;
+let cloudSyncForcePush = false;
 let applyingCloudSnapshot = false;
 let cloudSyncLocked = false;
 const SCHEDULE_GRACE_MS = 5 * 60_000;
 
-function occurrenceAtOrAfter(startsAt: number, repeat: "once" | "daily" | "weekly", threshold: number) {
-    if (repeat === "once") return startsAt >= threshold ? startsAt : undefined;
+function scheduleRepeatDays(schedule: StatusSchedule) {
+    if (schedule.repeat === "daily") return new Set([0, 1, 2, 3, 4, 5, 6]);
+    if (schedule.repeat === "weekdays") return new Set([1, 2, 3, 4, 5]);
+    if (schedule.repeat === "weekends") return new Set([0, 6]);
+    if (schedule.repeat === "custom" && schedule.repeatDays?.length)
+        return new Set(schedule.repeatDays);
+    return new Set([new Date(schedule.startsAt).getDay()]);
+}
 
-    const candidate = new Date(startsAt);
-    const days = repeat === "daily" ? 1 : 7;
-    while (candidate.getTime() < threshold)
-        candidate.setDate(candidate.getDate() + days);
+function occurrenceAtOrAfter(schedule: StatusSchedule, threshold: number) {
+    if (schedule.repeat === "once")
+        return schedule.startsAt >= threshold ? schedule.startsAt : undefined;
+
+    const candidate = new Date(schedule.startsAt);
+    if (candidate.getTime() < threshold) {
+        const approximateDays = Math.max(0, Math.floor((threshold - candidate.getTime()) / 86_400_000) - 1);
+        candidate.setDate(candidate.getDate() + approximateDays);
+    }
+    const repeatDays = scheduleRepeatDays(schedule);
+    while (candidate.getTime() < threshold || !repeatDays.has(candidate.getDay()))
+        candidate.setDate(candidate.getDate() + 1);
     return candidate.getTime();
 }
 
@@ -71,7 +90,10 @@ function configureStatusSchedule() {
     }> = [];
     const missedOneTimeSchedules = new Set<string>();
 
-    for (const schedule of schedules.filter(item => item.enabled && getPresets().some(preset => preset.id === item.presetId && preset.enabled))) {
+    for (const schedule of schedules.filter(item => item.enabled && (
+        item.startBehavior === "custom" ||
+        getPresets().some(preset => preset.id === item.presetId && preset.enabled)
+    ))) {
         const lastRun = lastRuns[schedule.id] ?? 0;
         if (schedule.repeat === "once" && lastRun > 0 && !schedule.endsAt) {
             missedOneTimeSchedules.add(schedule.id);
@@ -95,7 +117,7 @@ function configureStatusSchedule() {
             continue;
         }
 
-        const occurrence = occurrenceAtOrAfter(schedule.startsAt, schedule.repeat, Math.max(lastRun + 1, now - SCHEDULE_GRACE_MS));
+        const occurrence = occurrenceAtOrAfter(schedule, Math.max(lastRun + 1, now - SCHEDULE_GRACE_MS));
         if (occurrence !== undefined)
             candidates.push({ schedule, occurrence, type: "start", startOccurrence: occurrence });
     }
@@ -129,7 +151,14 @@ function configureStatusSchedule() {
                 };
             }
             settings.store.scheduleRuns = { ...(settings.store.scheduleRuns ?? {}), [next.schedule.id]: next.occurrence };
-            await triggerPresetById(next.schedule.presetId);
+            if (next.schedule.startBehavior === "custom") {
+                await setCustomStatusText(next.schedule.startText ?? "");
+                await StatusSettings.updateSetting(next.schedule.startPresence ?? "online");
+                settings.store.activePresetId = undefined;
+                rememberSavedStatus(next.schedule.startText ?? "");
+            } else if (next.schedule.presetId) {
+                await triggerPresetById(next.schedule.presetId);
+            }
             if (next.schedule.repeat === "once" && !next.schedule.endsAt)
                 settings.store.schedules = getSchedules().map(schedule => schedule.id === next.schedule.id ? { ...schedule, enabled: false } : schedule);
         } else {
@@ -163,89 +192,228 @@ function syncDocumentHash(document: SyncDocument) {
     return JSON.stringify({ ...document, modifiedAt: 0 });
 }
 
+function syncValuesEqual(left: unknown, right: unknown) {
+    return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function mergeSyncValue<T>(base: T, local: T, remote: T): T {
+    if (syncValuesEqual(local, base)) return remote;
+    if (syncValuesEqual(remote, base) || syncValuesEqual(local, remote)) return local;
+    return local;
+}
+
+function mergeSyncRecord<T extends { id: string; }>(base: T | undefined, local: T | undefined, remote: T | undefined) {
+    const selected = mergeSyncValue(base, local, remote);
+    if (!base || !local || !remote || selected === undefined)
+        return selected;
+
+    return Object.fromEntries(
+        [...new Set([...Object.keys(base), ...Object.keys(remote), ...Object.keys(local)])]
+            .map(key => [key, mergeSyncValue(base[key as keyof T], local[key as keyof T], remote[key as keyof T])])
+            .filter(([, value]) => value !== undefined)
+    ) as unknown as T;
+}
+
+function mergeSyncCollection<T extends { id: string; }>(base: T[], local: T[], remote: T[]) {
+    const baseById = new Map(base.map(item => [item.id, item]));
+    const localById = new Map(local.map(item => [item.id, item]));
+    const remoteById = new Map(remote.map(item => [item.id, item]));
+    const ids = [...new Set([...remote.map(item => item.id), ...local.map(item => item.id), ...base.map(item => item.id)])];
+
+    return ids.flatMap(id => {
+        const merged = mergeSyncRecord(baseById.get(id), localById.get(id), remoteById.get(id));
+        return merged === undefined ? [] : [merged];
+    });
+}
+
+/** Rebase local edits onto a newer server snapshot. Local changes win only where both sides changed the same value. */
+export function mergeSyncDocuments(base: SyncDocument, local: SyncDocument, remote: SyncDocument): SyncDocument {
+    return {
+        version: 1,
+        modifiedAt: Date.now(),
+        presets: mergeSyncCollection(base.presets, local.presets, remote.presets),
+        savedStatuses: mergeSyncCollection(base.savedStatuses, local.savedStatuses, remote.savedStatuses),
+        schedules: mergeSyncCollection(base.schedules, local.schedules, remote.schedules),
+        activePresetId: mergeSyncValue(base.activePresetId, local.activePresetId, remote.activePresetId),
+        autoUpdate: mergeSyncValue(base.autoUpdate, local.autoUpdate, remote.autoUpdate),
+        autoRestart: mergeSyncValue(base.autoRestart, local.autoRestart, remote.autoRestart),
+        updateCheckFrequency: mergeSyncValue(base.updateCheckFrequency, local.updateCheckFrequency, remote.updateCheckFrequency),
+        updateChannel: mergeSyncValue(base.updateChannel, local.updateChannel, remote.updateChannel)
+    };
+}
+
+function rememberCloudBaseline(revision: number, document: SyncDocument) {
+    cloudSyncRevision = revision;
+    cloudSyncBaseDocument = document;
+    settings.store.cloudSyncState = {
+        server: getSyncServerURL(),
+        discordUserId: cloudSyncUserId,
+        revision,
+        document
+    };
+}
+
+function enqueueCloudOperation<T>(operation: () => Promise<T>) {
+    const generation = cloudSyncGeneration;
+    const run = async () => {
+        if (generation !== cloudSyncGeneration) return undefined as T;
+        return await operation();
+    };
+    const result = cloudSyncOperation.then(run, run);
+    cloudSyncOperation = result.then(() => undefined, () => undefined);
+    return result;
+}
+
 function stopCloudSync() {
     if (cloudSyncTimer !== undefined) window.clearInterval(cloudSyncTimer);
+    if (cloudSyncPullTimer !== undefined) window.clearInterval(cloudSyncPullTimer);
     cloudSyncTimer = undefined;
+    cloudSyncPullTimer = undefined;
+    cloudSyncGeneration++;
+    cloudSyncOperation = Promise.resolve();
     cloudSyncRevision = 0;
-    cloudSyncHash = "";
+    cloudSyncBaseDocument = undefined;
+    cloudSyncUserId = "";
+    cloudSyncForcePush = false;
     cloudSyncLocked = false;
 }
 
-async function pushCloudChanges() {
+async function pushCloudChangesNow() {
     if (!settings.store.syncEnabled || applyingCloudSnapshot || cloudSyncLocked) return;
-    const document = buildSyncDocument();
-    const hash = syncDocumentHash(document);
-    if (hash === cloudSyncHash) return;
-    const snapshot = await VencordNative.pluginHelpers.BetterStatus.pushCloudSync(
-        getSyncServerURL(), cloudSyncRevision, document
-    );
-    cloudSyncHash = hash;
-    await receiveCloudSnapshot(snapshot);
+    for (let attempt = 0; attempt < 4; attempt++) {
+        const document = buildSyncDocument();
+        if (!cloudSyncForcePush && cloudSyncBaseDocument && syncDocumentHash(document) === syncDocumentHash(cloudSyncBaseDocument)) return;
+
+        const result = await VencordNative.pluginHelpers.BetterStatus.pushCloudSync(
+            getSyncServerURL(), cloudSyncRevision, document
+        );
+        if (!result.conflict) {
+            cloudSyncForcePush = false;
+            rememberCloudBaseline(result.revision, document);
+            return;
+        }
+
+        const remote = await decodeCloudSnapshot(result);
+        if (!remote) return;
+        const base = cloudSyncBaseDocument ?? remote.document;
+        const merged = mergeSyncDocuments(base, document, remote.document);
+        applyingCloudSnapshot = true;
+        try {
+            await applySyncDocument(merged);
+            rememberCloudBaseline(remote.revision, remote.document);
+        } finally {
+            applyingCloudSnapshot = false;
+        }
+    }
+    throw new Error("Cloud sync stayed busy after four merge attempts; the local changes will be retried.");
+}
+
+function pushCloudChanges() {
+    return enqueueCloudOperation(pushCloudChangesNow);
 }
 
 function reportCloudProtection(encrypted: boolean, locked: boolean) {
     window.dispatchEvent(new CustomEvent("betterstatus-sync-protection", { detail: { encrypted, locked } }));
 }
 
-async function applyDecodedCloudSnapshot(
-    snapshot: { revision: number; document: SyncDocument; },
-    encrypted: boolean
-) {
-    if (!settings.store.syncEnabled || snapshot.revision < cloudSyncRevision || snapshot.document?.version !== 1) return;
-    const hash = syncDocumentHash(snapshot.document);
-    reportCloudProtection(encrypted, false);
+async function decodeCloudSnapshot(snapshot: { revision: number; document: unknown; }) {
+    const decoded = await VencordNative.pluginHelpers.BetterStatus.decodeCloudSyncSnapshot(getSyncServerURL(), snapshot);
+    if (decoded.locked) {
+        cloudSyncLocked = true;
+        reportCloudProtection(true, true);
+        requestSyncPassword(unlockCloudSyncPassword);
+        return undefined;
+    }
+    const document = decoded.snapshot.document as SyncDocument;
+    if (document?.version !== 1) return undefined;
+    reportCloudProtection(decoded.encrypted, false);
     cloudSyncLocked = false;
-    if (snapshot.revision === cloudSyncRevision && hash === cloudSyncHash) return;
+    return { revision: snapshot.revision, document };
+}
+
+async function reconcileCloudSnapshot(
+    snapshot: { revision: number; document: unknown; },
+    preferRemote = false,
+    initial = false
+) {
+    if (!settings.store.syncEnabled || (!initial && snapshot.revision <= cloudSyncRevision)) return;
+    const remote = await decodeCloudSnapshot(snapshot);
+    if (!remote) return;
+
+    const local = buildSyncDocument();
+    const base = cloudSyncBaseDocument;
+    const hasLocalChanges = base !== undefined && syncDocumentHash(local) !== syncDocumentHash(base);
+    const preserveUntrackedLocalState = initial && !base && !preferRemote;
+    const next = preferRemote
+        ? remote.document
+        : hasLocalChanges
+            ? mergeSyncDocuments(base, local, remote.document)
+            : preserveUntrackedLocalState
+                ? local
+                : remote.document;
+
     applyingCloudSnapshot = true;
     try {
-        await applySyncDocument(snapshot.document);
-        cloudSyncRevision = snapshot.revision;
-        cloudSyncHash = hash;
+        if (syncDocumentHash(local) !== syncDocumentHash(next))
+            await applySyncDocument(next);
+        rememberCloudBaseline(remote.revision, remote.document);
         configureStatusSchedule();
     } finally {
         applyingCloudSnapshot = false;
     }
+
+    if (syncDocumentHash(next) !== syncDocumentHash(remote.document))
+        await pushCloudChangesNow();
 }
 
 async function unlockCloudSyncPassword(password: string) {
     const decoded = await VencordNative.pluginHelpers.BetterStatus.unlockCloudSync(getSyncServerURL(), password);
-    await applyDecodedCloudSnapshot(decoded.snapshot as { revision: number; document: SyncDocument; }, true);
+    cloudSyncLocked = false;
+    reportCloudProtection(true, false);
+    await enqueueCloudOperation(() => reconcileCloudSnapshot(decoded.snapshot, false, true));
 }
 
 async function receiveCloudSnapshot(snapshot: { revision: number; document: unknown; }) {
-    if (!settings.store.syncEnabled || snapshot.revision < cloudSyncRevision) return;
-    const decoded = await VencordNative.pluginHelpers.BetterStatus.decodeCloudSyncSnapshot(getSyncServerURL(), snapshot);
-    if (decoded.locked) {
-        cloudSyncRevision = snapshot.revision;
-        cloudSyncLocked = true;
-        reportCloudProtection(true, true);
-        requestSyncPassword(unlockCloudSyncPassword);
-        return;
-    }
-    await applyDecodedCloudSnapshot(
-        decoded.snapshot as { revision: number; document: SyncDocument; },
-        decoded.encrypted
-    );
+    await enqueueCloudOperation(() => reconcileCloudSnapshot(snapshot));
 }
 
-async function configureCloudSync() {
+async function pullCloudChanges() {
+    await enqueueCloudOperation(async () => {
+        const snapshot = await VencordNative.pluginHelpers.BetterStatus.pullCloudSync(getSyncServerURL());
+        await reconcileCloudSnapshot(snapshot);
+    });
+}
+
+async function configureCloudSync(forcePull = false) {
     stopCloudSync();
     if (!settings.store.syncEnabled) return;
     try {
+        const server = getSyncServerURL();
+        const savedState = settings.store.cloudSyncState;
+        const preferRemote = forcePull || settings.store.cloudSyncPullOnConnect === true;
+        settings.store.cloudSyncPullOnConnect = false;
         const result = await VencordNative.pluginHelpers.BetterStatus.startCloudSync(getSyncServerURL());
         if (!result.connected) {
             settings.store.syncEnabled = false;
             return;
         }
+        cloudSyncUserId = result.discordUserId;
+        if (savedState?.server === server && savedState.discordUserId === result.discordUserId) {
+            cloudSyncRevision = savedState.revision;
+            cloudSyncBaseDocument = savedState.document;
+        }
         if (result.snapshot?.revision > 0)
-            await receiveCloudSnapshot(result.snapshot);
+            await enqueueCloudOperation(() => reconcileCloudSnapshot(result.snapshot, preferRemote, true));
         else {
             cloudSyncRevision = result.snapshot?.revision ?? 0;
             await pushCloudChanges();
         }
         cloudSyncTimer = window.setInterval(() => void pushCloudChanges().catch(error =>
             console.error("[BetterStatus] Cloud sync failed", error)
-        ), 2_000);
+        ), 500);
+        cloudSyncPullTimer = window.setInterval(() => void pullCloudChanges().catch(error =>
+            console.error("[BetterStatus] Cloud sync revision pull failed", error)
+        ), 10_000);
     } catch (error) {
         console.error("[BetterStatus] Could not start cloud sync", error);
     }
@@ -291,17 +459,20 @@ function runAutomaticUpdateCheck() {
     )
         .then(result => {
             if (result.status === "updated") {
+                const willRestart = prepareAutoRestart();
                 showNotification({
                     title: "BetterStatus updated",
-                    body: settings.store.autoRestart
+                    body: willRestart
                         ? "Discord will restart automatically."
+                        : settings.store.autoRestart
+                            ? "Restart loop protection is active. Restart Discord manually."
                         : "Restart Discord to use the new version."
                 });
-                if (settings.store.autoRestart)
+                if (willRestart)
                     window.setTimeout(relaunch, 1_500);
             } else if (result.status === "failed") {
                 retryAt = result.retryAt;
-                showUpdateFailureNotification(result);
+                showUpdateFailureNotification(result, getUpdateChannel());
             }
         })
         .finally(() => {
@@ -487,6 +658,17 @@ export default definePlugin({
     async start() {
         updateSchedulerActive = true;
         statusScheduleActive = true;
+        const restartGuard = initializeAutoRestartGuard();
+        if (restartGuard.newlyPaused && restartGuard.pausedUntil !== undefined) {
+            const resumeTime = new Date(restartGuard.pausedUntil).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+            showNotification({
+                title: "BetterStatus auto restart paused",
+                body: `Discord restarted twice within five minutes. Automatic restart is disabled until ${resumeTime}; updates will still install.`
+            });
+        }
         const presets = getPresets();
         await savePresets(presets);
         startStatusHistoryModalObserver();
@@ -528,6 +710,11 @@ export default definePlugin({
 
     configureCloudSync,
 
+    async resyncCloudSync() {
+        settings.store.syncEnabled = true;
+        await configureCloudSync(true);
+    },
+
     async changeCloudEncryptionPassword(password?: string) {
         if (cloudSyncRevision === 0) throw new Error("Connect and finish the first sync before adding a password.");
         if (cloudSyncLocked) throw new Error("Unlock the current encrypted configuration before changing its password.");
@@ -535,7 +722,7 @@ export default definePlugin({
             await VencordNative.pluginHelpers.BetterStatus.setCloudEncryptionPassword(getSyncServerURL(), password);
         else
             await VencordNative.pluginHelpers.BetterStatus.clearCloudEncryptionPassword(getSyncServerURL());
-        cloudSyncHash = "";
+        cloudSyncForcePush = true;
         await pushCloudChanges();
         reportCloudProtection(Boolean(password), false);
     },

@@ -17,6 +17,7 @@ import {
   Button,
   ConfirmModal,
   Forms,
+  OAuth2AuthorizeModal,
   openModal,
   React,
   Select,
@@ -34,6 +35,7 @@ import type {
   SavedStatus,
   ScheduleEndBehavior,
   ScheduleRepeat,
+  ScheduleStartBehavior,
   StatusPreset,
   StatusSchedule,
   SyncDocument,
@@ -51,6 +53,7 @@ interface BetterStatusRuntime {
   configureCloudSync(): Promise<void>;
   configureSchedules(): void;
   configureUpdateChecks(checkNow?: boolean, retryAt?: number): void;
+  resyncCloudSync(): Promise<void>;
   unlockCloudSyncPassword(password: string): Promise<void>;
 }
 
@@ -59,6 +62,72 @@ function pluginRuntime() {
 }
 
 let syncPasswordPromptOpen = false;
+
+const AUTO_RESTART_WINDOW_MS = 5 * 60_000;
+const AUTO_RESTART_COOLDOWN_MS = 60 * 60_000;
+let autoRestartScheduledThisProcess = false;
+
+export interface AutoRestartGuardState {
+  newlyPaused: boolean;
+  pausedUntil?: number;
+}
+
+export function initializeAutoRestartGuard(now = Date.now()): AutoRestartGuardState {
+  const existingPause = settings.store.autoRestartPausedUntil;
+  if (typeof existingPause === "number" && existingPause > now)
+    return { newlyPaused: false, pausedUntil: existingPause };
+
+  if (existingPause !== undefined)
+    settings.store.autoRestartPausedUntil = undefined;
+
+  const history = (settings.store.autoRestartHistory ?? [])
+    .filter(timestamp =>
+      Number.isFinite(timestamp) &&
+      timestamp <= now &&
+      timestamp >= now - AUTO_RESTART_WINDOW_MS,
+    )
+    .sort((left, right) => left - right)
+    .slice(-2);
+
+  settings.store.autoRestartHistory = history;
+  if (history.length < 2)
+    return { newlyPaused: false };
+
+  const pausedUntil = history[history.length - 1] + AUTO_RESTART_COOLDOWN_MS;
+  if (pausedUntil <= now) {
+    settings.store.autoRestartHistory = [];
+    return { newlyPaused: false };
+  }
+
+  settings.store.autoRestartPausedUntil = pausedUntil;
+  return { newlyPaused: true, pausedUntil };
+}
+
+/** Reserve one updater-triggered relaunch and reject it when loop protection is active. */
+export function prepareAutoRestart(now = Date.now()) {
+  if (!settings.store.autoRestart || autoRestartScheduledThisProcess)
+    return false;
+
+  const guard = initializeAutoRestartGuard(now);
+  if (guard.pausedUntil !== undefined)
+    return false;
+
+  settings.store.autoRestartHistory = [
+    ...(settings.store.autoRestartHistory ?? []),
+    now,
+  ]
+    .filter(timestamp => timestamp >= now - AUTO_RESTART_WINDOW_MS)
+    .slice(-2);
+  autoRestartScheduledThisProcess = true;
+  return true;
+}
+
+function formatAutoRestartPause(pausedUntil: number) {
+  return new Date(pausedUntil).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function SyncPasswordModal({
   modalProps,
@@ -188,8 +257,50 @@ interface UpdateFailure {
 }
 
 let lastRateLimitNotificationRetryAt = 0;
+let forcedUpdateInProgress = false;
 
-export function showUpdateFailureNotification(failure: UpdateFailure) {
+async function forceUpdateFromNotification(channel: UpdateChannel) {
+  if (forcedUpdateInProgress) return;
+  forcedUpdateInProgress = true;
+
+  try {
+    const result = await Native.checkForUpdates(true, channel, true);
+    if (result.status === "updated") {
+      const willRestart = prepareAutoRestart();
+      showNotification({
+        title: "BetterStatus force update installed",
+        body: willRestart
+          ? "Discord will restart automatically."
+          : settings.store.autoRestart
+            ? "Automatic restart is temporarily paused. Restart Discord manually."
+            : "Restart Discord to use the reinstalled version.",
+      });
+      if (willRestart) window.setTimeout(relaunch, 1_500);
+      return;
+    }
+
+    if (result.status === "current") {
+      showNotification({
+        title: "BetterStatus force update completed",
+        body: "The selected channel files were verified. No restart is required.",
+      });
+      return;
+    }
+
+    showUpdateFailureNotification(result, channel);
+  } catch (error) {
+    showUpdateFailureNotification({
+      error: error instanceof Error ? error.message : String(error),
+    }, channel);
+  } finally {
+    forcedUpdateInProgress = false;
+  }
+}
+
+export function showUpdateFailureNotification(
+  failure: UpdateFailure,
+  channel: UpdateChannel = getUpdateChannel(),
+) {
   const isRateLimited = failure.retryAt !== undefined;
   if (isRateLimited && failure.retryAt === lastRateLimitNotificationRetryAt)
     return;
@@ -202,6 +313,30 @@ export function showUpdateFailureNotification(failure: UpdateFailure) {
       ? "BetterStatus update checks paused"
       : "BetterStatus update failed",
     body: failure.error ?? "Run the BetterStatus installer to update manually.",
+    richBody: (
+      <div className="bs-update-failure-notification">
+        <div>{failure.error ?? "Run the BetterStatus installer to update manually."}</div>
+        <span
+          className="bs-force-update-notification-button"
+          role="button"
+          tabIndex={0}
+          onClick={event => {
+            event.preventDefault();
+            event.stopPropagation();
+            void forceUpdateFromNotification(channel);
+          }}
+          onKeyDown={event => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            event.stopPropagation();
+            void forceUpdateFromNotification(channel);
+          }}
+        >
+          Force update
+        </span>
+      </div>
+    ),
+    dismissOnClick: false,
     noPersist: isRateLimited,
   });
 }
@@ -376,13 +511,35 @@ const UPDATE_FREQUENCY_OPTIONS: Array<{
 const SCHEDULE_REPEAT_OPTIONS = [
   { label: "Once", value: "once" },
   { label: "Every day", value: "daily" },
+  { label: "Weekdays", value: "weekdays" },
+  { label: "Weekends", value: "weekends" },
   { label: "Every week", value: "weekly" },
+  { label: "Specific days", value: "custom" },
 ];
+
+const WEEKDAY_OPTIONS = [
+  { label: "Mon", value: 1 },
+  { label: "Tue", value: 2 },
+  { label: "Wed", value: 3 },
+  { label: "Thu", value: 4 },
+  { label: "Fri", value: 5 },
+  { label: "Sat", value: 6 },
+  { label: "Sun", value: 0 },
+];
+
+const SCHEDULE_REPEAT_VALUES = new Set<ScheduleRepeat>([
+  "once", "daily", "weekdays", "weekends", "weekly", "custom",
+]);
 
 const SCHEDULE_END_OPTIONS = [
   { label: "Keep scheduled status", value: "keep" },
   { label: "Restore previous status", value: "restore" },
   { label: "Activate another preset", value: "preset" },
+  { label: "Set a custom status", value: "custom" },
+];
+
+const SCHEDULE_START_OPTIONS = [
+  { label: "Activate a preset", value: "preset" },
   { label: "Set a custom status", value: "custom" },
 ];
 
@@ -408,12 +565,19 @@ function validateSchedules(value: unknown, presetIds: Set<string>): StatusSchedu
       throw new Error(`Schedule ${index + 1} has an invalid or duplicate ID.`);
     if (typeof schedule.name !== "string" || schedule.name.length > 500)
       throw new Error(`Schedule ${index + 1} has an invalid name.`);
-    if (typeof schedule.presetId !== "string" || !presetIds.has(schedule.presetId))
+    const startBehavior: ScheduleStartBehavior = schedule.startBehavior === "custom" ? "custom" : "preset";
+    if (startBehavior === "preset" && (typeof schedule.presetId !== "string" || !presetIds.has(schedule.presetId)))
       throw new Error(`Schedule ${index + 1} references a missing preset.`);
     if (typeof schedule.startsAt !== "number" || !Number.isFinite(schedule.startsAt))
       throw new Error(`Schedule ${index + 1} has an invalid start time.`);
-    if (!(["once", "daily", "weekly"] as unknown[]).includes(schedule.repeat))
+    if (!SCHEDULE_REPEAT_VALUES.has(schedule.repeat as ScheduleRepeat))
       throw new Error(`Schedule ${index + 1} has an invalid recurrence.`);
+
+    const repeatDays = [...new Set((schedule.repeatDays ?? [])
+      .filter(day => Number.isInteger(day) && day >= 0 && day <= 6))]
+      .sort((left, right) => left - right);
+    if (schedule.repeat === "custom" && repeatDays.length === 0)
+      repeatDays.push(new Date(schedule.startsAt).getDay());
 
     const endBehavior: ScheduleEndBehavior = ["keep", "restore", "preset", "custom"].includes(schedule.endBehavior ?? "")
       ? schedule.endBehavior as ScheduleEndBehavior
@@ -425,15 +589,23 @@ function validateSchedules(value: unknown, presetIds: Set<string>): StatusSchedu
       throw new Error(`Schedule ${index + 1} references a missing end preset.`);
     if (schedule.endPresence !== undefined && !PRESENCE_VALUES.has(schedule.endPresence))
       throw new Error(`Schedule ${index + 1} has an invalid end presence.`);
+    if (schedule.startPresence !== undefined && !PRESENCE_VALUES.has(schedule.startPresence))
+      throw new Error(`Schedule ${index + 1} has an invalid start presence.`);
 
     ids.add(schedule.id);
     return {
       id: schedule.id,
       name: schedule.name,
+      startBehavior,
       presetId: schedule.presetId,
+      startText: typeof schedule.startText === "string" ? schedule.startText.slice(0, 10_000) : "",
+      startPresence: schedule.startPresence && PRESENCE_VALUES.has(schedule.startPresence)
+        ? schedule.startPresence
+        : "online",
       startsAt: schedule.startsAt,
       endsAt,
       repeat: schedule.repeat as ScheduleRepeat,
+      repeatDays,
       endBehavior,
       endPresetId: schedule.endPresetId,
       endText: typeof schedule.endText === "string" ? schedule.endText.slice(0, 10_000) : "",
@@ -472,8 +644,21 @@ function scheduleOccursOnDay(schedule: StatusSchedule, day: Date) {
   const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
   if (dayStart < startDay) return false;
   if (schedule.repeat === "daily") return true;
+  if (schedule.repeat === "weekdays") return day.getDay() >= 1 && day.getDay() <= 5;
+  if (schedule.repeat === "weekends") return day.getDay() === 0 || day.getDay() === 6;
   if (schedule.repeat === "weekly") return day.getDay() === start.getDay();
+  if (schedule.repeat === "custom") return (schedule.repeatDays ?? []).includes(day.getDay());
   return dayStart === startDay;
+}
+
+function scheduleRepeatLabel(schedule: StatusSchedule) {
+  if (schedule.repeat === "once") return "One time";
+  if (schedule.repeat === "daily") return "Repeats every day";
+  if (schedule.repeat === "weekdays") return "Repeats on weekdays";
+  if (schedule.repeat === "weekends") return "Repeats on weekends";
+  if (schedule.repeat === "weekly") return `Repeats every ${new Date(schedule.startsAt).toLocaleDateString([], { weekday: "long" })}`;
+  const selected = WEEKDAY_OPTIONS.filter(day => (schedule.repeatDays ?? []).includes(day.value));
+  return `Repeats ${selected.map(day => day.label).join(", ") || "on selected days"}`;
 }
 
 function createId() {
@@ -599,6 +784,7 @@ export default function SettingsComponent() {
     autoRestart,
     updateCheckFrequency,
     updateChannel,
+    autoRestartPausedUntil,
     activePresetId,
     syncEnabled,
     syncProvider,
@@ -608,6 +794,7 @@ export default function SettingsComponent() {
     "autoRestart",
     "updateCheckFrequency",
     "updateChannel",
+    "autoRestartPausedUntil",
     "activePresetId",
     "syncEnabled",
     "syncProvider",
@@ -621,11 +808,16 @@ export default function SettingsComponent() {
   const [schedules, setSchedules] = React.useState<StatusSchedule[]>(() => [
     ...getSchedules(),
   ]);
+  const [collapsedScheduleIds, setCollapsedScheduleIds] = React.useState<Set<string>>(
+    () => new Set(schedules.map(schedule => schedule.id)),
+  );
   const [collapsedIds, setCollapsedIds] = React.useState<Set<string>>(
     () => new Set(presets.map(preset => preset.id)),
   );
   const [searchQuery, setSearchQuery] = React.useState("");
   const [checkingForUpdates, setCheckingForUpdates] = React.useState(false);
+  const [restartingDiscord, setRestartingDiscord] = React.useState(false);
+  const [lastUpdateFailed, setLastUpdateFailed] = React.useState(false);
   const [updateStatus, setUpdateStatus] = React.useState<string | null>(null);
   const [updateInfo, setUpdateInfo] = React.useState<UpdateInfo | null>(null);
   const [updateInfoError, setUpdateInfoError] = React.useState<string | null>(
@@ -634,6 +826,7 @@ export default function SettingsComponent() {
   const [lastCheckedAt, setLastCheckedAt] = React.useState<Date | null>(null);
   const [backupStatus, setBackupStatus] = React.useState<string | null>(null);
   const [syncStatus, setSyncStatus] = React.useState<string>("Not connected");
+  const [syncConnected, setSyncConnected] = React.useState(false);
   const [syncBusy, setSyncBusy] = React.useState(false);
   const [syncEncrypted, setSyncEncrypted] = React.useState(false);
   const [syncLocked, setSyncLocked] = React.useState(false);
@@ -657,17 +850,30 @@ export default function SettingsComponent() {
     }
   }
 
+  function restartDiscordNow() {
+    if (restartingDiscord) return;
+    setRestartingDiscord(true);
+    setUpdateStatus("Restarting Discord to apply the BetterStatus update…");
+    window.setTimeout(relaunch, 250);
+  }
+
   React.useEffect(() => {
     void refreshUpdateInfo(selectedUpdateChannel);
   }, [selectedUpdateChannel]);
 
   React.useEffect(() => {
-    Native.getCloudSyncStatus(getSyncServerURL()).then(status => {
+    Native.getCloudSyncStatus(getSyncServerURL()).then(async status => {
+      setSyncConnected(status.connected);
       setSyncEncrypted(Boolean(status.encryptionPasswordSet));
       setSyncLocked(false);
       setSyncStatus(status.connected
         ? `Connected as Discord user ${status.discordUserId} · expires ${new Date(status.expiresAt!).toLocaleDateString()}`
         : "Not connected");
+      if (status.connected) {
+        settings.store.syncEnabled = true;
+        await pluginRuntime().resyncCloudSync();
+        setSyncStatus(`Connected as Discord user ${status.discordUserId} · synchronized from server`);
+      }
     }).catch(error => setSyncStatus(error instanceof Error ? error.message : String(error)));
   }, [syncProvider, syncServerUrl]);
 
@@ -733,8 +939,37 @@ export default function SettingsComponent() {
     setSyncBusy(true);
     setSyncStatus("Waiting for Discord authorization in your browser…");
     try {
-      const status = await Native.authorizeCloudSync(getSyncServerURL());
+      const request = await Native.beginCloudSyncAuthorization(getSyncServerURL());
+      const status = await new Promise<Awaited<ReturnType<typeof Native.completeCloudSyncAuthorization>>>((resolve, reject) => {
+        openModal(modalProps => (
+          <OAuth2AuthorizeModal
+            {...modalProps}
+            scopes={["identify"]}
+            responseType="code"
+            redirectUri={request.redirectUri}
+            state={request.state}
+            permissions={0n}
+            clientId={request.clientId}
+            cancelCompletesFlow={false}
+            callback={async ({ location }: { location?: string; }) => {
+              if (!location) {
+                reject(new Error("Discord authorization was cancelled."));
+                return;
+              }
+              try {
+                resolve(await Native.completeCloudSyncAuthorization(
+                  getSyncServerURL(), request.requestId, location,
+                ));
+              } catch (error) {
+                reject(error);
+              }
+            }}
+          />
+        ));
+      });
       settings.store.syncEnabled = true;
+      settings.store.cloudSyncPullOnConnect = true;
+      setSyncConnected(true);
       setSyncStatus(`Connected as Discord user ${status.discordUserId} · expires ${new Date(status.expiresAt).toLocaleDateString()}`);
       await pluginRuntime().configureCloudSync();
     } catch (error) {
@@ -749,6 +984,7 @@ export default function SettingsComponent() {
     try {
       await Native.disconnectCloudSync(getSyncServerURL());
       settings.store.syncEnabled = false;
+      setSyncConnected(false);
       setSyncStatus("Not connected");
       await pluginRuntime().configureCloudSync();
     } finally {
@@ -756,31 +992,51 @@ export default function SettingsComponent() {
     }
   }
 
-  async function checkForUpdates() {
+  async function resyncFromServer() {
+    setSyncBusy(true);
+    setSyncStatus("Downloading the latest server revision…");
+    try {
+      await pluginRuntime().resyncCloudSync();
+      setSyncStatus("Synchronized from server · listening for live updates");
+    } catch (error) {
+      setSyncStatus(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+
+  async function checkForUpdates(force = false) {
     if (checkingForUpdates) return;
 
     let retryAt: number | undefined;
     setCheckingForUpdates(true);
+    setLastUpdateFailed(false);
     setUpdateStatus(
-      `Checking the ${selectedUpdateChannel === "dev" ? "development" : "production"} channel…`,
+      `${force ? "Force updating from" : "Checking"} the ${selectedUpdateChannel === "dev" ? "development" : "production"} channel…`,
     );
 
     try {
-      const result = await Native.checkForUpdates(true, selectedUpdateChannel);
+      const result = await Native.checkForUpdates(true, selectedUpdateChannel, force);
 
       if (result.status === "updated") {
+        const willRestart = prepareAutoRestart();
+        const restartPaused = autoRestart && !willRestart;
         setUpdateStatus(
-          autoRestart
+          willRestart
             ? "Update installed — restarting Discord…"
-            : "Update installed — restart Discord to apply it.",
+            : restartPaused
+              ? "Update installed — automatic restart is temporarily paused. Restart Discord manually."
+              : "Update installed — restart Discord to apply it.",
         );
         showNotification({
           title: "BetterStatus updated",
-          body: autoRestart
+          body: willRestart
             ? "Discord will restart automatically."
+            : restartPaused
+              ? "Restart loop protection is active. Restart Discord manually."
             : "Restart Discord to use the new version.",
         });
-        if (autoRestart) window.setTimeout(relaunch, 1_500);
+        if (willRestart) window.setTimeout(relaunch, 1_500);
       } else if (result.status === "current") {
         setUpdateStatus("You already have the latest channel build.");
         showNotification({
@@ -793,15 +1049,14 @@ export default function SettingsComponent() {
         if (retryAt !== undefined)
           pluginRuntime().configureUpdateChecks(false, retryAt);
         setUpdateStatus(`Update failed: ${message}`);
-        showUpdateFailureNotification(result);
+        setLastUpdateFailed(true);
+        showUpdateFailureNotification(result, selectedUpdateChannel);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setUpdateStatus(`Update failed: ${message}`);
-      showNotification({
-        title: "BetterStatus update failed",
-        body: message,
-      });
+      setLastUpdateFailed(true);
+      showUpdateFailureNotification({ error: message }, selectedUpdateChannel);
     } finally {
       if (retryAt === undefined)
         await refreshUpdateInfo(selectedUpdateChannel);
@@ -986,7 +1241,10 @@ export default function SettingsComponent() {
     if (id === activePresetId) settings.store.activePresetId = undefined;
 
     const nextSchedules = schedules
-      .filter(schedule => schedule.presetId !== id)
+      .filter(schedule => !(schedule.startBehavior !== "custom" && schedule.presetId === id))
+      .map(schedule => schedule.startBehavior === "custom" && schedule.presetId === id
+        ? { ...schedule, presetId: undefined }
+        : schedule)
       .map(schedule => schedule.endPresetId === id
         ? { ...schedule, endBehavior: "restore" as const, endPresetId: undefined }
         : schedule);
@@ -1004,28 +1262,65 @@ export default function SettingsComponent() {
 
   function addSchedule() {
     const preset = presets.find(candidate => candidate.enabled) ?? presets[0];
-    if (!preset) return;
 
     const startsAt = new Date();
     startsAt.setMinutes(startsAt.getMinutes() + 5, 0, 0);
     const endsAt = new Date(startsAt);
     endsAt.setHours(endsAt.getHours() + 1);
-    commitSchedules([...schedules, {
+    const schedule: StatusSchedule = {
       id: createId(),
-      name: `${preset.name || "Status"} schedule`,
-      presetId: preset.id,
+      name: `${preset?.name || "Custom status"} schedule`,
+      startBehavior: preset ? "preset" : "custom",
+      presetId: preset?.id,
+      startText: "",
+      startPresence: preset?.presence ?? "online",
       startsAt: startsAt.getTime(),
       endsAt: endsAt.getTime(),
       repeat: "once",
+      repeatDays: [],
       endBehavior: "restore",
       endText: "",
       endPresence: "online",
       enabled: true,
-    }]);
+    };
+    commitSchedules([...schedules, schedule]);
+    setCollapsedScheduleIds(current => {
+      const next = new Set(current);
+      next.delete(schedule.id);
+      return next;
+    });
   }
 
   function updateSchedule(id: string, patch: Partial<StatusSchedule>) {
     commitSchedules(schedules.map(schedule => schedule.id === id ? { ...schedule, ...patch } : schedule));
+  }
+
+  function toggleScheduleDay(schedule: StatusSchedule, day: number) {
+    const selected = new Set(schedule.repeatDays ?? []);
+    if (selected.has(day)) {
+      if (selected.size === 1) return;
+      selected.delete(day);
+    } else {
+      selected.add(day);
+    }
+    updateSchedule(schedule.id, { repeatDays: [...selected].sort((left, right) => left - right) });
+  }
+
+  function toggleScheduleCollapsed(id: string) {
+    setCollapsedScheduleIds(current => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllSchedulesCollapsed() {
+    const allSchedulesCollapsed = schedules.length > 0 &&
+      schedules.every(schedule => collapsedScheduleIds.has(schedule.id));
+    setCollapsedScheduleIds(allSchedulesCollapsed
+      ? new Set()
+      : new Set(schedules.map(schedule => schedule.id)));
   }
 
   function toggleCollapsed(id: string) {
@@ -1095,6 +1390,9 @@ export default function SettingsComponent() {
   const allCollapsed =
     presets.length > 0 &&
     presets.every(preset => collapsedIds.has(preset.id));
+  const allSchedulesCollapsed =
+    schedules.length > 0 &&
+    schedules.every(schedule => collapsedScheduleIds.has(schedule.id));
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const visiblePresets = normalizedQuery
     ? presets.filter(preset =>
@@ -1145,6 +1443,16 @@ export default function SettingsComponent() {
                       ? "Version unavailable"
                       : "Checking version"}
             </span>
+            {updateInfo?.status === "restartRequired" && (
+              <button
+                type="button"
+                className="bs-version-restart-button"
+                disabled={restartingDiscord}
+                onClick={restartDiscordNow}
+              >
+                {restartingDiscord ? "Restarting…" : "Restart Discord"}
+              </button>
+            )}
             {updateInfo && (
               <span className="bs-version-commits">
                 <span>
@@ -1210,9 +1518,18 @@ export default function SettingsComponent() {
               closeOnSelect
             />
           </div>
-          <Button disabled={checkingForUpdates} onClick={checkForUpdates}>
+          <Button disabled={checkingForUpdates} onClick={() => checkForUpdates(false)}>
             {checkingForUpdates ? "Checking…" : "Check for updates"}
           </Button>
+          {lastUpdateFailed && (
+            <Button
+              color={Button.Colors.RED}
+              disabled={checkingForUpdates}
+              onClick={() => checkForUpdates(true)}
+            >
+              Force update
+            </Button>
+          )}
           <div className="bs-update-switches">
             <FormSwitch
               title="Auto update"
@@ -1243,11 +1560,18 @@ export default function SettingsComponent() {
               />
             </div>
             <FormSwitch
-              title="Auto restart Discord"
+              title={autoRestartPausedUntil && autoRestartPausedUntil > Date.now()
+                ? `Auto restart Discord (paused until ${formatAutoRestartPause(autoRestartPausedUntil)})`
+                : "Auto restart Discord"}
               value={autoRestart}
               onChange={value => (settings.store.autoRestart = value)}
               hideBorder
             />
+            {autoRestartPausedUntil && autoRestartPausedUntil > Date.now() && (
+              <div className="bs-restart-guard" role="status">
+                Restart loop protection is active. Updates still install, but Discord must be restarted manually.
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1279,15 +1603,6 @@ export default function SettingsComponent() {
               Keep presets, saved statuses, schedules, and preferences current on every client through secure Discord-authorized sync.
             </Forms.FormText>
           </div>
-          <FormSwitch
-            title="Sync enabled"
-            value={syncEnabled}
-            onChange={value => {
-              settings.store.syncEnabled = value;
-              void pluginRuntime().configureCloudSync();
-            }}
-            hideBorder
-          />
         </div>
         <div className="bs-sync-controls">
           <div className="bs-field">
@@ -1297,6 +1612,7 @@ export default function SettingsComponent() {
               select={provider => {
                 settings.store.syncProvider = provider as SyncProvider;
                 settings.store.syncEnabled = false;
+                setSyncConnected(false);
                 void pluginRuntime().configureCloudSync();
               }}
               serialize={value => value}
@@ -1313,13 +1629,22 @@ export default function SettingsComponent() {
                 onChange={value => {
                   settings.store.syncServerUrl = value;
                   settings.store.syncEnabled = false;
+                  setSyncConnected(false);
                 }}
               />
             </label>
           )}
           <div className="bs-sync-actions">
-            <Button disabled={syncBusy} onClick={connectSync}>{syncBusy ? "Connecting…" : "Connect Discord"}</Button>
-            <button type="button" className="bs-secondary-button" disabled={syncBusy} onClick={disconnectSync}>Disconnect</button>
+            {syncConnected ? (
+              <>
+                <button type="button" className="bs-secondary-button" disabled={syncBusy} onClick={resyncFromServer}>
+                  {syncBusy ? "Synchronizing…" : "Resync from server"}
+                </button>
+                <button type="button" className="bs-danger-button" disabled={syncBusy} onClick={disconnectSync}>Disconnect</button>
+              </>
+            ) : (
+              <Button disabled={syncBusy} onClick={connectSync}>{syncBusy ? "Connecting…" : "Connect Discord"}</Button>
+            )}
           </div>
         </div>
         <div className="bs-sync-status" role="status">{syncStatus}</div>
@@ -1358,11 +1683,19 @@ export default function SettingsComponent() {
           <div>
             <Forms.FormTitle tag="h2">Status calendar</Forms.FormTitle>
             <Forms.FormText>
-              Plan when a preset starts, how long it lasts, and what Discord
+              Plan when a preset or custom status starts, how long it lasts, and what Discord
               should show when it ends. Times use this computer&apos;s local time.
             </Forms.FormText>
           </div>
-          <Button disabled={!presets.length} onClick={addSchedule}>+ Schedule status</Button>
+          <div className="bs-section-actions">
+            {!!schedules.length && (
+              <button type="button" className="bs-secondary-button" onClick={toggleAllSchedulesCollapsed}>
+                <ChevronIcon collapsed={!allSchedulesCollapsed} />
+                {allSchedulesCollapsed ? "Expand all" : "Collapse all"}
+              </button>
+            )}
+            <Button onClick={addSchedule}>+ Schedule status</Button>
+          </div>
         </div>
         <div className="bs-calendar-week" aria-label="Upcoming seven days">
           {calendarDays.map(({ day, schedules: daySchedules }, index) => (
@@ -1372,7 +1705,8 @@ export default function SettingsComponent() {
               <div className="bs-calendar-day-events">
                 {daySchedules.slice(0, 4).map(schedule => {
                   const preset = presets.find(item => item.id === schedule.presetId);
-                  return <i className={`bs-mini-event bs-presence-${preset?.presence ?? "online"}`} key={schedule.id} />;
+                  const presence = schedule.startBehavior === "custom" ? schedule.startPresence : preset?.presence;
+                  return <i className={`bs-mini-event bs-presence-${presence ?? "online"}`} key={schedule.id} />;
                 })}
                 {daySchedules.length > 4 && <small>+{daySchedules.length - 4}</small>}
               </div>
@@ -1381,15 +1715,18 @@ export default function SettingsComponent() {
         </div>
         {!schedules.length ? (
           <div className="bs-calendar-empty">
-            {presets.length ? "No scheduled statuses yet." : "Create a preset before adding a schedule."}
+            No scheduled statuses yet. Create one from a preset or enter a custom status.
           </div>
         ) : (
           <div className="bs-calendar-grid">
             {schedules.map(schedule => {
               const startPreset = presets.find(preset => preset.id === schedule.presetId);
+              const startPresence = schedule.startBehavior === "custom" ? schedule.startPresence : startPreset?.presence;
               const endTime = schedule.endsAt ?? schedule.startsAt + 60 * 60_000;
+              const collapsed = collapsedScheduleIds.has(schedule.id);
+              const contentId = `bs-schedule-${schedule.id}`;
               return (
-                <article className={`bs-schedule-card bs-presence-${startPreset?.presence ?? "online"}${schedule.enabled ? "" : " bs-schedule-disabled"}`} key={schedule.id}>
+                <article className={`bs-schedule-card bs-presence-${startPresence ?? "online"}${schedule.enabled ? "" : " bs-schedule-disabled"}${collapsed ? " bs-schedule-collapsed" : ""}`} key={schedule.id}>
                   <header className="bs-schedule-header">
                     <div className="bs-schedule-date" aria-hidden="true">
                       <span>{new Date(schedule.startsAt).toLocaleDateString([], { month: "short" })}</span>
@@ -1397,15 +1734,26 @@ export default function SettingsComponent() {
                     </div>
                     <label className="bs-schedule-name">
                       <TextInput value={schedule.name} placeholder="Schedule name" onChange={name => updateSchedule(schedule.id, { name })} />
-                      <span>{schedule.repeat === "once" ? "One time" : schedule.repeat === "daily" ? "Repeats daily" : "Repeats weekly"}</span>
+                      <span>{scheduleRepeatLabel(schedule)}</span>
                     </label>
                     <div className="bs-schedule-actions">
                       <FormSwitch title="Enabled" value={schedule.enabled} onChange={enabled => updateSchedule(schedule.id, { enabled })} hideBorder />
                       <button type="button" className="bs-schedule-delete" aria-label={`Delete ${schedule.name}`} onClick={() => commitSchedules(schedules.filter(item => item.id !== schedule.id))}>×</button>
+                      <button
+                        type="button"
+                        className="bs-collapse-button"
+                        aria-controls={contentId}
+                        aria-expanded={!collapsed}
+                        aria-label={`${collapsed ? "Expand" : "Collapse"} ${schedule.name || "calendar event"}`}
+                        title={collapsed ? "Expand calendar event" : "Collapse calendar event"}
+                        onClick={() => toggleScheduleCollapsed(schedule.id)}
+                      >
+                        <ChevronIcon collapsed={collapsed} />
+                      </button>
                     </div>
                   </header>
 
-                  <div className="bs-schedule-timeline">
+                  {!collapsed && <div id={contentId} className="bs-schedule-timeline">
                     <section className="bs-timepoint bs-timepoint-start">
                       <div className="bs-timepoint-marker"><i /></div>
                       <div className="bs-timepoint-content">
@@ -1428,14 +1776,65 @@ export default function SettingsComponent() {
                             }} />
                           </label>
                           <div className="bs-compact-field bs-compact-select">
-                            <span>Activate preset</span>
-                            <Select options={presets.map(preset => ({ label: preset.name || "Untitled preset", value: preset.id }))} select={presetId => updateSchedule(schedule.id, { presetId })} serialize={value => value} isSelected={value => value === schedule.presetId} closeOnSelect />
+                            <span>When it starts</span>
+                            <Select
+                              options={SCHEDULE_START_OPTIONS.filter(option => option.value !== "preset" || presets.length > 0)}
+                              select={startBehavior => updateSchedule(schedule.id, {
+                                startBehavior: startBehavior as ScheduleStartBehavior,
+                                presetId: startBehavior === "preset"
+                                  ? schedule.presetId ?? presets.find(preset => preset.enabled)?.id ?? presets[0]?.id
+                                  : schedule.presetId,
+                              })}
+                              serialize={value => value}
+                              isSelected={value => value === (schedule.startBehavior ?? "preset")}
+                              closeOnSelect
+                            />
                           </div>
                           <div className="bs-compact-field bs-compact-select">
                             <span>Repeat</span>
-                            <Select options={SCHEDULE_REPEAT_OPTIONS} select={repeat => updateSchedule(schedule.id, { repeat: repeat as ScheduleRepeat })} serialize={value => value} isSelected={value => value === schedule.repeat} closeOnSelect />
+                            <Select options={SCHEDULE_REPEAT_OPTIONS} select={repeat => {
+                              const nextRepeat = repeat as ScheduleRepeat;
+                              updateSchedule(schedule.id, {
+                                repeat: nextRepeat,
+                                repeatDays: nextRepeat === "custom" && !(schedule.repeatDays?.length)
+                                  ? [new Date(schedule.startsAt).getDay()]
+                                  : schedule.repeatDays,
+                              });
+                            }} serialize={value => value} isSelected={value => value === schedule.repeat} closeOnSelect />
                           </div>
                         </div>
+                        {(schedule.startBehavior ?? "preset") === "preset" ? (
+                          <div className="bs-start-detail">
+                            <span>Activate preset</span>
+                            <Select options={presets.map(preset => ({ label: preset.name || "Untitled preset", value: preset.id }))} select={presetId => updateSchedule(schedule.id, { presetId })} serialize={value => value} isSelected={value => value === schedule.presetId} closeOnSelect />
+                          </div>
+                        ) : (
+                          <div className="bs-custom-start-grid">
+                            <label className="bs-field"><span>Custom status when it starts</span><TextInput value={schedule.startText ?? ""} placeholder="What should Discord show?" onChange={startText => updateSchedule(schedule.id, { startText })} /></label>
+                            <div className="bs-field"><span>Presence when it starts</span><StatusSwitcher presence={schedule.startPresence ?? "online"} onPresenceChange={startPresence => updateSchedule(schedule.id, { startPresence })} /></div>
+                          </div>
+                        )}
+                        {schedule.repeat === "custom" && (
+                          <div className="bs-weekday-picker" aria-label="Repeat on specific days">
+                            <span>Repeat on</span>
+                            <div>
+                              {WEEKDAY_OPTIONS.map(day => {
+                                const selected = (schedule.repeatDays ?? []).includes(day.value);
+                                return (
+                                  <button
+                                    type="button"
+                                    className={selected ? "bs-weekday-selected" : ""}
+                                    aria-pressed={selected}
+                                    key={day.value}
+                                    onClick={() => toggleScheduleDay(schedule, day.value)}
+                                  >
+                                    {day.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </section>
 
@@ -1446,9 +1845,12 @@ export default function SettingsComponent() {
                       <div className="bs-timepoint-content">
                         <div className="bs-timepoint-title">
                           <span>END</span>
-                          <FormSwitch title="Use end time" value={Boolean(schedule.endsAt)} onChange={enabled => updateSchedule(schedule.id, enabled
-                            ? { endsAt: endTime, endBehavior: schedule.endBehavior === "keep" ? "restore" : schedule.endBehavior }
-                            : { endsAt: undefined, endBehavior: "keep" })} hideBorder />
+                          <div className="bs-end-time-heading">
+                            {schedule.endsAt && <strong>Ends at {timeInputValue(schedule.endsAt)}</strong>}
+                            <FormSwitch title="Use end time" value={Boolean(schedule.endsAt)} onChange={enabled => updateSchedule(schedule.id, enabled
+                              ? { endsAt: endTime, endBehavior: schedule.endBehavior === "keep" ? "restore" : schedule.endBehavior }
+                              : { endsAt: undefined, endBehavior: "keep" })} hideBorder />
+                          </div>
                         </div>
                         {schedule.endsAt ? (
                           <>
@@ -1482,7 +1884,7 @@ export default function SettingsComponent() {
                         ) : <div className="bs-no-end-copy">The scheduled preset stays active until something else changes it.</div>}
                       </div>
                     </section>
-                  </div>
+                  </div>}
                 </article>
               );
             })}
@@ -1800,6 +2202,15 @@ export const settings = definePluginSettings({
   activePresetId?: string;
   scheduleRuns?: Record<string, number>;
   scheduleEndRuns?: Record<string, number>;
+  autoRestartHistory?: number[];
+  autoRestartPausedUntil?: number;
+  cloudSyncPullOnConnect?: boolean;
+  cloudSyncState?: {
+    server: string;
+    discordUserId: string;
+    revision: number;
+    document: SyncDocument;
+  };
   schedulePreviousStates?: Record<string, {
     occurrence: number;
     customStatus: {
@@ -1845,12 +2256,21 @@ export function getSchedules(): StatusSchedule[] {
   const normalized = settings.store.schedules
     .filter(schedule =>
       schedule && typeof schedule.id === "string" &&
-      typeof schedule.presetId === "string" &&
       typeof schedule.startsAt === "number" &&
-      ["once", "daily", "weekly"].includes(schedule.repeat)
+      SCHEDULE_REPEAT_VALUES.has(schedule.repeat) &&
+      (schedule.startBehavior === "custom" || typeof schedule.presetId === "string")
     )
     .map(schedule => ({
       ...schedule,
+      startBehavior: schedule.startBehavior === "custom" ? "custom" as const : "preset" as const,
+      startText: schedule.startText ?? "",
+      startPresence: schedule.startPresence ?? "online",
+      repeat: SCHEDULE_REPEAT_VALUES.has(schedule.repeat)
+        ? schedule.repeat
+        : "once" as const,
+      repeatDays: [...new Set((schedule.repeatDays ?? [])
+        .filter(day => Number.isInteger(day) && day >= 0 && day <= 6))]
+        .sort((left, right) => left - right),
       endBehavior: ["keep", "restore", "preset", "custom"].includes(schedule.endBehavior)
         ? schedule.endBehavior
         : "keep" as const,

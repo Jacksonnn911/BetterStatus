@@ -48,6 +48,7 @@ sync-dev: check-dev
 	@version_commit="$$(git -C "$(REPO_DIR)" rev-parse HEAD)"; \
 	if [[ "$$(git -C "$(REPO_DIR)" log -1 --pretty=%s)" == "Update dev file manifest [skip ci]" ]]; then \
 		version_commit="$$(PATH="$(DEV_PATH)" node -e 'const fs = require("fs"); process.stdout.write(JSON.parse(fs.readFileSync(process.argv[1], "utf8")).commit)' "$(REPO_DIR)/files.json")"; \
+		cp "$(REPO_DIR)/files.json" "$(PLUGIN_DIR)/.files.json"; \
 	fi; \
 	printf 'dev:%s\n' "$$version_commit" > "$(PLUGIN_DIR)/VERSION"
 	@echo "Synced BetterStatus to $(PLUGIN_DIR)"

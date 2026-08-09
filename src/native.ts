@@ -6,7 +6,7 @@
 
 import { execFile } from "child_process";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, scrypt as deriveScrypt } from "crypto";
-import { app, globalShortcut, IpcMainInvokeEvent, safeStorage, shell } from "electron";
+import { app, globalShortcut, IpcMainInvokeEvent, safeStorage } from "electron";
 import { access, copyFile, mkdir, readFile, rename, rm, writeFile } from "fs/promises";
 import { homedir } from "os";
 import { dirname, join } from "path";
@@ -39,6 +39,11 @@ interface SyncSnapshot {
 }
 
 const syncSockets = new Map<string, WebSocket>();
+const pendingCloudAuthorizations = new Map<string, {
+    server: string;
+    verifier: string;
+    expiresAt: number;
+}>();
 const SYNC_ENCRYPTION_AAD = Buffer.from("BetterStatus encrypted sync document v1", "utf8");
 
 function isEncryptedSyncDocument(value: unknown): value is EncryptedSyncDocument {
@@ -163,6 +168,9 @@ function connectCloudSocket(event: IpcMainInvokeEvent, server: string, session: 
     url.pathname = "/v1/sync/ws";
     const socket = new WebSocket(url);
     syncSockets.set(server, socket);
+    const connectTimeout = setTimeout(() => {
+        if (socket.readyState === WebSocket.CONNECTING) socket.close();
+    }, 10_000);
     socket.addEventListener("open", () => socket.send(JSON.stringify({ type: "auth", token: session.token })));
     socket.addEventListener("message", message => {
         try {
@@ -173,6 +181,7 @@ function connectCloudSocket(event: IpcMainInvokeEvent, server: string, session: 
         }
     });
     socket.addEventListener("close", () => {
+        clearTimeout(connectTimeout);
         if (syncSockets.get(server) !== socket) return;
         syncSockets.delete(server);
         setTimeout(async () => {
@@ -181,6 +190,7 @@ function connectCloudSocket(event: IpcMainInvokeEvent, server: string, session: 
             if (resolved) connectCloudSocket(event, server, resolved.session);
         }, 5_000);
     });
+    socket.addEventListener("error", () => socket.close());
 }
 
 interface ManifestFile {
@@ -192,13 +202,8 @@ interface ManifestFile {
 interface UpdateManifest {
     version: 1;
     commit: string;
+    generatedAt?: string;
     files: ManifestFile[];
-}
-
-interface GitHubBranchReference {
-    object?: {
-        sha?: unknown;
-    };
 }
 
 interface UpdateResult {
@@ -229,7 +234,7 @@ class GitHubRateLimitError extends Error {
             minute: "2-digit"
         });
 
-        super(`GitHub returned HTTP 403. Update checks are unavailable for ${remaining}, until ${deadline}.`);
+        super(`All BetterStatus update mirrors are unavailable or rate-limited. Update checks will resume in ${remaining}, at ${deadline}.`);
         this.name = "GitHubRateLimitError";
     }
 }
@@ -265,15 +270,6 @@ function rateLimitDeadline(response: Response) {
 function throwIfGitHubRateLimited() {
     if (githubRetryAt > Date.now())
         throw new GitHubRateLimitError(githubRetryAt);
-}
-
-function handleFetchFailure(response: Response): never {
-    if (response.status === 403) {
-        githubRetryAt = rateLimitDeadline(response);
-        throw new GitHubRateLimitError(githubRetryAt);
-    }
-
-    throw new Error(`Download failed (${response.status} ${response.statusText})`);
 }
 
 function updateFailure(error: unknown): UpdateResult {
@@ -312,48 +308,93 @@ async function findNode() {
     throw new Error("Node.js was not found. Run the BetterStatus installer once to repair the build tools.");
 }
 
-async function fetchText(url: string) {
-    throwIfGitHubRateLimited();
-    const response = await fetch(url, {
-        cache: "no-store",
-        headers: {
-            Accept: "application/vnd.github+json",
-            "User-Agent": "BetterStatus-AutoUpdater"
-        }
-    });
-
-    if (!response.ok)
-        handleFetchFailure(response);
-
-    return response.text();
+function updateMirrorURLs(reference: string, source: string) {
+    const path = source.split("/").map(encodeURIComponent).join("/");
+    const encodedReference = reference.split("/").map(encodeURIComponent).join("/");
+    return [
+        `https://raw.githubusercontent.com/${REPOSITORY}/${encodedReference}/${path}`,
+        `https://github.com/${REPOSITORY}/raw/${encodedReference}/${path}`,
+        `https://cdn.jsdelivr.net/gh/${REPOSITORY}@${encodedReference}/${path}`
+    ];
 }
 
-async function fetchManifest(channel: UpdateChannel) {
-    const reference = JSON.parse(await fetchText(
-        `https://api.github.com/repos/${REPOSITORY}/git/ref/heads/${channel}`
-    )) as GitHubBranchReference;
-    const head = reference.object?.sha;
+async function fetchFromUpdateMirrors<T>(
+    urls: string[],
+    read: (response: Response, url: string) => Promise<T>
+): Promise<T> {
+    throwIfGitHubRateLimited();
 
-    if (typeof head !== "string" || !/^[0-9a-f]{40}$/i.test(head))
-        throw new Error(`GitHub returned an invalid ${channel} branch reference.`);
+    const failures: string[] = [];
+    const retryDeadlines: number[] = [];
+    for (const url of urls) {
+        try {
+            const response = await fetch(url, {
+                cache: "no-store",
+                headers: {
+                    Accept: "application/octet-stream, application/json;q=0.9, text/plain;q=0.8",
+                    "User-Agent": "BetterStatus-AutoUpdater"
+                }
+            });
+            if (!response.ok) {
+                failures.push(`${new URL(url).hostname}: HTTP ${response.status}`);
+                if (response.status === 403 || response.status === 429)
+                    retryDeadlines.push(rateLimitDeadline(response));
+                continue;
+            }
 
-    return parseManifest(
-        JSON.parse(await fetchText(
-            `https://raw.githubusercontent.com/${REPOSITORY}/${head}/files.json`
-        ))
+            try {
+                const value = await read(response, url);
+                if (url !== urls[0])
+                    console.info(`[BetterStatus] Update mirror fallback succeeded through ${new URL(url).hostname}.`);
+                githubRetryAt = 0;
+                return value;
+            } catch (error) {
+                failures.push(`${new URL(url).hostname}: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        } catch (error) {
+            failures.push(`${new URL(url).hostname}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    if (retryDeadlines.length) {
+        githubRetryAt = Math.min(...retryDeadlines);
+        throw new GitHubRateLimitError(githubRetryAt);
+    }
+    throw new Error(`All update mirrors failed: ${failures.join("; ")}`);
+}
+
+async function fetchManifest(channel: UpdateChannel, force = false) {
+    const localManifest = await readFile(MANIFEST_STATE_FILE, "utf8")
+        .then(value => JSON.parse(value) as Partial<UpdateManifest>)
+        .catch(() => undefined);
+    const installed = parseInstalledVersion(await readFile(VERSION_FILE, "utf8").catch(() => ""));
+    return fetchFromUpdateMirrors(
+        updateMirrorURLs(channel, "files.json"),
+        async (response, url) => {
+            const manifest = parseManifest(JSON.parse(await response.text()));
+            const localTimestamp = Date.parse(localManifest?.generatedAt ?? "");
+            const remoteTimestamp = Date.parse(manifest.generatedAt ?? "");
+            if (!force && Number.isFinite(localTimestamp) && (!Number.isFinite(remoteTimestamp) || remoteTimestamp < localTimestamp))
+                throw new Error("manifest is older than the locally accepted manifest");
+            if (!force && !Number.isFinite(remoteTimestamp) && installed.version && manifest.commit !== installed.version)
+                throw new Error("legacy manifest cannot safely replace a different installed version");
+            if (!force && new URL(url).hostname === "cdn.jsdelivr.net" && !Number.isFinite(remoteTimestamp) && manifest.commit !== installed.version)
+                throw new Error("cached manifest freshness cannot be proven");
+            return manifest;
+        }
     );
 }
 
-async function fetchBytes(url: string) {
-    throwIfGitHubRateLimited();
-    const response = await fetch(url, {
-        headers: { "User-Agent": "BetterStatus-AutoUpdater" }
-    });
-
-    if (!response.ok)
-        handleFetchFailure(response);
-
-    return Buffer.from(await response.arrayBuffer());
+async function fetchUpdateFile(reference: string, source: string, expectedSHA256: string) {
+    return fetchFromUpdateMirrors(
+        updateMirrorURLs(reference, source),
+        async response => {
+            const contents = Buffer.from(await response.arrayBuffer());
+            if (sha256(contents) !== expectedSHA256)
+                throw new Error("SHA-256 verification failed");
+            return contents;
+        }
+    );
 }
 
 function sha256(contents: Uint8Array) {
@@ -376,6 +417,8 @@ function parseManifest(value: unknown): UpdateManifest {
         throw new Error("The update manifest uses an unsupported version.");
     if (typeof candidate.commit !== "string" || !/^[0-9a-f]{40}$/i.test(candidate.commit))
         throw new Error("The update manifest contains an invalid commit SHA.");
+    if (candidate.generatedAt !== undefined && (typeof candidate.generatedAt !== "string" || !Number.isFinite(Date.parse(candidate.generatedAt))))
+        throw new Error("The update manifest contains an invalid generation time.");
     if (!Array.isArray(candidate.files) || candidate.files.length === 0)
         throw new Error("The update manifest does not contain any files.");
 
@@ -405,6 +448,9 @@ function parseManifest(value: unknown): UpdateManifest {
     return {
         version: 1,
         commit: candidate.commit.toLowerCase(),
+        generatedAt: typeof candidate.generatedAt === "string" && Number.isFinite(Date.parse(candidate.generatedAt))
+            ? new Date(candidate.generatedAt).toISOString()
+            : undefined,
         files
     };
 }
@@ -471,8 +517,8 @@ async function copyWithParents(source: string, destination: string) {
     await copyFile(source, destination);
 }
 
-async function performUpdate(channel: UpdateChannel): Promise<UpdateResult> {
-    const manifest = await fetchManifest(channel);
+async function performUpdate(channel: UpdateChannel, force = false): Promise<UpdateResult> {
+    const manifest = await fetchManifest(channel, force);
     const remoteTargets = new Set(manifest.files.map(file => file.target));
     const previousTargets = await readPreviousTargets();
     const obsoleteTargets = [...new Set([
@@ -483,7 +529,7 @@ async function performUpdate(channel: UpdateChannel): Promise<UpdateResult> {
 
     for (const file of manifest.files) {
         const contents = await readFile(pluginPath(file.target)).catch(() => undefined);
-        if (!contents || sha256(contents) !== file.sha256)
+        if (force || !contents || sha256(contents) !== file.sha256)
             changedFiles.push(file);
     }
 
@@ -512,9 +558,7 @@ async function performUpdate(channel: UpdateChannel): Promise<UpdateResult> {
                 await copyWithParents(currentFile, join(backupDir, file.target));
             }
 
-            const contents = await fetchBytes(`https://raw.githubusercontent.com/${REPOSITORY}/${manifest.commit}/${file.source}`);
-            if (sha256(contents) !== file.sha256)
-                throw new Error(`SHA-256 verification failed for ${file.target}.`);
+            const contents = await fetchUpdateFile(manifest.commit, file.source, file.sha256);
 
             const stagedFile = join(stagingDir, "files", file.target);
             await mkdir(dirname(stagedFile), { recursive: true });
@@ -571,14 +615,15 @@ async function performUpdate(channel: UpdateChannel): Promise<UpdateResult> {
 export function checkForUpdates(
     _event: IpcMainInvokeEvent,
     enabled: boolean,
-    requestedChannel: UpdateChannel = "prod"
+    requestedChannel: UpdateChannel = "prod",
+    force = false
 ) {
     if (!enabled)
         return Promise.resolve<UpdateResult>({ status: "disabled" });
 
     const channel: UpdateChannel = requestedChannel === "dev" ? "dev" : "prod";
 
-    return updatePromise ??= performUpdate(channel)
+    return updatePromise ??= performUpdate(channel, force)
         .catch(updateFailure)
         .finally(() => {
             updatePromise = undefined;
@@ -656,7 +701,7 @@ export async function getCloudSyncStatus(_event: IpcMainInvokeEvent, serverURL: 
         : { connected: false };
 }
 
-export async function authorizeCloudSync(event: IpcMainInvokeEvent, serverURL: string) {
+export async function beginCloudSyncAuthorization(_event: IpcMainInvokeEvent, serverURL: string) {
     const server = normalizeServerURL(serverURL);
     const verifier = randomBytes(32).toString("base64url");
     const challenge = createHash("sha256").update(verifier).digest("base64url");
@@ -667,27 +712,67 @@ export async function authorizeCloudSync(event: IpcMainInvokeEvent, serverURL: s
     });
     if (!requestResponse.ok) throw new Error(`Could not start Discord authorization (HTTP ${requestResponse.status}).`);
     const request = await requestResponse.json() as { request_id: string; authorize_url: string; expires_at: string; };
-    await shell.openExternal(request.authorize_url);
+    const authorizeURL = new URL(request.authorize_url);
+    const clientId = authorizeURL.searchParams.get("client_id");
+    const redirectUri = authorizeURL.searchParams.get("redirect_uri");
+    const state = authorizeURL.searchParams.get("state");
+    if (authorizeURL.origin !== "https://discord.com" || !clientId || !redirectUri || !state)
+        throw new Error("The sync server returned an invalid Discord authorization request.");
 
-    const deadline = Math.min(new Date(request.expires_at).getTime(), Date.now() + 10 * 60_000);
-    while (Date.now() < deadline) {
-        await new Promise(resolve => setTimeout(resolve, 2_000));
-        const response = await fetch(`${server}/v1/auth/requests/${encodeURIComponent(request.request_id)}/exchange`, {
+    const expiresAt = Math.min(new Date(request.expires_at).getTime(), Date.now() + 10 * 60_000);
+    pendingCloudAuthorizations.set(request.request_id, { server, verifier, expiresAt });
+    return { requestId: request.request_id, clientId, redirectUri, state };
+}
+
+export async function completeCloudSyncAuthorization(
+    event: IpcMainInvokeEvent,
+    serverURL: string,
+    requestId: string,
+    callbackLocation: string
+) {
+    const server = normalizeServerURL(serverURL);
+    const pending = pendingCloudAuthorizations.get(requestId);
+    if (!pending || pending.server !== server || pending.expiresAt <= Date.now())
+        throw new Error("Discord authorization expired. Please try again.");
+
+    const callbackURL = new URL(callbackLocation);
+    if (callbackURL.origin !== server || callbackURL.pathname !== "/v1/oauth/callback")
+        throw new Error("Discord returned an invalid sync callback URL.");
+    const callbackResponse = await fetch(callbackURL, { headers: { Accept: "text/html" } });
+    if (!callbackResponse.ok)
+        throw new Error(`Discord authorization callback failed (HTTP ${callbackResponse.status}).`);
+
+    try {
+        while (Date.now() < pending.expiresAt) {
+            const response = await fetch(`${server}/v1/auth/requests/${encodeURIComponent(requestId)}/exchange`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ verifier })
-        });
-        if (response.status === 409) continue;
-        if (!response.ok) throw new Error(`Discord authorization failed (HTTP ${response.status}).`);
+                body: JSON.stringify({ verifier: pending.verifier })
+            });
+            if (response.status === 409) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                continue;
+            }
+            if (!response.ok) throw new Error(`Discord authorization failed (HTTP ${response.status}).`);
 
-        const result = await response.json() as { token: string; expires_at: string; discord_user_id: string; };
-        const sessions = await readCloudSessions();
-        sessions[server] = { token: result.token, expiresAt: result.expires_at, discordUserId: result.discord_user_id };
-        await writeCloudSessions(sessions);
-        connectCloudSocket(event, server, sessions[server]);
-        return { connected: true, discordUserId: result.discord_user_id, expiresAt: result.expires_at };
+            const result = await response.json() as { token: string; expires_at: string; discord_user_id: string; };
+            const sessions = await readCloudSessions();
+            sessions[server] = { token: result.token, expiresAt: result.expires_at, discordUserId: result.discord_user_id };
+            await writeCloudSessions(sessions);
+            connectCloudSocket(event, server, sessions[server]);
+            return { connected: true, discordUserId: result.discord_user_id, expiresAt: result.expires_at };
+        }
+    } finally {
+        pendingCloudAuthorizations.delete(requestId);
     }
     throw new Error("Discord authorization expired. Please try again.");
+}
+
+export async function pullCloudSync(_event: IpcMainInvokeEvent, serverURL: string) {
+    const resolved = await cloudSession(serverURL);
+    if (!resolved) throw new Error("Connect Discord before synchronizing.");
+    const response = await cloudRequest(resolved.server, "/v1/sync", resolved.session.token);
+    return await response.json() as SyncSnapshot;
 }
 
 export async function startCloudSync(event: IpcMainInvokeEvent, serverURL: string) {
@@ -787,10 +872,11 @@ export async function pushCloudSync(
             method: "PUT",
             body: JSON.stringify({ base_revision: baseRevision, document: outgoingDocument })
         });
-        return await response.json() as SyncSnapshot;
+        return { ...await response.json() as SyncSnapshot, conflict: false };
     } catch (error) {
         const conflict = error as Error & { status?: number; current?: SyncSnapshot; };
-        if (conflict.status === 409 && conflict.current) return conflict.current;
+        if (conflict.status === 409 && conflict.current)
+            return { ...conflict.current, conflict: true };
         throw error;
     }
 }

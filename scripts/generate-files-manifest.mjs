@@ -55,6 +55,6 @@ files.sort((first, second) => first.target.localeCompare(second.target));
 
 await writeFile(
     resolve(repositoryRoot, "files.json"),
-    `${JSON.stringify({ version: 1, commit: commit.toLowerCase(), files }, null, 2)}\n`,
+    `${JSON.stringify({ version: 1, commit: commit.toLowerCase(), generatedAt: new Date().toISOString(), files }, null, 2)}\n`,
     "utf8"
 );

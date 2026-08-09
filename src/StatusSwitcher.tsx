@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { React } from "@webpack/common";
+import { React, ReactDOM } from "@webpack/common";
 
 import type { PresenceStatus } from "./types";
 
@@ -59,13 +59,44 @@ export function StatusSwitcher({
   onPresenceChange,
 }: StatusSwitcherProps) {
   const rootRef = React.useRef<HTMLDivElement>(null);
+  const menuRef = React.useRef<HTMLDivElement>(null);
   const [open, setOpen] = React.useState(false);
+  const [menuStyle, setMenuStyle] = React.useState<React.CSSProperties>({});
+
+  const updateMenuPosition = React.useCallback(() => {
+    const trigger = rootRef.current?.getBoundingClientRect();
+    if (!trigger) return;
+
+    const viewportPadding = 16;
+    const gap = 7;
+    const width = Math.min(390, window.innerWidth - viewportPadding * 2);
+    const estimatedHeight = 318;
+    const spaceBelow = window.innerHeight - trigger.bottom - viewportPadding;
+    const spaceAbove = trigger.top - viewportPadding;
+    const placeBelow = spaceBelow >= estimatedHeight || spaceBelow >= spaceAbove;
+    const availableHeight = Math.max(180, (placeBelow ? spaceBelow : spaceAbove) - gap);
+
+    setMenuStyle({
+      top: placeBelow
+        ? trigger.bottom + gap
+        : Math.max(viewportPadding, trigger.top - gap - Math.min(estimatedHeight, availableHeight)),
+      left: Math.min(
+        window.innerWidth - viewportPadding - width,
+        Math.max(viewportPadding, trigger.right - width),
+      ),
+      right: "auto",
+      width,
+      maxHeight: availableHeight,
+    });
+  }, []);
 
   React.useEffect(() => {
     if (!open) return;
 
     const closeOnOutsideClick = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target))
+        setOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
@@ -73,11 +104,16 @@ export function StatusSwitcher({
 
     document.addEventListener("mousedown", closeOnOutsideClick);
     document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    updateMenuPosition();
     return () => {
       document.removeEventListener("mousedown", closeOnOutsideClick);
       document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
     };
-  }, [open]);
+  }, [open, updateMenuPosition]);
 
   const currentPresence = PRESENCES.find(
     option => option.value === presence,
@@ -103,8 +139,13 @@ export function StatusSwitcher({
         <ChevronIcon />
       </button>
 
-      {open && (
-        <div className="bs-status-menu" role="menu">
+      {open && ReactDOM.createPortal(
+        <div
+          className="bs-status-menu bs-status-menu-portal"
+          role="menu"
+          ref={menuRef}
+          style={menuStyle}
+        >
           <div className="bs-status-menu-label">Set presence</div>
           {PRESENCES.map(option => (
             <button
@@ -128,7 +169,8 @@ export function StatusSwitcher({
               )}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

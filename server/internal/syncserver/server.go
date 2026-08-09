@@ -403,6 +403,8 @@ func (s *Server) syncWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	client := s.hub.add(userID)
 	defer s.hub.remove(userID, client)
+	keepalive := time.NewTicker(25 * time.Second)
+	defer keepalive.Stop()
 	if snapshot, err := s.readDocument(r.Context(), userID); err == nil {
 		client <- snapshot
 	}
@@ -414,6 +416,13 @@ func (s *Server) syncWebSocket(w http.ResponseWriter, r *http.Request) {
 		case snapshot := <-client:
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 			err := connection.Write(ctx, websocket.MessageText, mustJSON(map[string]any{"type": "sync", "snapshot": snapshot}))
+			cancel()
+			if err != nil {
+				return
+			}
+		case <-keepalive.C:
+			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+			err := connection.Write(ctx, websocket.MessageText, mustJSON(map[string]any{"type": "keepalive"}))
 			cancel()
 			if err != nil {
 				return
