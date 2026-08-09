@@ -410,11 +410,24 @@ func (s *Server) putSync(w http.ResponseWriter, r *http.Request) {
 	)
 	var document syncDocument
 	err := s.db.QueryRow(r.Context(), `
-INSERT INTO sync_documents (discord_user_id,revision,document)
-SELECT $1,1,$2 WHERE $3=0
-ON CONFLICT (discord_user_id) DO UPDATE SET revision=sync_documents.revision+1,document=excluded.document,updated_at=now()
-WHERE sync_documents.revision=$3 AND sync_documents.document IS DISTINCT FROM excluded.document
-RETURNING revision,document,updated_at`, userID, body.Document, body.BaseRevision).Scan(&document.Revision, &document.Document, &document.UpdatedAt)
+WITH updated AS (
+  UPDATE sync_documents
+  SET revision=revision+1,document=$2::jsonb,updated_at=now()
+  WHERE discord_user_id=$1 AND revision=$3 AND document IS DISTINCT FROM $2::jsonb
+  RETURNING revision,document,updated_at
+), inserted AS (
+  INSERT INTO sync_documents (discord_user_id,revision,document)
+  SELECT $1,1,$2::jsonb
+  WHERE $3=0 AND NOT EXISTS (
+    SELECT 1 FROM sync_documents WHERE discord_user_id=$1
+  )
+  ON CONFLICT (discord_user_id) DO NOTHING
+  RETURNING revision,document,updated_at
+)
+SELECT revision,document,updated_at FROM updated
+UNION ALL
+SELECT revision,document,updated_at FROM inserted
+LIMIT 1`, userID, body.Document, body.BaseRevision).Scan(&document.Revision, &document.Document, &document.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		current, readErr := s.readDocument(r.Context(), userID)
 		if readErr != nil {
