@@ -9,6 +9,7 @@ export type PresetType = "fixed" | "memory";
 export type UpdateChannel = "prod" | "dev";
 export type UpdateCheckFrequency = 0 | 15 | 30 | 60 | 180 | 360 | 720 | 1440;
 export type ScheduleRepeat = "once" | "daily" | "weekdays" | "weekends" | "weekly" | "custom";
+export type ScheduleStartBehavior = "preset" | "custom";
 export type ScheduleEndBehavior = "keep" | "restore" | "preset" | "custom";
 export type SyncProvider = "betterstatus" | "custom";
 
@@ -35,7 +36,10 @@ export interface SavedStatus {
 export interface StatusSchedule {
     id: string;
     name: string;
-    presetId: string;
+    startBehavior: ScheduleStartBehavior;
+    presetId?: string;
+    startText?: string;
+    startPresence?: PresenceStatus;
     startsAt: number;
     endsAt?: number;
     repeat: ScheduleRepeat;

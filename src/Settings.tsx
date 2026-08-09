@@ -34,6 +34,7 @@ import type {
   SavedStatus,
   ScheduleEndBehavior,
   ScheduleRepeat,
+  ScheduleStartBehavior,
   StatusPreset,
   StatusSchedule,
   SyncDocument,
@@ -535,6 +536,11 @@ const SCHEDULE_END_OPTIONS = [
   { label: "Set a custom status", value: "custom" },
 ];
 
+const SCHEDULE_START_OPTIONS = [
+  { label: "Activate a preset", value: "preset" },
+  { label: "Set a custom status", value: "custom" },
+];
+
 const SYNC_PROVIDER_OPTIONS = [
   { label: "BetterStatus Cloud", value: "betterstatus" },
   { label: "Self-hosted server", value: "custom" },
@@ -557,7 +563,8 @@ function validateSchedules(value: unknown, presetIds: Set<string>): StatusSchedu
       throw new Error(`Schedule ${index + 1} has an invalid or duplicate ID.`);
     if (typeof schedule.name !== "string" || schedule.name.length > 500)
       throw new Error(`Schedule ${index + 1} has an invalid name.`);
-    if (typeof schedule.presetId !== "string" || !presetIds.has(schedule.presetId))
+    const startBehavior: ScheduleStartBehavior = schedule.startBehavior === "custom" ? "custom" : "preset";
+    if (startBehavior === "preset" && (typeof schedule.presetId !== "string" || !presetIds.has(schedule.presetId)))
       throw new Error(`Schedule ${index + 1} references a missing preset.`);
     if (typeof schedule.startsAt !== "number" || !Number.isFinite(schedule.startsAt))
       throw new Error(`Schedule ${index + 1} has an invalid start time.`);
@@ -580,12 +587,19 @@ function validateSchedules(value: unknown, presetIds: Set<string>): StatusSchedu
       throw new Error(`Schedule ${index + 1} references a missing end preset.`);
     if (schedule.endPresence !== undefined && !PRESENCE_VALUES.has(schedule.endPresence))
       throw new Error(`Schedule ${index + 1} has an invalid end presence.`);
+    if (schedule.startPresence !== undefined && !PRESENCE_VALUES.has(schedule.startPresence))
+      throw new Error(`Schedule ${index + 1} has an invalid start presence.`);
 
     ids.add(schedule.id);
     return {
       id: schedule.id,
       name: schedule.name,
+      startBehavior,
       presetId: schedule.presetId,
+      startText: typeof schedule.startText === "string" ? schedule.startText.slice(0, 10_000) : "",
+      startPresence: schedule.startPresence && PRESENCE_VALUES.has(schedule.startPresence)
+        ? schedule.startPresence
+        : "online",
       startsAt: schedule.startsAt,
       endsAt,
       repeat: schedule.repeat as ScheduleRepeat,
@@ -1176,7 +1190,10 @@ export default function SettingsComponent() {
     if (id === activePresetId) settings.store.activePresetId = undefined;
 
     const nextSchedules = schedules
-      .filter(schedule => schedule.presetId !== id)
+      .filter(schedule => !(schedule.startBehavior !== "custom" && schedule.presetId === id))
+      .map(schedule => schedule.startBehavior === "custom" && schedule.presetId === id
+        ? { ...schedule, presetId: undefined }
+        : schedule)
       .map(schedule => schedule.endPresetId === id
         ? { ...schedule, endBehavior: "restore" as const, endPresetId: undefined }
         : schedule);
@@ -1194,7 +1211,6 @@ export default function SettingsComponent() {
 
   function addSchedule() {
     const preset = presets.find(candidate => candidate.enabled) ?? presets[0];
-    if (!preset) return;
 
     const startsAt = new Date();
     startsAt.setMinutes(startsAt.getMinutes() + 5, 0, 0);
@@ -1202,8 +1218,11 @@ export default function SettingsComponent() {
     endsAt.setHours(endsAt.getHours() + 1);
     const schedule: StatusSchedule = {
       id: createId(),
-      name: `${preset.name || "Status"} schedule`,
-      presetId: preset.id,
+      name: `${preset?.name || "Custom status"} schedule`,
+      startBehavior: preset ? "preset" : "custom",
+      presetId: preset?.id,
+      startText: "",
+      startPresence: preset?.presence ?? "online",
       startsAt: startsAt.getTime(),
       endsAt: endsAt.getTime(),
       repeat: "once",
@@ -1612,7 +1631,7 @@ export default function SettingsComponent() {
           <div>
             <Forms.FormTitle tag="h2">Status calendar</Forms.FormTitle>
             <Forms.FormText>
-              Plan when a preset starts, how long it lasts, and what Discord
+              Plan when a preset or custom status starts, how long it lasts, and what Discord
               should show when it ends. Times use this computer&apos;s local time.
             </Forms.FormText>
           </div>
@@ -1623,7 +1642,7 @@ export default function SettingsComponent() {
                 {allSchedulesCollapsed ? "Expand all" : "Collapse all"}
               </button>
             )}
-            <Button disabled={!presets.length} onClick={addSchedule}>+ Schedule status</Button>
+            <Button onClick={addSchedule}>+ Schedule status</Button>
           </div>
         </div>
         <div className="bs-calendar-week" aria-label="Upcoming seven days">
@@ -1634,7 +1653,8 @@ export default function SettingsComponent() {
               <div className="bs-calendar-day-events">
                 {daySchedules.slice(0, 4).map(schedule => {
                   const preset = presets.find(item => item.id === schedule.presetId);
-                  return <i className={`bs-mini-event bs-presence-${preset?.presence ?? "online"}`} key={schedule.id} />;
+                  const presence = schedule.startBehavior === "custom" ? schedule.startPresence : preset?.presence;
+                  return <i className={`bs-mini-event bs-presence-${presence ?? "online"}`} key={schedule.id} />;
                 })}
                 {daySchedules.length > 4 && <small>+{daySchedules.length - 4}</small>}
               </div>
@@ -1643,17 +1663,18 @@ export default function SettingsComponent() {
         </div>
         {!schedules.length ? (
           <div className="bs-calendar-empty">
-            {presets.length ? "No scheduled statuses yet." : "Create a preset before adding a schedule."}
+            No scheduled statuses yet. Create one from a preset or enter a custom status.
           </div>
         ) : (
           <div className="bs-calendar-grid">
             {schedules.map(schedule => {
               const startPreset = presets.find(preset => preset.id === schedule.presetId);
+              const startPresence = schedule.startBehavior === "custom" ? schedule.startPresence : startPreset?.presence;
               const endTime = schedule.endsAt ?? schedule.startsAt + 60 * 60_000;
               const collapsed = collapsedScheduleIds.has(schedule.id);
               const contentId = `bs-schedule-${schedule.id}`;
               return (
-                <article className={`bs-schedule-card bs-presence-${startPreset?.presence ?? "online"}${schedule.enabled ? "" : " bs-schedule-disabled"}${collapsed ? " bs-schedule-collapsed" : ""}`} key={schedule.id}>
+                <article className={`bs-schedule-card bs-presence-${startPresence ?? "online"}${schedule.enabled ? "" : " bs-schedule-disabled"}${collapsed ? " bs-schedule-collapsed" : ""}`} key={schedule.id}>
                   <header className="bs-schedule-header">
                     <div className="bs-schedule-date" aria-hidden="true">
                       <span>{new Date(schedule.startsAt).toLocaleDateString([], { month: "short" })}</span>
@@ -1703,8 +1724,19 @@ export default function SettingsComponent() {
                             }} />
                           </label>
                           <div className="bs-compact-field bs-compact-select">
-                            <span>Activate preset</span>
-                            <Select options={presets.map(preset => ({ label: preset.name || "Untitled preset", value: preset.id }))} select={presetId => updateSchedule(schedule.id, { presetId })} serialize={value => value} isSelected={value => value === schedule.presetId} closeOnSelect />
+                            <span>When it starts</span>
+                            <Select
+                              options={SCHEDULE_START_OPTIONS.filter(option => option.value !== "preset" || presets.length > 0)}
+                              select={startBehavior => updateSchedule(schedule.id, {
+                                startBehavior: startBehavior as ScheduleStartBehavior,
+                                presetId: startBehavior === "preset"
+                                  ? schedule.presetId ?? presets.find(preset => preset.enabled)?.id ?? presets[0]?.id
+                                  : schedule.presetId,
+                              })}
+                              serialize={value => value}
+                              isSelected={value => value === (schedule.startBehavior ?? "preset")}
+                              closeOnSelect
+                            />
                           </div>
                           <div className="bs-compact-field bs-compact-select">
                             <span>Repeat</span>
@@ -1719,6 +1751,17 @@ export default function SettingsComponent() {
                             }} serialize={value => value} isSelected={value => value === schedule.repeat} closeOnSelect />
                           </div>
                         </div>
+                        {(schedule.startBehavior ?? "preset") === "preset" ? (
+                          <div className="bs-start-detail">
+                            <span>Activate preset</span>
+                            <Select options={presets.map(preset => ({ label: preset.name || "Untitled preset", value: preset.id }))} select={presetId => updateSchedule(schedule.id, { presetId })} serialize={value => value} isSelected={value => value === schedule.presetId} closeOnSelect />
+                          </div>
+                        ) : (
+                          <div className="bs-custom-start-grid">
+                            <label className="bs-field"><span>Custom status when it starts</span><TextInput value={schedule.startText ?? ""} placeholder="What should Discord show?" onChange={startText => updateSchedule(schedule.id, { startText })} /></label>
+                            <div className="bs-field"><span>Presence when it starts</span><StatusSwitcher presence={schedule.startPresence ?? "online"} onPresenceChange={startPresence => updateSchedule(schedule.id, { startPresence })} /></div>
+                          </div>
+                        )}
                         {schedule.repeat === "custom" && (
                           <div className="bs-weekday-picker" aria-label="Repeat on specific days">
                             <span>Repeat on</span>
@@ -2161,12 +2204,15 @@ export function getSchedules(): StatusSchedule[] {
   const normalized = settings.store.schedules
     .filter(schedule =>
       schedule && typeof schedule.id === "string" &&
-      typeof schedule.presetId === "string" &&
       typeof schedule.startsAt === "number" &&
-      ["once", "daily", "weekly"].includes(schedule.repeat)
+      SCHEDULE_REPEAT_VALUES.has(schedule.repeat) &&
+      (schedule.startBehavior === "custom" || typeof schedule.presetId === "string")
     )
     .map(schedule => ({
       ...schedule,
+      startBehavior: schedule.startBehavior === "custom" ? "custom" as const : "preset" as const,
+      startText: schedule.startText ?? "",
+      startPresence: schedule.startPresence ?? "online",
       repeat: SCHEDULE_REPEAT_VALUES.has(schedule.repeat)
         ? schedule.repeat
         : "once" as const,

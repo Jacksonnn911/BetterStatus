@@ -554,7 +554,8 @@
 
 .bs-compact-field { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
 .bs-compact-field > span,
-.bs-end-detail > span { color: var(--header-secondary); font-size: 10px; font-weight: 750; text-transform: uppercase; }
+.bs-end-detail > span,
+.bs-start-detail > span { color: var(--header-secondary); font-size: 10px; font-weight: 750; text-transform: uppercase; }
 
 .bs-compact-field input {
   box-sizing: border-box;
@@ -632,7 +633,8 @@
   outline-offset: 2px;
 }
 
-.bs-end-detail {
+.bs-end-detail,
+.bs-start-detail {
   display: grid;
   grid-template-columns: 110px minmax(220px, 1fr);
   align-items: center;
@@ -642,7 +644,8 @@
   border-top: 1px solid var(--background-modifier-accent);
 }
 
-.bs-custom-end-grid {
+.bs-custom-end-grid,
+.bs-custom-start-grid {
   display: grid;
   grid-template-columns: minmax(260px, 1.25fr) minmax(220px, 1fr);
   gap: 12px;

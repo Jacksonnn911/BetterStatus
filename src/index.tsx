@@ -89,7 +89,10 @@ function configureStatusSchedule() {
     }> = [];
     const missedOneTimeSchedules = new Set<string>();
 
-    for (const schedule of schedules.filter(item => item.enabled && getPresets().some(preset => preset.id === item.presetId && preset.enabled))) {
+    for (const schedule of schedules.filter(item => item.enabled && (
+        item.startBehavior === "custom" ||
+        getPresets().some(preset => preset.id === item.presetId && preset.enabled)
+    ))) {
         const lastRun = lastRuns[schedule.id] ?? 0;
         if (schedule.repeat === "once" && lastRun > 0 && !schedule.endsAt) {
             missedOneTimeSchedules.add(schedule.id);
@@ -147,7 +150,14 @@ function configureStatusSchedule() {
                 };
             }
             settings.store.scheduleRuns = { ...(settings.store.scheduleRuns ?? {}), [next.schedule.id]: next.occurrence };
-            await triggerPresetById(next.schedule.presetId);
+            if (next.schedule.startBehavior === "custom") {
+                await setCustomStatusText(next.schedule.startText ?? "");
+                await StatusSettings.updateSetting(next.schedule.startPresence ?? "online");
+                settings.store.activePresetId = undefined;
+                rememberSavedStatus(next.schedule.startText ?? "");
+            } else if (next.schedule.presetId) {
+                await triggerPresetById(next.schedule.presetId);
+            }
             if (next.schedule.repeat === "once" && !next.schedule.endsAt)
                 settings.store.schedules = getSchedules().map(schedule => schedule.id === next.schedule.id ? { ...schedule, enabled: false } : schedule);
         } else {
