@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "commit": "6a5d0a2f246df7a186f15c41836a5050e95965c9",
-  "generatedAt": "2026-08-09T01:31:09.308Z",
+  "commit": "2c39fb605eaaf6a5a7b85562cad8b95a3705e2ad",
+  "generatedAt": "2026-08-09T01:42:54.561Z",
   "files": [
     {
       "source": "src/index.tsx",
       "target": "index.tsx",
-      "sha256": "a6291b5e86a7932928a5f9cb239e766016f85259480351706dde325cd4b5e2e6"
+      "sha256": "c1c97134b5d84508be384e0e773f71b9af2c9986bd8c0210e817eb86d3774b01"
     },
     {
       "source": "src/native.ts",
@@ -26,7 +26,7 @@
     {
       "source": "src/Settings.tsx",
       "target": "Settings.tsx",
-      "sha256": "5516b40474226a7fc2e436f27852a267d9b079198e06c4869508e7f0d9c8953b"
+      "sha256": "1407d1ee1c21d8db5fe23282c87e73d6462ec5f8c31d6c36e27de52814241fd1"
     },
     {
       "source": "src/StatusHistory.tsx",
@@ -41,12 +41,12 @@
     {
       "source": "src/styles.css",
       "target": "styles.css",
-      "sha256": "62ba1163eddea2bf4af0c7f54bb42c683e779a21d5a913ee0248c8fe27578836"
+      "sha256": "29418af3e2a6b1186dbcc443ba145bf243f010f7eed7d1014483cda3c6f2c44e"
     },
     {
       "source": "src/types.ts",
       "target": "types.ts",
-      "sha256": "2e26ed23dceb952289fc35306dbf11d0ecd8bc931288fd450cf8efc1879c387d"
+      "sha256": "d519d3f737b4ada03f3da8473c2b89f2d3843c81fcd92dc6b297dca15a527a00"
     }
   ]
 }
