@@ -2,6 +2,7 @@ package syncserver
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -21,15 +22,19 @@ type Config struct {
 }
 
 func LoadConfig() (Config, error) {
+	databaseURL, err := databaseURLFromEnvironment()
+	if err != nil {
+		return Config{}, err
+	}
 	config := Config{
 		ListenAddr:          envOr("LISTEN_ADDR", ":8080"),
 		PublicBaseURL:       strings.TrimRight(envOr("PUBLIC_BASE_URL", "https://betterstatus.misaliba.eu"), "/"),
-		DatabaseURL:         os.Getenv("DATABASE_URL"),
+		DatabaseURL:         databaseURL,
 		DiscordClientID:     os.Getenv("DISCORD_CLIENT_ID"),
 		DiscordClientSecret: os.Getenv("DISCORD_CLIENT_SECRET"),
 		SessionTTL:          180 * 24 * time.Hour,
 		AuthRequestTTL:      10 * time.Minute,
-		MaxDocumentBytes:    2 << 20,
+		MaxDocumentBytes:    4 << 20,
 	}
 
 	if value := os.Getenv("SESSION_TTL"); value != "" {
@@ -48,7 +53,7 @@ func LoadConfig() (Config, error) {
 	}
 
 	if config.DatabaseURL == "" || config.DiscordClientID == "" || config.DiscordClientSecret == "" {
-		return Config{}, fmt.Errorf("DATABASE_URL, DISCORD_CLIENT_ID, and DISCORD_CLIENT_SECRET are required")
+		return Config{}, fmt.Errorf("database configuration, DISCORD_CLIENT_ID, and DISCORD_CLIENT_SECRET are required")
 	}
 	parsedURL, err := url.Parse(config.PublicBaseURL)
 	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
@@ -59,6 +64,40 @@ func LoadConfig() (Config, error) {
 	}
 
 	return config, nil
+}
+
+func databaseURLFromEnvironment() (string, error) {
+	if value := os.Getenv("DATABASE_URL"); value != "" {
+		return value, nil
+	}
+
+	host := os.Getenv("PGHOST")
+	user := os.Getenv("PGUSER")
+	password := os.Getenv("PGPASSWORD")
+	database := os.Getenv("PGDATABASE")
+	if host == "" && user == "" && password == "" && database == "" {
+		return "", nil
+	}
+	if host == "" || user == "" || password == "" || database == "" {
+		return "", fmt.Errorf("PGHOST, PGUSER, PGPASSWORD, and PGDATABASE must all be set when DATABASE_URL is omitted")
+	}
+
+	port := envOr("PGPORT", "5432")
+	portNumber, err := strconv.Atoi(port)
+	if err != nil || portNumber < 1 || portNumber > 65535 {
+		return "", fmt.Errorf("PGPORT must be a valid TCP port")
+	}
+
+	databaseURL := &url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(user, password),
+		Host:   net.JoinHostPort(host, port),
+		Path:   "/" + database,
+	}
+	query := databaseURL.Query()
+	query.Set("sslmode", envOr("PGSSLMODE", "prefer"))
+	databaseURL.RawQuery = query.Encode()
+	return databaseURL.String(), nil
 }
 
 func envOr(name, fallback string) string {

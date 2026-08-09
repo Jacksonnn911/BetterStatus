@@ -1,6 +1,7 @@
 package syncserver
 
 import (
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -36,6 +37,44 @@ func TestLoadConfigRequiresSecrets(t *testing.T) {
 	_, err := LoadConfig()
 	if err == nil || !strings.Contains(err.Error(), "DISCORD_CLIENT_SECRET") {
 		t.Fatalf("expected missing-secret error, got %v", err)
+	}
+}
+
+func TestDatabaseURLFromSeparateFieldsEscapesPassword(t *testing.T) {
+	t.Setenv("DATABASE_URL", "")
+	t.Setenv("PGHOST", "postgres")
+	t.Setenv("PGPORT", "5432")
+	t.Setenv("PGDATABASE", "betterstatus")
+	t.Setenv("PGUSER", "betterstatus")
+	t.Setenv("PGPASSWORD", `colon:@slash/+question?hash#percent% dollar$`)
+	t.Setenv("PGSSLMODE", "disable")
+
+	value, err := databaseURLFromEnvironment()
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := url.Parse(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	password, ok := parsed.User.Password()
+	if !ok || password != `colon:@slash/+question?hash#percent% dollar$` {
+		t.Fatalf("password was not preserved: %q", password)
+	}
+	if parsed.Host != "postgres:5432" || parsed.Path != "/betterstatus" || parsed.Query().Get("sslmode") != "disable" {
+		t.Fatalf("unexpected database URL %q", value)
+	}
+}
+
+func TestDatabaseURLFromSeparateFieldsRequiresCompleteConfiguration(t *testing.T) {
+	t.Setenv("DATABASE_URL", "")
+	t.Setenv("PGHOST", "postgres")
+	t.Setenv("PGUSER", "betterstatus")
+	t.Setenv("PGPASSWORD", "")
+	t.Setenv("PGDATABASE", "betterstatus")
+	_, err := databaseURLFromEnvironment()
+	if err == nil || !strings.Contains(err.Error(), "PGPASSWORD") {
+		t.Fatalf("expected incomplete PG configuration error, got %v", err)
 	}
 }
 

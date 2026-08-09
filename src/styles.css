@@ -227,6 +227,57 @@
   font-size: 13px;
 }
 
+.bs-sync-protection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 14px;
+  border: 1px solid var(--background-modifier-accent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--background-primary) 88%, transparent);
+}
+
+.bs-sync-protection > div:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bs-sync-protection strong { color: var(--header-primary); }
+.bs-sync-protection span { color: var(--text-muted); font-size: 12px; }
+
+.bs-sync-protection-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.bs-danger-text { color: var(--text-danger) !important; }
+
+.bs-password-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.bs-password-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--input-border-default, var(--background-modifier-accent));
+  border-radius: 8px;
+  outline: none;
+  color: var(--text-normal);
+  background: var(--input-background, var(--background-secondary));
+  font: inherit;
+}
+
+.bs-password-input:focus { border-color: var(--brand-500); }
+
 .bs-section-heading {
   display: flex;
   align-items: center;
@@ -247,33 +298,232 @@
 
 .bs-calendar-grid {
   display: grid;
-  gap: 10px;
+  gap: 14px;
 }
 
 .bs-schedule-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 16px;
-  padding: 14px;
-  border: 1px solid var(--background-modifier-accent);
-  border-radius: 12px;
-  background: var(--background-primary);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--bs-presence-color) 28%, var(--background-modifier-accent));
+  border-radius: 14px;
+  background:
+    linear-gradient(110deg, color-mix(in srgb, var(--bs-presence-color) 5%, transparent), transparent 32%),
+    var(--background-primary);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 10%);
 }
 
 .bs-schedule-disabled { opacity: 0.58; }
 
-.bs-schedule-main {
+.bs-calendar-week {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) minmax(190px, 1fr) minmax(160px, 1fr) minmax(140px, 0.8fr);
-  gap: 12px;
+  grid-template-columns: repeat(7, minmax(72px, 1fr));
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid var(--background-modifier-accent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--background-primary) 80%, transparent);
 }
+
+.bs-calendar-day {
+  display: flex;
+  min-height: 74px;
+  align-items: center;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 5px;
+  border-radius: 10px;
+  color: var(--text-muted);
+}
+
+.bs-calendar-day > span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bs-calendar-day > strong { color: var(--header-primary); font-size: 20px; }
+.bs-calendar-today { background: color-mix(in srgb, var(--brand-500) 14%, transparent); }
+.bs-calendar-today > strong { color: var(--brand-360); }
+
+.bs-calendar-day-events {
+  display: flex;
+  min-height: 9px;
+  align-items: center;
+  gap: 3px;
+  margin-top: 3px;
+}
+
+.bs-mini-event {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--bs-presence-color);
+}
+
+.bs-calendar-day-events small { font-size: 9px; }
+
+.bs-schedule-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--background-modifier-accent);
+  background: color-mix(in srgb, var(--background-secondary) 86%, transparent);
+}
+
+.bs-schedule-date {
+  display: grid;
+  width: 48px;
+  height: 51px;
+  border: 1px solid color-mix(in srgb, var(--bs-presence-color) 42%, var(--background-modifier-accent));
+  border-radius: 11px;
+  overflow: hidden;
+  text-align: center;
+}
+
+.bs-schedule-date span {
+  align-content: center;
+  color: white;
+  background: var(--bs-presence-color);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bs-schedule-date strong { align-content: center; color: var(--header-primary); font-size: 19px; }
+
+.bs-schedule-name { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.bs-schedule-name > div { max-width: 420px; }
+.bs-schedule-name > span { color: var(--text-muted); font-size: 11px; }
+
+.bs-schedule-delete {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 9px;
+  color: var(--interactive-normal);
+  background: transparent;
+  cursor: pointer;
+  font-size: 25px;
+  place-items: center;
+}
+
+.bs-schedule-delete:hover { color: white; background: var(--red-400); }
+
+.bs-schedule-timeline { padding: 16px 18px 18px; }
+
+.bs-timepoint {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.bs-timepoint-marker { display: flex; justify-content: center; }
+.bs-timepoint-marker i {
+  width: 12px;
+  height: 12px;
+  margin-top: 5px;
+  border: 3px solid color-mix(in srgb, var(--bs-presence-color) 32%, var(--background-primary));
+  border-radius: 50%;
+  background: var(--bs-presence-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--bs-presence-color) 35%, transparent);
+}
+
+.bs-timepoint-end .bs-timepoint-marker i { background: var(--background-accent); box-shadow: none; }
+
+.bs-timepoint-content {
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid var(--background-modifier-accent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--background-secondary) 75%, transparent);
+}
+
+.bs-timepoint-title {
+  display: flex;
+  min-height: 26px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.bs-timepoint-title > span { color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: 0.12em; }
+.bs-timepoint-title > strong { color: var(--header-primary); font-size: 18px; }
+
+.bs-timeline-rail {
+  display: flex;
+  height: 28px;
+  align-items: center;
+  margin-left: 11px;
+  border-left: 2px solid color-mix(in srgb, var(--bs-presence-color) 36%, var(--background-modifier-accent));
+}
+
+.bs-timeline-rail span {
+  margin-left: 10px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  font-size: 10px;
+}
+
+.bs-schedule-fields {
+  display: grid;
+  grid-template-columns: minmax(125px, 0.65fr) minmax(110px, 0.55fr) minmax(190px, 1fr) minmax(150px, 0.8fr);
+  gap: 10px;
+}
+
+.bs-compact-field { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
+.bs-compact-field > span,
+.bs-end-detail > span { color: var(--text-muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+
+.bs-compact-field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 9px;
+  border: 1px solid var(--input-border-default, var(--background-modifier-accent));
+  border-radius: 8px;
+  outline: none;
+  color: var(--text-normal);
+  background: var(--input-background, var(--background-primary));
+  color-scheme: dark;
+  font: inherit;
+}
+
+.bs-compact-field input:focus { border-color: var(--brand-500); }
+.bs-end-action-field { grid-column: span 2; }
+
+.bs-end-detail {
+  display: grid;
+  grid-template-columns: 110px minmax(220px, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-accent);
+}
+
+.bs-custom-end-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.25fr) minmax(220px, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-accent);
+}
+
+.bs-no-end-copy { color: var(--text-muted); font-size: 12px; }
 
 .bs-schedule-actions {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding-bottom: 1px;
 }
 
 .bs-datetime-input {
@@ -313,7 +563,7 @@
 
 .bs-import-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -2661,11 +2911,12 @@
     display: none;
   }
 
-  .bs-schedule-card { grid-template-columns: 1fr; }
-  .bs-schedule-main { grid-template-columns: 1fr 1fr; }
-  .bs-schedule-actions { justify-content: space-between; }
+  .bs-schedule-fields { grid-template-columns: 1fr 1fr; }
+  .bs-end-action-field { grid-column: span 2; }
+  .bs-custom-end-grid { grid-template-columns: 1fr; }
   .bs-sync-controls { grid-template-columns: 1fr 1fr; }
   .bs-sync-actions { grid-column: 1 / -1; }
+  .bs-sync-protection { align-items: stretch; flex-direction: column; }
 }
 
 @media (width <= 620px) {
@@ -2724,9 +2975,19 @@
   }
 
   .bs-section-heading { align-items: stretch; flex-direction: column; }
-  .bs-schedule-main { grid-template-columns: 1fr; }
+  .bs-calendar-week {
+    grid-template-columns: repeat(7, 72px);
+    overflow-x: auto;
+  }
+  .bs-schedule-header { grid-template-columns: auto minmax(0, 1fr); }
+  .bs-schedule-actions { grid-column: 1 / -1; justify-content: space-between; }
+  .bs-schedule-fields { grid-template-columns: 1fr; }
+  .bs-end-action-field { grid-column: auto; }
+  .bs-end-detail { grid-template-columns: 1fr; }
+  .bs-schedule-timeline { padding-inline: 10px; }
   .bs-sync-controls { grid-template-columns: 1fr; }
   .bs-sync-actions { grid-column: auto; flex-direction: column; }
+  .bs-sync-protection-actions { flex-direction: column; }
 
   .bs-backup-actions {
     grid-column: 1 / -1;

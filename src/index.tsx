@@ -10,9 +10,9 @@ import { Link } from "@components/Link";
 import { relaunch } from "@utils/native";
 import definePlugin from "@utils/types";
 
-import { applySyncDocument, buildSyncDocument, getPresets, getSchedules, getSyncServerURL, getUpdateChannel, getUpdateCheckFrequency, rememberSavedStatus, savePresets, settings, showUpdateFailureNotification } from "./Settings";
+import { applySyncDocument, buildSyncDocument, getPresets, getSchedules, getSyncServerURL, getUpdateChannel, getUpdateCheckFrequency, rememberSavedStatus, requestSyncPassword, savePresets, settings, showUpdateFailureNotification } from "./Settings";
 import { startStatusHistoryModalObserver, stopStatusHistoryModalObserver } from "./StatusHistory";
-import type { StatusPreset, SyncDocument } from "./types";
+import type { StatusPreset, StatusSchedule, SyncDocument } from "./types";
 
 interface CustomStatus {
     text?: string;
@@ -37,6 +37,7 @@ let cloudSyncTimer: number | undefined;
 let cloudSyncRevision = 0;
 let cloudSyncHash = "";
 let applyingCloudSnapshot = false;
+let cloudSyncLocked = false;
 const SCHEDULE_GRACE_MS = 5 * 60_000;
 
 function occurrenceAtOrAfter(startsAt: number, repeat: "once" | "daily" | "weekly", threshold: number) {
@@ -60,24 +61,100 @@ function configureStatusSchedule() {
 
     const now = Date.now();
     const lastRuns = settings.store.scheduleRuns ?? {};
-    const occurrences = getSchedules()
-        .filter(schedule => schedule.enabled && getPresets().some(preset => preset.id === schedule.presetId && preset.enabled))
-        .map(schedule => {
-            const lastRun = lastRuns[schedule.id] ?? 0;
-            const occurrence = occurrenceAtOrAfter(schedule.startsAt, schedule.repeat, Math.max(lastRun + 1, now - SCHEDULE_GRACE_MS));
-            return occurrence === undefined ? undefined : { schedule, occurrence };
-        })
-        .filter((value): value is NonNullable<typeof value> => value !== undefined)
-        .sort((left, right) => left.occurrence - right.occurrence);
+    const endRuns = settings.store.scheduleEndRuns ?? {};
+    const schedules = getSchedules();
+    const candidates: Array<{
+        schedule: StatusSchedule;
+        occurrence: number;
+        type: "start" | "end";
+        startOccurrence: number;
+    }> = [];
+    const missedOneTimeSchedules = new Set<string>();
 
-    const next = occurrences[0];
+    for (const schedule of schedules.filter(item => item.enabled && getPresets().some(preset => preset.id === item.presetId && preset.enabled))) {
+        const lastRun = lastRuns[schedule.id] ?? 0;
+        if (schedule.repeat === "once" && lastRun > 0 && !schedule.endsAt) {
+            missedOneTimeSchedules.add(schedule.id);
+            continue;
+        }
+        if (schedule.endsAt && lastRun > 0 && (endRuns[schedule.id] ?? 0) < lastRun) {
+            const endOccurrence = lastRun + (schedule.endsAt - schedule.startsAt);
+            if (endOccurrence >= now - SCHEDULE_GRACE_MS)
+                candidates.push({ schedule, occurrence: endOccurrence, type: "end", startOccurrence: lastRun });
+            else {
+                settings.store.scheduleEndRuns = { ...(settings.store.scheduleEndRuns ?? {}), [schedule.id]: lastRun };
+                const previousStates = { ...(settings.store.schedulePreviousStates ?? {}) };
+                delete previousStates[schedule.id];
+                settings.store.schedulePreviousStates = previousStates;
+                if (schedule.repeat === "once") missedOneTimeSchedules.add(schedule.id);
+            }
+        }
+
+        if (schedule.repeat === "once" && lastRun === 0 && schedule.startsAt < now - SCHEDULE_GRACE_MS) {
+            missedOneTimeSchedules.add(schedule.id);
+            continue;
+        }
+
+        const occurrence = occurrenceAtOrAfter(schedule.startsAt, schedule.repeat, Math.max(lastRun + 1, now - SCHEDULE_GRACE_MS));
+        if (occurrence !== undefined)
+            candidates.push({ schedule, occurrence, type: "start", startOccurrence: occurrence });
+    }
+
+    if (missedOneTimeSchedules.size)
+        settings.store.schedules = schedules.map(schedule => missedOneTimeSchedules.has(schedule.id) ? { ...schedule, enabled: false } : schedule);
+
+    const next = candidates.sort((left, right) => left.occurrence - right.occurrence)[0];
     if (!next) return;
     statusScheduleTimer = window.setTimeout(async () => {
-        const runs = { ...(settings.store.scheduleRuns ?? {}), [next.schedule.id]: next.occurrence };
-        settings.store.scheduleRuns = runs;
-        await triggerPresetById(next.schedule.presetId);
-        if (next.schedule.repeat === "once")
-            settings.store.schedules = getSchedules().map(schedule => schedule.id === next.schedule.id ? { ...schedule, enabled: false } : schedule);
+        if (next.occurrence > Date.now() + 1_000) {
+            configureStatusSchedule();
+            return;
+        }
+        if (next.type === "start") {
+            if (next.schedule.endsAt && next.schedule.endBehavior === "restore") {
+                settings.store.schedulePreviousStates = {
+                    ...(settings.store.schedulePreviousStates ?? {}),
+                    [next.schedule.id]: {
+                        occurrence: next.occurrence,
+                        customStatus: CustomStatusSettings.getSetting() ?? {
+                            text: "",
+                            emojiId: "0",
+                            emojiName: "",
+                            expiresAtMs: "0",
+                            createdAtMs: Date.now().toString()
+                        },
+                        presence: (StatusSettings.getSetting() ?? "online") as StatusPreset["presence"],
+                        activePresetId: settings.store.activePresetId
+                    }
+                };
+            }
+            settings.store.scheduleRuns = { ...(settings.store.scheduleRuns ?? {}), [next.schedule.id]: next.occurrence };
+            await triggerPresetById(next.schedule.presetId);
+            if (next.schedule.repeat === "once" && !next.schedule.endsAt)
+                settings.store.schedules = getSchedules().map(schedule => schedule.id === next.schedule.id ? { ...schedule, enabled: false } : schedule);
+        } else {
+            const previous = settings.store.schedulePreviousStates?.[next.schedule.id];
+            if (next.schedule.endBehavior === "restore" && previous?.occurrence === next.startOccurrence) {
+                await CustomStatusSettings.updateSetting(previous.customStatus);
+                await StatusSettings.updateSetting(previous.presence);
+                settings.store.activePresetId = previous.activePresetId && getPresets().some(preset => preset.id === previous.activePresetId && preset.enabled)
+                    ? previous.activePresetId
+                    : undefined;
+            } else if (next.schedule.endBehavior === "preset" && next.schedule.endPresetId) {
+                await triggerPresetById(next.schedule.endPresetId);
+            } else if (next.schedule.endBehavior === "custom") {
+                await setCustomStatusText(next.schedule.endText ?? "");
+                await StatusSettings.updateSetting(next.schedule.endPresence ?? "online");
+                settings.store.activePresetId = undefined;
+                rememberSavedStatus(next.schedule.endText ?? "");
+            }
+            settings.store.scheduleEndRuns = { ...(settings.store.scheduleEndRuns ?? {}), [next.schedule.id]: next.startOccurrence };
+            const previousStates = { ...(settings.store.schedulePreviousStates ?? {}) };
+            delete previousStates[next.schedule.id];
+            settings.store.schedulePreviousStates = previousStates;
+            if (next.schedule.repeat === "once")
+                settings.store.schedules = getSchedules().map(schedule => schedule.id === next.schedule.id ? { ...schedule, enabled: false } : schedule);
+        }
         configureStatusSchedule();
     }, Math.min(2_147_000_000, Math.max(0, next.occurrence - now)));
 }
@@ -91,25 +168,33 @@ function stopCloudSync() {
     cloudSyncTimer = undefined;
     cloudSyncRevision = 0;
     cloudSyncHash = "";
+    cloudSyncLocked = false;
 }
 
 async function pushCloudChanges() {
-    if (!settings.store.syncEnabled || applyingCloudSnapshot) return;
+    if (!settings.store.syncEnabled || applyingCloudSnapshot || cloudSyncLocked) return;
     const document = buildSyncDocument();
     const hash = syncDocumentHash(document);
     if (hash === cloudSyncHash) return;
     const snapshot = await VencordNative.pluginHelpers.BetterStatus.pushCloudSync(
         getSyncServerURL(), cloudSyncRevision, document
     );
-    cloudSyncRevision = snapshot.revision;
-    if (snapshot.document?.version === 1 && syncDocumentHash(snapshot.document) !== hash)
-        await receiveCloudSnapshot(snapshot);
-    else cloudSyncHash = hash;
+    cloudSyncHash = hash;
+    await receiveCloudSnapshot(snapshot);
 }
 
-async function receiveCloudSnapshot(snapshot: { revision: number; document: SyncDocument; }) {
+function reportCloudProtection(encrypted: boolean, locked: boolean) {
+    window.dispatchEvent(new CustomEvent("betterstatus-sync-protection", { detail: { encrypted, locked } }));
+}
+
+async function applyDecodedCloudSnapshot(
+    snapshot: { revision: number; document: SyncDocument; },
+    encrypted: boolean
+) {
     if (!settings.store.syncEnabled || snapshot.revision < cloudSyncRevision || snapshot.document?.version !== 1) return;
     const hash = syncDocumentHash(snapshot.document);
+    reportCloudProtection(encrypted, false);
+    cloudSyncLocked = false;
     if (snapshot.revision === cloudSyncRevision && hash === cloudSyncHash) return;
     applyingCloudSnapshot = true;
     try {
@@ -122,6 +207,27 @@ async function receiveCloudSnapshot(snapshot: { revision: number; document: Sync
     }
 }
 
+async function unlockCloudSyncPassword(password: string) {
+    const decoded = await VencordNative.pluginHelpers.BetterStatus.unlockCloudSync(getSyncServerURL(), password);
+    await applyDecodedCloudSnapshot(decoded.snapshot as { revision: number; document: SyncDocument; }, true);
+}
+
+async function receiveCloudSnapshot(snapshot: { revision: number; document: unknown; }) {
+    if (!settings.store.syncEnabled || snapshot.revision < cloudSyncRevision) return;
+    const decoded = await VencordNative.pluginHelpers.BetterStatus.decodeCloudSyncSnapshot(getSyncServerURL(), snapshot);
+    if (decoded.locked) {
+        cloudSyncRevision = snapshot.revision;
+        cloudSyncLocked = true;
+        reportCloudProtection(true, true);
+        requestSyncPassword(unlockCloudSyncPassword);
+        return;
+    }
+    await applyDecodedCloudSnapshot(
+        decoded.snapshot as { revision: number; document: SyncDocument; },
+        decoded.encrypted
+    );
+}
+
 async function configureCloudSync() {
     stopCloudSync();
     if (!settings.store.syncEnabled) return;
@@ -131,7 +237,7 @@ async function configureCloudSync() {
             settings.store.syncEnabled = false;
             return;
         }
-        if (result.snapshot?.document?.version === 1)
+        if (result.snapshot?.revision > 0)
             await receiveCloudSnapshot(result.snapshot);
         else {
             cloudSyncRevision = result.snapshot?.revision ?? 0;
@@ -421,6 +527,20 @@ export default definePlugin({
     },
 
     configureCloudSync,
+
+    async changeCloudEncryptionPassword(password?: string) {
+        if (cloudSyncRevision === 0) throw new Error("Connect and finish the first sync before adding a password.");
+        if (cloudSyncLocked) throw new Error("Unlock the current encrypted configuration before changing its password.");
+        if (password)
+            await VencordNative.pluginHelpers.BetterStatus.setCloudEncryptionPassword(getSyncServerURL(), password);
+        else
+            await VencordNative.pluginHelpers.BetterStatus.clearCloudEncryptionPassword(getSyncServerURL());
+        cloudSyncHash = "";
+        await pushCloudChanges();
+        reportCloudProtection(Boolean(password), false);
+    },
+
+    unlockCloudSyncPassword,
 
     receiveCloudSnapshot,
 

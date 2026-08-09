@@ -29,8 +29,10 @@ import {
 } from "./savedStatuses";
 import { StatusSwitcher } from "./StatusSwitcher";
 import type {
+  PresenceStatus,
   PresetType,
   SavedStatus,
+  ScheduleEndBehavior,
   ScheduleRepeat,
   StatusPreset,
   StatusSchedule,
@@ -45,13 +47,131 @@ const Native = VencordNative.pluginHelpers.BetterStatus as PluginNative<
 >;
 
 interface BetterStatusRuntime {
+  changeCloudEncryptionPassword(password?: string): Promise<void>;
   configureCloudSync(): Promise<void>;
   configureSchedules(): void;
   configureUpdateChecks(checkNow?: boolean, retryAt?: number): void;
+  unlockCloudSyncPassword(password: string): Promise<void>;
 }
 
 function pluginRuntime() {
   return Vencord.Plugins.plugins.BetterStatus as unknown as BetterStatusRuntime;
+}
+
+let syncPasswordPromptOpen = false;
+
+function SyncPasswordModal({
+  modalProps,
+  onUnlock,
+}: {
+  modalProps: RenderModalProps;
+  onUnlock(password: string): Promise<void>;
+}) {
+  const [password, setPassword] = React.useState("");
+
+  return (
+    <ConfirmModal
+      {...modalProps}
+      title="Unlock BetterStatus sync"
+      confirmText="Unlock"
+      cancelText="Not now"
+      variant="primary"
+      onCancel={() => (syncPasswordPromptOpen = false)}
+      onConfirm={async setError => {
+        try {
+          await onUnlock(password);
+          syncPasswordPromptOpen = false;
+        } catch (error) {
+          setError(error instanceof Error ? error.message : String(error));
+          throw error;
+        }
+      }}
+    >
+      <div className="bs-password-modal">
+        <Forms.FormText>
+          This account contains client-side encrypted configuration. Enter its
+          sync password to decrypt it on this device. The password is never sent
+          to the sync server.
+        </Forms.FormText>
+        <input
+          autoFocus
+          className="bs-password-input"
+          type="password"
+          value={password}
+          placeholder="Sync password"
+          onChange={event => setPassword(event.currentTarget.value)}
+        />
+      </div>
+    </ConfirmModal>
+  );
+}
+
+export function requestSyncPassword(onUnlock: (password: string) => Promise<void>) {
+  if (syncPasswordPromptOpen) return;
+  syncPasswordPromptOpen = true;
+  openModal(modalProps => <SyncPasswordModal modalProps={modalProps} onUnlock={onUnlock} />);
+}
+
+function CloudProtectionModal({
+  modalProps,
+  changing,
+  onSave,
+}: {
+  modalProps: RenderModalProps;
+  changing: boolean;
+  onSave(password: string): Promise<void>;
+}) {
+  const [password, setPassword] = React.useState("");
+  const [confirmation, setConfirmation] = React.useState("");
+
+  return (
+    <ConfirmModal
+      {...modalProps}
+      title={changing ? "Change sync password" : "Protect cloud sync"}
+      confirmText={changing ? "Change password" : "Encrypt sync"}
+      cancelText="Cancel"
+      variant="primary"
+      onConfirm={async setError => {
+        if (password.length < 12) {
+          setError("Use at least 12 characters.");
+          throw new Error("Sync password is too short.");
+        }
+        if (password !== confirmation) {
+          setError("The passwords do not match.");
+          throw new Error("Sync passwords do not match.");
+        }
+        try {
+          await onSave(password);
+        } catch (error) {
+          setError(error instanceof Error ? error.message : String(error));
+          throw error;
+        }
+      }}
+    >
+      <div className="bs-password-modal">
+        <Forms.FormText>
+          BetterStatus will encrypt the complete configuration on this device
+          before uploading it. Other clients must enter the same password.
+          Forgotten passwords cannot be recovered by the server.
+        </Forms.FormText>
+        <input
+          autoFocus
+          className="bs-password-input"
+          type="password"
+          value={password}
+          placeholder="New password · at least 12 characters"
+          onChange={event => setPassword(event.currentTarget.value)}
+        />
+        <input
+          className="bs-password-input"
+          type="password"
+          value={confirmation}
+          placeholder="Confirm password"
+          onChange={event => setConfirmation(event.currentTarget.value)}
+        />
+      </div>
+    </ConfirmModal>
+  );
 }
 
 interface UpdateInfo {
@@ -259,6 +379,13 @@ const SCHEDULE_REPEAT_OPTIONS = [
   { label: "Every week", value: "weekly" },
 ];
 
+const SCHEDULE_END_OPTIONS = [
+  { label: "Keep scheduled status", value: "keep" },
+  { label: "Restore previous status", value: "restore" },
+  { label: "Activate another preset", value: "preset" },
+  { label: "Set a custom status", value: "custom" },
+];
+
 const SYNC_PROVIDER_OPTIONS = [
   { label: "BetterStatus Cloud", value: "betterstatus" },
   { label: "Self-hosted server", value: "custom" },
@@ -288,13 +415,31 @@ function validateSchedules(value: unknown, presetIds: Set<string>): StatusSchedu
     if (!(["once", "daily", "weekly"] as unknown[]).includes(schedule.repeat))
       throw new Error(`Schedule ${index + 1} has an invalid recurrence.`);
 
+    const endBehavior: ScheduleEndBehavior = ["keep", "restore", "preset", "custom"].includes(schedule.endBehavior ?? "")
+      ? schedule.endBehavior as ScheduleEndBehavior
+      : "keep";
+    const endsAt = typeof schedule.endsAt === "number" && Number.isFinite(schedule.endsAt) && schedule.endsAt > schedule.startsAt
+      ? schedule.endsAt
+      : undefined;
+    if (endBehavior === "preset" && schedule.endPresetId && !presetIds.has(schedule.endPresetId))
+      throw new Error(`Schedule ${index + 1} references a missing end preset.`);
+    if (schedule.endPresence !== undefined && !PRESENCE_VALUES.has(schedule.endPresence))
+      throw new Error(`Schedule ${index + 1} has an invalid end presence.`);
+
     ids.add(schedule.id);
     return {
       id: schedule.id,
       name: schedule.name,
       presetId: schedule.presetId,
       startsAt: schedule.startsAt,
+      endsAt,
       repeat: schedule.repeat as ScheduleRepeat,
+      endBehavior,
+      endPresetId: schedule.endPresetId,
+      endText: typeof schedule.endText === "string" ? schedule.endText.slice(0, 10_000) : "",
+      endPresence: schedule.endPresence && PRESENCE_VALUES.has(schedule.endPresence)
+        ? schedule.endPresence
+        : "online",
       enabled: schedule.enabled !== false,
     };
   });
@@ -303,6 +448,32 @@ function validateSchedules(value: unknown, presetIds: Set<string>): StatusSchedu
 function toLocalDateTime(value: number) {
   const date = new Date(value - new Date(value).getTimezoneOffset() * 60_000);
   return date.toISOString().slice(0, 16);
+}
+
+function dateInputValue(value: number) {
+  return toLocalDateTime(value).slice(0, 10);
+}
+
+function timeInputValue(value: number) {
+  return toLocalDateTime(value).slice(11, 16);
+}
+
+function updateLocalDateTime(current: number, date?: string, time?: string) {
+  const currentDate = new Date(current);
+  const nextDate = date ?? dateInputValue(current);
+  const nextTime = time ?? timeInputValue(current);
+  const next = new Date(`${nextDate}T${nextTime}`);
+  return Number.isFinite(next.getTime()) ? next.getTime() : currentDate.getTime();
+}
+
+function scheduleOccursOnDay(schedule: StatusSchedule, day: Date) {
+  const start = new Date(schedule.startsAt);
+  const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+  if (dayStart < startDay) return false;
+  if (schedule.repeat === "daily") return true;
+  if (schedule.repeat === "weekly") return day.getDay() === start.getDay();
+  return dayStart === startDay;
 }
 
 function createId() {
@@ -464,6 +635,8 @@ export default function SettingsComponent() {
   const [backupStatus, setBackupStatus] = React.useState<string | null>(null);
   const [syncStatus, setSyncStatus] = React.useState<string>("Not connected");
   const [syncBusy, setSyncBusy] = React.useState(false);
+  const [syncEncrypted, setSyncEncrypted] = React.useState(false);
+  const [syncLocked, setSyncLocked] = React.useState(false);
   const selectedUpdateChannel: UpdateChannel =
     updateChannel === "dev" ? "dev" : "prod";
   const selectedUpdateFrequency =
@@ -490,11 +663,62 @@ export default function SettingsComponent() {
 
   React.useEffect(() => {
     Native.getCloudSyncStatus(getSyncServerURL()).then(status => {
+      setSyncEncrypted(Boolean(status.encryptionPasswordSet));
+      setSyncLocked(false);
       setSyncStatus(status.connected
         ? `Connected as Discord user ${status.discordUserId} · expires ${new Date(status.expiresAt!).toLocaleDateString()}`
         : "Not connected");
     }).catch(error => setSyncStatus(error instanceof Error ? error.message : String(error)));
   }, [syncProvider, syncServerUrl]);
+
+  React.useEffect(() => {
+    const updateProtection = (event: Event) => {
+      const { detail } = event as CustomEvent<{ encrypted: boolean; locked: boolean; }>;
+      setSyncEncrypted(detail.encrypted);
+      setSyncLocked(detail.locked);
+      if (detail.locked) setSyncStatus("Encrypted configuration is locked on this device.");
+    };
+    window.addEventListener("betterstatus-sync-protection", updateProtection);
+    return () => window.removeEventListener("betterstatus-sync-protection", updateProtection);
+  }, []);
+
+  function changeSyncPassword() {
+    openModal(modalProps => (
+      <CloudProtectionModal
+        modalProps={modalProps}
+        changing={syncEncrypted}
+        onSave={async password => {
+          await pluginRuntime().changeCloudEncryptionPassword(password);
+          setSyncEncrypted(true);
+          setSyncLocked(false);
+          setSyncStatus("Configuration encrypted client-side. Password updated on the server ciphertext.");
+        }}
+      />
+    ));
+  }
+
+  function removeSyncPassword() {
+    openModal(modalProps => (
+      <ConfirmModal
+        {...modalProps}
+        title="Remove sync password?"
+        confirmText="Remove protection"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={async () => {
+          await pluginRuntime().changeCloudEncryptionPassword();
+          setSyncEncrypted(false);
+          setSyncLocked(false);
+          setSyncStatus("Client-side password protection removed.");
+        }}
+      >
+        <Forms.FormText>
+          The next sync revision will contain readable JSON on the server. Your
+          Discord-authorized connection will still use HTTPS and authenticated sessions.
+        </Forms.FormText>
+      </ConfirmModal>
+    ));
+  }
 
   React.useEffect(() => {
     const refresh = () => {
@@ -616,7 +840,7 @@ export default function SettingsComponent() {
     anchor.download = `betterstatus-backup-${date}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
-    setBackupStatus(`Exported ${backup.settings.presets.length} presets and ${backup.settings.savedStatuses.length} saved statuses.`);
+    setBackupStatus(`Exported ${backup.settings.presets.length} presets, ${backup.settings.schedules.length} schedules, and ${backup.settings.savedStatuses.length} saved statuses.`);
   }
 
   async function applyBackup(backup: BetterStatusBackup) {
@@ -672,6 +896,7 @@ export default function SettingsComponent() {
           </Forms.FormText>
           <div className="bs-import-summary">
             <span><strong>{backup.settings.presets.length}</strong> presets</span>
+            <span><strong>{backup.settings.schedules.length}</strong> schedules</span>
             <span><strong>{backup.settings.savedStatuses.length}</strong> saved statuses</span>
             <span><strong>{backup.settings.updateChannel === "dev" ? "Development" : "Production"}</strong> updates</span>
           </div>
@@ -760,7 +985,11 @@ export default function SettingsComponent() {
   function deletePreset(id: string) {
     if (id === activePresetId) settings.store.activePresetId = undefined;
 
-    const nextSchedules = schedules.filter(schedule => schedule.presetId !== id);
+    const nextSchedules = schedules
+      .filter(schedule => schedule.presetId !== id)
+      .map(schedule => schedule.endPresetId === id
+        ? { ...schedule, endBehavior: "restore" as const, endPresetId: undefined }
+        : schedule);
     setSchedules(nextSchedules);
     settings.store.schedules = nextSchedules;
     void commit(presets.filter(preset => preset.id !== id));
@@ -779,12 +1008,18 @@ export default function SettingsComponent() {
 
     const startsAt = new Date();
     startsAt.setMinutes(startsAt.getMinutes() + 5, 0, 0);
+    const endsAt = new Date(startsAt);
+    endsAt.setHours(endsAt.getHours() + 1);
     commitSchedules([...schedules, {
       id: createId(),
       name: `${preset.name || "Status"} schedule`,
       presetId: preset.id,
       startsAt: startsAt.getTime(),
+      endsAt: endsAt.getTime(),
       repeat: "once",
+      endBehavior: "restore",
+      endText: "",
+      endPresence: "online",
       enabled: true,
     }]);
   }
@@ -875,6 +1110,15 @@ export default function SettingsComponent() {
   const activePreset = presets.find(
     preset => preset.id === activePresetId && preset.enabled,
   );
+  const calendarDays = Array.from({ length: 7 }, (_, offset) => {
+    const day = new Date();
+    day.setHours(0, 0, 0, 0);
+    day.setDate(day.getDate() + offset);
+    return {
+      day,
+      schedules: schedules.filter(schedule => schedule.enabled && scheduleOccursOnDay(schedule, day)),
+    };
+  });
 
   return (
     <div className="bs-settings">
@@ -1079,6 +1323,31 @@ export default function SettingsComponent() {
           </div>
         </div>
         <div className="bs-sync-status" role="status">{syncStatus}</div>
+        <div className="bs-sync-protection">
+          <div>
+            <strong>{syncEncrypted ? (syncLocked ? "Password required" : "Client-side encrypted") : "Password protection off"}</strong>
+            <span>{syncEncrypted
+              ? "The server stores only authenticated ciphertext."
+              : "Optionally encrypt all synchronized configuration before upload."}</span>
+          </div>
+        <div className="bs-sync-protection-actions">
+            <button
+              type="button"
+              className="bs-secondary-button"
+              disabled={!syncEnabled || syncBusy}
+              onClick={() => syncLocked
+                ? requestSyncPassword(password => pluginRuntime().unlockCloudSyncPassword(password))
+                : changeSyncPassword()}
+            >
+              {syncLocked ? "Unlock" : syncEncrypted ? "Change password" : "Add password"}
+            </button>
+            {syncEncrypted && !syncLocked && (
+              <button type="button" className="bs-secondary-button bs-danger-text" disabled={syncBusy} onClick={removeSyncPassword}>
+                Remove password
+              </button>
+            )}
+          </div>
+        </div>
         {syncProvider === "custom" && (
           <Forms.FormText>Your self-hosted server needs its own Discord OAuth application and callback URL.</Forms.FormText>
         )}
@@ -1089,11 +1358,26 @@ export default function SettingsComponent() {
           <div>
             <Forms.FormTitle tag="h2">Status calendar</Forms.FormTitle>
             <Forms.FormText>
-              Activate a preset at a specific time, once or on a recurring schedule.
-              Times use this computer&apos;s local time.
+              Plan when a preset starts, how long it lasts, and what Discord
+              should show when it ends. Times use this computer&apos;s local time.
             </Forms.FormText>
           </div>
           <Button disabled={!presets.length} onClick={addSchedule}>+ Schedule status</Button>
+        </div>
+        <div className="bs-calendar-week" aria-label="Upcoming seven days">
+          {calendarDays.map(({ day, schedules: daySchedules }, index) => (
+            <div className={`bs-calendar-day${index === 0 ? " bs-calendar-today" : ""}`} key={day.toISOString()}>
+              <span>{day.toLocaleDateString([], { weekday: "short" })}</span>
+              <strong>{day.getDate()}</strong>
+              <div className="bs-calendar-day-events">
+                {daySchedules.slice(0, 4).map(schedule => {
+                  const preset = presets.find(item => item.id === schedule.presetId);
+                  return <i className={`bs-mini-event bs-presence-${preset?.presence ?? "online"}`} key={schedule.id} />;
+                })}
+                {daySchedules.length > 4 && <small>+{daySchedules.length - 4}</small>}
+              </div>
+            </div>
+          ))}
         </div>
         {!schedules.length ? (
           <div className="bs-calendar-empty">
@@ -1101,59 +1385,107 @@ export default function SettingsComponent() {
           </div>
         ) : (
           <div className="bs-calendar-grid">
-            {schedules.map(schedule => (
-              <article className={`bs-schedule-card${schedule.enabled ? "" : " bs-schedule-disabled"}`} key={schedule.id}>
-                <div className="bs-schedule-main">
-                  <label className="bs-field">
-                    <span>Schedule name</span>
-                    <TextInput value={schedule.name} onChange={name => updateSchedule(schedule.id, { name })} />
-                  </label>
-                  <label className="bs-field">
-                    <span>Date and time</span>
-                    <input
-                      className="bs-datetime-input"
-                      type="datetime-local"
-                      value={toLocalDateTime(schedule.startsAt)}
-                      onChange={event => {
-                        const startsAt = new Date(event.currentTarget.value).getTime();
-                        if (Number.isFinite(startsAt)) updateSchedule(schedule.id, { startsAt });
-                      }}
-                    />
-                  </label>
-                  <div className="bs-field">
-                    <span>Preset</span>
-                    <Select
-                      options={presets.map(preset => ({ label: preset.name || "Untitled preset", value: preset.id }))}
-                      select={presetId => updateSchedule(schedule.id, { presetId })}
-                      serialize={value => value}
-                      isSelected={value => value === schedule.presetId}
-                      closeOnSelect
-                    />
+            {schedules.map(schedule => {
+              const startPreset = presets.find(preset => preset.id === schedule.presetId);
+              const endTime = schedule.endsAt ?? schedule.startsAt + 60 * 60_000;
+              return (
+                <article className={`bs-schedule-card bs-presence-${startPreset?.presence ?? "online"}${schedule.enabled ? "" : " bs-schedule-disabled"}`} key={schedule.id}>
+                  <header className="bs-schedule-header">
+                    <div className="bs-schedule-date" aria-hidden="true">
+                      <span>{new Date(schedule.startsAt).toLocaleDateString([], { month: "short" })}</span>
+                      <strong>{new Date(schedule.startsAt).getDate()}</strong>
+                    </div>
+                    <label className="bs-schedule-name">
+                      <TextInput value={schedule.name} placeholder="Schedule name" onChange={name => updateSchedule(schedule.id, { name })} />
+                      <span>{schedule.repeat === "once" ? "One time" : schedule.repeat === "daily" ? "Repeats daily" : "Repeats weekly"}</span>
+                    </label>
+                    <div className="bs-schedule-actions">
+                      <FormSwitch title="Enabled" value={schedule.enabled} onChange={enabled => updateSchedule(schedule.id, { enabled })} hideBorder />
+                      <button type="button" className="bs-schedule-delete" aria-label={`Delete ${schedule.name}`} onClick={() => commitSchedules(schedules.filter(item => item.id !== schedule.id))}>×</button>
+                    </div>
+                  </header>
+
+                  <div className="bs-schedule-timeline">
+                    <section className="bs-timepoint bs-timepoint-start">
+                      <div className="bs-timepoint-marker"><i /></div>
+                      <div className="bs-timepoint-content">
+                        <div className="bs-timepoint-title"><span>START</span><strong>{timeInputValue(schedule.startsAt)}</strong></div>
+                        <div className="bs-schedule-fields">
+                          <label className="bs-compact-field">
+                            <span>Date</span>
+                            <input type="date" value={dateInputValue(schedule.startsAt)} onChange={event => {
+                              const startsAt = updateLocalDateTime(schedule.startsAt, event.currentTarget.value);
+                              const duration = schedule.endsAt ? schedule.endsAt - schedule.startsAt : undefined;
+                              updateSchedule(schedule.id, { startsAt, endsAt: duration ? startsAt + duration : undefined });
+                            }} />
+                          </label>
+                          <label className="bs-compact-field">
+                            <span>Time</span>
+                            <input type="time" value={timeInputValue(schedule.startsAt)} onChange={event => {
+                              const startsAt = updateLocalDateTime(schedule.startsAt, undefined, event.currentTarget.value);
+                              const duration = schedule.endsAt ? schedule.endsAt - schedule.startsAt : undefined;
+                              updateSchedule(schedule.id, { startsAt, endsAt: duration ? startsAt + duration : undefined });
+                            }} />
+                          </label>
+                          <div className="bs-compact-field bs-compact-select">
+                            <span>Activate preset</span>
+                            <Select options={presets.map(preset => ({ label: preset.name || "Untitled preset", value: preset.id }))} select={presetId => updateSchedule(schedule.id, { presetId })} serialize={value => value} isSelected={value => value === schedule.presetId} closeOnSelect />
+                          </div>
+                          <div className="bs-compact-field bs-compact-select">
+                            <span>Repeat</span>
+                            <Select options={SCHEDULE_REPEAT_OPTIONS} select={repeat => updateSchedule(schedule.id, { repeat: repeat as ScheduleRepeat })} serialize={value => value} isSelected={value => value === schedule.repeat} closeOnSelect />
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+
+                    <div className="bs-timeline-rail"><span>{schedule.endsAt ? `${Math.max(1, Math.round((schedule.endsAt - schedule.startsAt) / 60_000))} min` : "no end"}</span></div>
+
+                    <section className="bs-timepoint bs-timepoint-end">
+                      <div className="bs-timepoint-marker"><i /></div>
+                      <div className="bs-timepoint-content">
+                        <div className="bs-timepoint-title">
+                          <span>END</span>
+                          <FormSwitch title="Use end time" value={Boolean(schedule.endsAt)} onChange={enabled => updateSchedule(schedule.id, enabled
+                            ? { endsAt: endTime, endBehavior: schedule.endBehavior === "keep" ? "restore" : schedule.endBehavior }
+                            : { endsAt: undefined, endBehavior: "keep" })} hideBorder />
+                        </div>
+                        {schedule.endsAt ? (
+                          <>
+                            <div className="bs-schedule-fields">
+                              <label className="bs-compact-field">
+                                <span>Date</span>
+                                <input type="date" value={dateInputValue(schedule.endsAt)} min={dateInputValue(schedule.startsAt)} onChange={event => updateSchedule(schedule.id, { endsAt: Math.max(schedule.startsAt + 60_000, updateLocalDateTime(schedule.endsAt!, event.currentTarget.value)) })} />
+                              </label>
+                              <label className="bs-compact-field">
+                                <span>Time</span>
+                                <input type="time" value={timeInputValue(schedule.endsAt)} onChange={event => updateSchedule(schedule.id, { endsAt: Math.max(schedule.startsAt + 60_000, updateLocalDateTime(schedule.endsAt!, undefined, event.currentTarget.value)) })} />
+                              </label>
+                              <div className="bs-compact-field bs-compact-select bs-end-action-field">
+                                <span>When it ends</span>
+                                <Select options={SCHEDULE_END_OPTIONS} select={endBehavior => updateSchedule(schedule.id, { endBehavior: endBehavior as ScheduleEndBehavior })} serialize={value => value} isSelected={value => value === schedule.endBehavior} closeOnSelect />
+                              </div>
+                            </div>
+                            {schedule.endBehavior === "preset" && (
+                              <div className="bs-end-detail">
+                                <span>Then activate</span>
+                                <Select options={presets.filter(preset => preset.id !== schedule.presetId).map(preset => ({ label: preset.name || "Untitled preset", value: preset.id }))} select={endPresetId => updateSchedule(schedule.id, { endPresetId })} serialize={value => value} isSelected={value => value === schedule.endPresetId} closeOnSelect />
+                              </div>
+                            )}
+                            {schedule.endBehavior === "custom" && (
+                              <div className="bs-custom-end-grid">
+                                <label className="bs-field"><span>Custom status after end</span><TextInput value={schedule.endText ?? ""} placeholder="What should Discord show?" onChange={endText => updateSchedule(schedule.id, { endText })} /></label>
+                                <div className="bs-field"><span>Presence after end</span><StatusSwitcher presence={schedule.endPresence ?? "online"} onPresenceChange={endPresence => updateSchedule(schedule.id, { endPresence })} /></div>
+                              </div>
+                            )}
+                          </>
+                        ) : <div className="bs-no-end-copy">The scheduled preset stays active until something else changes it.</div>}
+                      </div>
+                    </section>
                   </div>
-                  <div className="bs-field">
-                    <span>Repeat</span>
-                    <Select
-                      options={SCHEDULE_REPEAT_OPTIONS}
-                      select={repeat => updateSchedule(schedule.id, { repeat: repeat as ScheduleRepeat })}
-                      serialize={value => value}
-                      isSelected={value => value === schedule.repeat}
-                      closeOnSelect
-                    />
-                  </div>
-                </div>
-                <div className="bs-schedule-actions">
-                  <FormSwitch
-                    title="Enabled"
-                    value={schedule.enabled}
-                    onChange={enabled => updateSchedule(schedule.id, { enabled })}
-                    hideBorder
-                  />
-                  <Button color={Button.Colors.RED} onClick={() => commitSchedules(schedules.filter(item => item.id !== schedule.id))}>
-                    Delete
-                  </Button>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
@@ -1467,6 +1799,19 @@ export const settings = definePluginSettings({
 }).withPrivateSettings<{
   activePresetId?: string;
   scheduleRuns?: Record<string, number>;
+  scheduleEndRuns?: Record<string, number>;
+  schedulePreviousStates?: Record<string, {
+    occurrence: number;
+    customStatus: {
+      text?: string;
+      emojiId?: string;
+      emojiName?: string;
+      expiresAtMs?: string;
+      createdAtMs?: string;
+    };
+    presence: PresenceStatus;
+    activePresetId?: string;
+  }>;
 }>();
 
 export function getPresets(): StatusPreset[] {
@@ -1497,12 +1842,25 @@ export function getSavedStatuses(): SavedStatus[] {
 }
 
 export function getSchedules(): StatusSchedule[] {
-  return settings.store.schedules.filter(schedule =>
-    schedule && typeof schedule.id === "string" &&
-    typeof schedule.presetId === "string" &&
-    typeof schedule.startsAt === "number" &&
-    ["once", "daily", "weekly"].includes(schedule.repeat)
-  );
+  const normalized = settings.store.schedules
+    .filter(schedule =>
+      schedule && typeof schedule.id === "string" &&
+      typeof schedule.presetId === "string" &&
+      typeof schedule.startsAt === "number" &&
+      ["once", "daily", "weekly"].includes(schedule.repeat)
+    )
+    .map(schedule => ({
+      ...schedule,
+      endBehavior: ["keep", "restore", "preset", "custom"].includes(schedule.endBehavior)
+        ? schedule.endBehavior
+        : "keep" as const,
+      endText: schedule.endText ?? "",
+      endPresence: schedule.endPresence ?? "online",
+    }));
+
+  if (JSON.stringify(normalized) !== JSON.stringify(settings.store.schedules))
+    settings.store.schedules = normalized;
+  return normalized;
 }
 
 export function buildSyncDocument(): SyncDocument {

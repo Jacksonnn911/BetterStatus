@@ -5,14 +5,14 @@
  */
 
 import { execFile } from "child_process";
-import { createHash, randomBytes } from "crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes, scrypt as deriveScrypt } from "crypto";
 import { app, globalShortcut, IpcMainInvokeEvent, safeStorage, shell } from "electron";
 import { access, copyFile, mkdir, readFile, rename, rm, writeFile } from "fs/promises";
 import { homedir } from "os";
 import { dirname, join } from "path";
 import { promisify } from "util";
 
-import type { UpdateChannel } from "./types";
+import type { EncryptedSyncDocument, SyncDocument, UpdateChannel } from "./types";
 
 const registeredShortcuts = new Map<string, string>();
 const executeFile = promisify(execFile);
@@ -29,6 +29,7 @@ interface CloudSession {
     token: string;
     expiresAt: string;
     discordUserId: string;
+    encryptionPassword?: string;
 }
 
 interface SyncSnapshot {
@@ -38,6 +39,66 @@ interface SyncSnapshot {
 }
 
 const syncSockets = new Map<string, WebSocket>();
+const SYNC_ENCRYPTION_AAD = Buffer.from("BetterStatus encrypted sync document v1", "utf8");
+
+function isEncryptedSyncDocument(value: unknown): value is EncryptedSyncDocument {
+    if (!value || typeof value !== "object") return false;
+    const envelope = value as Partial<EncryptedSyncDocument>;
+    return envelope.format === "betterstatus-encrypted-sync" && envelope.version === 1 &&
+        envelope.kdf === "scrypt" && envelope.cipher === "aes-256-gcm" &&
+        [envelope.salt, envelope.iv, envelope.authTag, envelope.ciphertext].every(field => typeof field === "string");
+}
+
+async function encryptionKey(password: string, salt: Buffer) {
+    return await new Promise<Buffer>((resolve, reject) => {
+        deriveScrypt(password.normalize("NFKC"), salt, 32, {
+            N: 32_768,
+            r: 8,
+            p: 1,
+            maxmem: 64 * 1024 * 1024
+        }, (error, key) => error ? reject(error) : resolve(key));
+    });
+}
+
+async function encryptSyncDocument(document: SyncDocument, password: string): Promise<EncryptedSyncDocument> {
+    const salt = randomBytes(16);
+    const iv = randomBytes(12);
+    const key = await encryptionKey(password, salt);
+    const cipher = createCipheriv("aes-256-gcm", key, iv);
+    cipher.setAAD(SYNC_ENCRYPTION_AAD);
+    const ciphertext = Buffer.concat([cipher.update(JSON.stringify(document), "utf8"), cipher.final()]);
+    return {
+        format: "betterstatus-encrypted-sync",
+        version: 1,
+        kdf: "scrypt",
+        cipher: "aes-256-gcm",
+        salt: salt.toString("base64url"),
+        iv: iv.toString("base64url"),
+        authTag: cipher.getAuthTag().toString("base64url"),
+        ciphertext: ciphertext.toString("base64url")
+    };
+}
+
+async function decryptSyncDocument(envelope: EncryptedSyncDocument, password: string): Promise<SyncDocument> {
+    try {
+        const salt = Buffer.from(envelope.salt, "base64url");
+        const iv = Buffer.from(envelope.iv, "base64url");
+        const tag = Buffer.from(envelope.authTag, "base64url");
+        const ciphertext = Buffer.from(envelope.ciphertext, "base64url");
+        if (salt.length !== 16 || iv.length !== 12 || tag.length !== 16 || ciphertext.length > 2 * 1024 * 1024)
+            throw new Error("Invalid encrypted sync document.");
+        const key = await encryptionKey(password, salt);
+        const decipher = createDecipheriv("aes-256-gcm", key, iv);
+        decipher.setAAD(SYNC_ENCRYPTION_AAD);
+        decipher.setAuthTag(tag);
+        const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+        const document = JSON.parse(plaintext.toString("utf8")) as SyncDocument;
+        if (document?.version !== 1) throw new Error("Unsupported decrypted sync document.");
+        return document;
+    } catch {
+        throw new Error("The sync password is incorrect or the encrypted data is damaged.");
+    }
+}
 
 function normalizeServerURL(value: string) {
     const url = new URL(value.trim());
@@ -586,7 +647,12 @@ export function registerHotkeys(
 export async function getCloudSyncStatus(_event: IpcMainInvokeEvent, serverURL: string) {
     const resolved = await cloudSession(serverURL);
     return resolved
-        ? { connected: true, discordUserId: resolved.session.discordUserId, expiresAt: resolved.session.expiresAt }
+        ? {
+            connected: true,
+            discordUserId: resolved.session.discordUserId,
+            expiresAt: resolved.session.expiresAt,
+            encryptionPasswordSet: Boolean(resolved.session.encryptionPassword)
+        }
         : { connected: false };
 }
 
@@ -638,18 +704,88 @@ export async function startCloudSync(event: IpcMainInvokeEvent, serverURL: strin
     };
 }
 
+export async function decodeCloudSyncSnapshot(
+    _event: IpcMainInvokeEvent,
+    serverURL: string,
+    snapshot: SyncSnapshot
+) {
+    if (!isEncryptedSyncDocument(snapshot.document))
+        return { snapshot, encrypted: false, locked: false };
+
+    const resolved = await cloudSession(serverURL);
+    const password = resolved?.session.encryptionPassword;
+    if (!password)
+        return { snapshot, encrypted: true, locked: true };
+
+    try {
+        return {
+            snapshot: { ...snapshot, document: await decryptSyncDocument(snapshot.document, password) },
+            encrypted: true,
+            locked: false
+        };
+    } catch {
+        return { snapshot, encrypted: true, locked: true };
+    }
+}
+
+export async function unlockCloudSync(
+    _event: IpcMainInvokeEvent,
+    serverURL: string,
+    password: string
+) {
+    const resolved = await cloudSession(serverURL);
+    if (!resolved) throw new Error("Connect Discord before unlocking cloud sync.");
+    const response = await cloudRequest(resolved.server, "/v1/sync", resolved.session.token);
+    const snapshot = await response.json() as SyncSnapshot;
+    if (!isEncryptedSyncDocument(snapshot.document))
+        throw new Error("This sync account is not password protected.");
+    const document = await decryptSyncDocument(snapshot.document, password);
+    const sessions = await readCloudSessions();
+    sessions[resolved.server] = { ...resolved.session, encryptionPassword: password };
+    await writeCloudSessions(sessions);
+    return { snapshot: { ...snapshot, document }, encrypted: true, locked: false };
+}
+
+export async function setCloudEncryptionPassword(
+    _event: IpcMainInvokeEvent,
+    serverURL: string,
+    password: string
+) {
+    if (password.length < 12)
+        throw new Error("Use at least 12 characters for the sync password.");
+    const resolved = await cloudSession(serverURL);
+    if (!resolved) throw new Error("Connect Discord before protecting cloud sync.");
+    const sessions = await readCloudSessions();
+    sessions[resolved.server] = { ...resolved.session, encryptionPassword: password };
+    await writeCloudSessions(sessions);
+    return { encryptionPasswordSet: true };
+}
+
+export async function clearCloudEncryptionPassword(_event: IpcMainInvokeEvent, serverURL: string) {
+    const resolved = await cloudSession(serverURL);
+    if (!resolved) throw new Error("Connect Discord before changing cloud protection.");
+    const sessions = await readCloudSessions();
+    sessions[resolved.server] = { ...resolved.session };
+    delete sessions[resolved.server].encryptionPassword;
+    await writeCloudSessions(sessions);
+    return { encryptionPasswordSet: false };
+}
+
 export async function pushCloudSync(
     _event: IpcMainInvokeEvent,
     serverURL: string,
     baseRevision: number,
-    document: unknown
+    document: SyncDocument
 ) {
     const resolved = await cloudSession(serverURL);
     if (!resolved) throw new Error("Connect Discord before enabling cloud sync.");
+    const outgoingDocument = resolved.session.encryptionPassword
+        ? await encryptSyncDocument(document, resolved.session.encryptionPassword)
+        : document;
     try {
         const response = await cloudRequest(resolved.server, "/v1/sync", resolved.session.token, {
             method: "PUT",
-            body: JSON.stringify({ base_revision: baseRevision, document })
+            body: JSON.stringify({ base_revision: baseRevision, document: outgoingDocument })
         });
         return await response.json() as SyncSnapshot;
     } catch (error) {
