@@ -55,7 +55,13 @@ interface BetterStatusRuntime {
   configureSchedules(): void;
   configureUpdateChecks(checkNow?: boolean, retryAt?: number): void;
   resyncCloudSync(): Promise<void>;
+  recordCloudSyncChanges(): void;
   unlockCloudSyncPassword(password: string): Promise<void>;
+}
+
+function recordCloudSyncChanges() {
+  const runtime = Vencord.Plugins.plugins.BetterStatus as unknown as Partial<BetterStatusRuntime> | undefined;
+  runtime?.recordCloudSyncChanges?.();
 }
 
 function pluginRuntime() {
@@ -995,10 +1001,10 @@ export default function SettingsComponent() {
 
   async function resyncFromServer() {
     setSyncBusy(true);
-    setSyncStatus("Downloading the latest server revision…");
+    setSyncStatus("Reconciling local and server changes…");
     try {
       await pluginRuntime().resyncCloudSync();
-      setSyncStatus("Synchronized from server · listening for live updates");
+      setSyncStatus("Synchronized with server · listening for live updates");
     } catch (error) {
       setSyncStatus(error instanceof Error ? error.message : String(error));
     } finally {
@@ -1639,7 +1645,7 @@ export default function SettingsComponent() {
             {syncConnected ? (
               <>
                 <button type="button" className="bs-secondary-button" disabled={syncBusy} onClick={resyncFromServer}>
-                  {syncBusy ? "Synchronizing…" : "Resync from server"}
+                  {syncBusy ? "Synchronizing…" : "Resync now"}
                 </button>
                 <button type="button" className="bs-danger-button" disabled={syncBusy} onClick={disconnectSync}>Disconnect</button>
               </>
@@ -2158,30 +2164,37 @@ export const settings = definePluginSettings({
   autoUpdate: {
     type: OptionType.CUSTOM,
     default: true,
+    onChange: recordCloudSyncChanges,
   },
   autoRestart: {
     type: OptionType.CUSTOM,
     default: false,
+    onChange: recordCloudSyncChanges,
   },
   updateCheckFrequency: {
     type: OptionType.CUSTOM,
     default: 360 as UpdateCheckFrequency,
+    onChange: recordCloudSyncChanges,
   },
   updateChannel: {
     type: OptionType.CUSTOM,
     default: "prod" as UpdateChannel,
+    onChange: recordCloudSyncChanges,
   },
   presets: {
     type: OptionType.CUSTOM,
     default: DEFAULT_PRESETS,
+    onChange: recordCloudSyncChanges,
   },
   savedStatuses: {
     type: OptionType.CUSTOM,
     default: [] as SavedStatus[],
+    onChange: recordCloudSyncChanges,
   },
   schedules: {
     type: OptionType.CUSTOM,
     default: [] as StatusSchedule[],
+    onChange: recordCloudSyncChanges,
   },
   syncEnabled: {
     type: OptionType.CUSTOM,

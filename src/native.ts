@@ -29,7 +29,12 @@ interface CloudSession {
     token: string;
     expiresAt: string;
     discordUserId: string;
+    clientId?: string;
     encryptionPassword?: string;
+}
+
+function newSyncClientId() {
+    return randomBytes(9).toString("base64url");
 }
 
 interface SyncSnapshot {
@@ -134,6 +139,10 @@ async function cloudSession(serverURL: string) {
     const sessions = await readCloudSessions();
     const session = sessions[server];
     if (!session || new Date(session.expiresAt).getTime() <= Date.now()) return undefined;
+    if (!session.clientId) {
+        session.clientId = newSyncClientId();
+        await writeCloudSessions(sessions);
+    }
     return { server, session };
 }
 
@@ -171,7 +180,7 @@ function connectCloudSocket(event: IpcMainInvokeEvent, server: string, session: 
     const connectTimeout = setTimeout(() => {
         if (socket.readyState === WebSocket.CONNECTING) socket.close();
     }, 10_000);
-    socket.addEventListener("open", () => socket.send(JSON.stringify({ type: "auth", token: session.token })));
+    socket.addEventListener("open", () => socket.send(JSON.stringify({ type: "auth", token: session.token, client_id: session.clientId })));
     socket.addEventListener("message", message => {
         try {
             const payload = JSON.parse(String(message.data));
@@ -757,7 +766,7 @@ export async function completeCloudSyncAuthorization(
 
             const result = await response.json() as { token: string; expires_at: string; discord_user_id: string; };
             const sessions = await readCloudSessions();
-            sessions[server] = { token: result.token, expiresAt: result.expires_at, discordUserId: result.discord_user_id };
+            sessions[server] = { token: result.token, expiresAt: result.expires_at, discordUserId: result.discord_user_id, clientId: newSyncClientId() };
             await writeCloudSessions(sessions);
             connectCloudSocket(event, server, sessions[server]);
             return { connected: true, discordUserId: result.discord_user_id, expiresAt: result.expires_at };
@@ -771,14 +780,18 @@ export async function completeCloudSyncAuthorization(
 export async function pullCloudSync(_event: IpcMainInvokeEvent, serverURL: string) {
     const resolved = await cloudSession(serverURL);
     if (!resolved) throw new Error("Connect Discord before synchronizing.");
-    const response = await cloudRequest(resolved.server, "/v1/sync", resolved.session.token);
+    const response = await cloudRequest(resolved.server, "/v1/sync", resolved.session.token, {
+        headers: { "X-BetterStatus-Client": resolved.session.clientId! }
+    });
     return await response.json() as SyncSnapshot;
 }
 
 export async function startCloudSync(event: IpcMainInvokeEvent, serverURL: string) {
     const resolved = await cloudSession(serverURL);
     if (!resolved) return { connected: false };
-    const response = await cloudRequest(resolved.server, "/v1/sync", resolved.session.token);
+    const response = await cloudRequest(resolved.server, "/v1/sync", resolved.session.token, {
+        headers: { "X-BetterStatus-Client": resolved.session.clientId! }
+    });
     const snapshot = await response.json() as SyncSnapshot;
     connectCloudSocket(event, resolved.server, resolved.session);
     return {
@@ -868,8 +881,15 @@ export async function pushCloudSync(
         ? await encryptSyncDocument(document, resolved.session.encryptionPassword)
         : document;
     try {
+        const maxEventClock = (document.events ?? []).reduce((maximum, event) => Math.max(maximum, event.clock), 0);
         const response = await cloudRequest(resolved.server, "/v1/sync", resolved.session.token, {
             method: "PUT",
+            headers: {
+                "X-BetterStatus-Client": resolved.session.clientId!,
+                "X-BetterStatus-Schema": String(document.version),
+                "X-BetterStatus-Events": String(document.events?.length ?? 0),
+                "X-BetterStatus-Max-Clock": String(maxEventClock)
+            },
             body: JSON.stringify({ base_revision: baseRevision, document: outgoingDocument })
         });
         return { ...await response.json() as SyncSnapshot, conflict: false };

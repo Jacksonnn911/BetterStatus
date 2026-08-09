@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coder/websocket"
@@ -50,6 +51,62 @@ type syncDocument struct {
 	Revision  int64           `json:"revision"`
 	Document  json.RawMessage `json:"document"`
 	UpdatedAt time.Time       `json:"updated_at"`
+}
+
+var requestSequence atomic.Uint64
+
+type syncDocumentInfo struct {
+	Format       string
+	Version      int
+	Bytes        int
+	Hash         string
+	Events       int
+	MaxClock     int64
+	EventClients int
+}
+
+func inspectSyncDocument(document json.RawMessage) syncDocumentInfo {
+	hash := sha256.Sum256(document)
+	info := syncDocumentInfo{Format: "plain", Bytes: len(document), Hash: fmt.Sprintf("%x", hash[:8])}
+	var payload struct {
+		Format  string `json:"format"`
+		Version int    `json:"version"`
+		Events  []struct {
+			ClientID string `json:"clientId"`
+			Clock    int64  `json:"clock"`
+		} `json:"events"`
+	}
+	if json.Unmarshal(document, &payload) != nil {
+		info.Format = "invalid"
+		return info
+	}
+	info.Version = payload.Version
+	if payload.Format != "" {
+		info.Format = payload.Format
+	}
+	clients := make(map[string]struct{})
+	for _, event := range payload.Events {
+		info.Events++
+		info.MaxClock = max(info.MaxClock, event.Clock)
+		if event.ClientID != "" {
+			clients[event.ClientID] = struct{}{}
+		}
+	}
+	info.EventClients = len(clients)
+	return info
+}
+
+func syncDocumentLogValue(document json.RawMessage) slog.Value {
+	info := inspectSyncDocument(document)
+	return slog.GroupValue(
+		slog.String("format", info.Format),
+		slog.Int("version", info.Version),
+		slog.Int("bytes", info.Bytes),
+		slog.String("hash", info.Hash),
+		slog.Int("events", info.Events),
+		slog.Int64("max_clock", info.MaxClock),
+		slog.Int("event_clients", info.EventClients),
+	)
 }
 
 func New(ctx context.Context, config Config, logger *slog.Logger) (*Server, error) {
@@ -317,11 +374,14 @@ type principalKey struct{}
 func principalFrom(r *http.Request) principal { return r.Context().Value(principalKey{}).(principal) }
 
 func (s *Server) getSync(w http.ResponseWriter, r *http.Request) {
-	document, err := s.readDocument(r.Context(), principalFrom(r).UserID)
+	userID := principalFrom(r).UserID
+	document, err := s.readDocument(r.Context(), userID)
 	if err != nil {
+		s.logger.Error("sync read failed", "user_id", userID, "client_id", r.Header.Get("X-BetterStatus-Client"), "error", err)
 		writeError(w, http.StatusInternalServerError, "sync document could not be read")
 		return
 	}
+	s.logger.Info("sync read", "user_id", userID, "client_id", r.Header.Get("X-BetterStatus-Client"), "revision", document.Revision, "updated_at", document.UpdatedAt, "document", syncDocumentLogValue(document.Document))
 	writeJSON(w, http.StatusOK, document)
 }
 
@@ -338,6 +398,16 @@ func (s *Server) putSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userID := principalFrom(r).UserID
+	clientID := r.Header.Get("X-BetterStatus-Client")
+	s.logger.Info("sync write attempt",
+		"user_id", userID,
+		"client_id", clientID,
+		"base_revision", body.BaseRevision,
+		"client_schema", r.Header.Get("X-BetterStatus-Schema"),
+		"client_events", r.Header.Get("X-BetterStatus-Events"),
+		"client_max_clock", r.Header.Get("X-BetterStatus-Max-Clock"),
+		"document", syncDocumentLogValue(body.Document),
+	)
 	var document syncDocument
 	err := s.db.QueryRow(r.Context(), `
 INSERT INTO sync_documents (discord_user_id,revision,document)
@@ -348,23 +418,27 @@ RETURNING revision,document,updated_at`, userID, body.Document, body.BaseRevisio
 	if errors.Is(err, pgx.ErrNoRows) {
 		current, readErr := s.readDocument(r.Context(), userID)
 		if readErr != nil {
+			s.logger.Error("sync conflict read failed", "user_id", userID, "client_id", clientID, "base_revision", body.BaseRevision, "error", readErr)
 			writeError(w, http.StatusConflict, "sync conflict")
 			return
 		}
 		if current.Revision == body.BaseRevision {
 			// An idempotent retry is already committed. Do not create another
 			// revision or WebSocket broadcast for the same JSON document.
+			s.logger.Info("sync write no-op", "user_id", userID, "client_id", clientID, "base_revision", body.BaseRevision, "revision", current.Revision, "document", syncDocumentLogValue(current.Document))
 			writeJSON(w, http.StatusOK, current)
 			return
 		}
+		s.logger.Warn("sync write conflict", "user_id", userID, "client_id", clientID, "base_revision", body.BaseRevision, "current_revision", current.Revision, "incoming_document", syncDocumentLogValue(body.Document), "current_document", syncDocumentLogValue(current.Document))
 		writeJSON(w, http.StatusConflict, map[string]any{"error": "sync conflict", "current": current})
 		return
 	}
 	if err != nil {
-		s.logger.Error("write sync", "error", err)
+		s.logger.Error("sync write failed", "user_id", userID, "client_id", clientID, "base_revision", body.BaseRevision, "error", err)
 		writeError(w, http.StatusInternalServerError, "sync document could not be saved")
 		return
 	}
+	s.logger.Info("sync write accepted", "user_id", userID, "client_id", clientID, "base_revision", body.BaseRevision, "revision", document.Revision, "document", syncDocumentLogValue(document.Document))
 	if _, err := s.db.Exec(r.Context(), `SELECT pg_notify('betterstatus_sync', $1)`, userID); err != nil {
 		s.logger.Warn("sync notification failed", "error", err)
 		s.hub.broadcast(userID, document)
@@ -394,8 +468,9 @@ func (s *Server) syncWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var auth struct {
-		Type  string `json:"type"`
-		Token string `json:"token"`
+		Type     string `json:"type"`
+		Token    string `json:"token"`
+		ClientID string `json:"client_id"`
 	}
 	if json.Unmarshal(payload, &auth) != nil || auth.Type != "auth" {
 		connection.Close(websocket.StatusPolicyViolation, "authentication required")
@@ -406,12 +481,20 @@ func (s *Server) syncWebSocket(w http.ResponseWriter, r *http.Request) {
 		connection.Close(websocket.StatusPolicyViolation, "invalid session")
 		return
 	}
+	if len(auth.ClientID) > 128 {
+		auth.ClientID = auth.ClientID[:128]
+	}
 
 	client := s.hub.add(userID)
-	defer s.hub.remove(userID, client)
+	s.logger.Info("sync websocket connected", "user_id", userID, "client_id", auth.ClientID, "subscribers", s.hub.count(userID))
+	defer func() {
+		s.hub.remove(userID, client)
+		s.logger.Info("sync websocket disconnected", "user_id", userID, "client_id", auth.ClientID, "subscribers", s.hub.count(userID))
+	}()
 	keepalive := time.NewTicker(25 * time.Second)
 	defer keepalive.Stop()
 	if snapshot, err := s.readDocument(r.Context(), userID); err == nil {
+		s.logger.Info("sync websocket initial snapshot", "user_id", userID, "client_id", auth.ClientID, "revision", snapshot.Revision, "document", syncDocumentLogValue(snapshot.Document))
 		client <- snapshot
 	}
 
@@ -420,6 +503,7 @@ func (s *Server) syncWebSocket(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done():
 			return
 		case snapshot := <-client:
+			s.logger.Info("sync websocket snapshot", "user_id", userID, "client_id", auth.ClientID, "revision", snapshot.Revision, "document", syncDocumentLogValue(snapshot.Document))
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 			err := connection.Write(ctx, websocket.MessageText, mustJSON(map[string]any{"type": "sync", "snapshot": snapshot}))
 			cancel()
@@ -477,7 +561,10 @@ func (s *Server) listenForChanges(ctx context.Context) {
 			}
 			document, err := s.readDocument(ctx, notification.Payload)
 			if err == nil {
+				s.logger.Info("sync database notification", "user_id", notification.Payload, "revision", document.Revision, "subscribers", s.hub.count(notification.Payload), "document", syncDocumentLogValue(document.Document))
 				s.hub.broadcast(notification.Payload, document)
+			} else {
+				s.logger.Error("sync database notification read failed", "user_id", notification.Payload, "error", err)
 			}
 		}
 		connection.Release()
@@ -527,11 +614,49 @@ func secureHeaders(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	status int
+	bytes  int
+}
+
+func (w *loggingResponseWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+func (w *loggingResponseWriter) WriteHeader(status int) {
+	if w.status != 0 {
+		return
+	}
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+func (w *loggingResponseWriter) Write(payload []byte) (int, error) {
+	if w.status == 0 {
+		w.WriteHeader(http.StatusOK)
+	}
+	written, err := w.ResponseWriter.Write(payload)
+	w.bytes += written
+	return written, err
+}
+
 func requestLog(logger *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		next.ServeHTTP(w, r)
-		logger.Info("request", "method", r.Method, "path", r.URL.Path, "duration", time.Since(start))
+		requestID := requestSequence.Add(1)
+		response := &loggingResponseWriter{ResponseWriter: w}
+		next.ServeHTTP(response, r)
+		status := response.status
+		if status == 0 {
+			status = http.StatusOK
+		}
+		logger.Info("request completed",
+			"request_id", requestID,
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", status,
+			"response_bytes", response.bytes,
+			"client_id", r.Header.Get("X-BetterStatus-Client"),
+			"duration_ms", float64(time.Since(start).Microseconds())/1000,
+		)
 	})
 }
 
@@ -558,6 +683,11 @@ func (h *hub) remove(user string, ch chan syncDocument) {
 	if len(h.clients[user]) == 0 {
 		delete(h.clients, user)
 	}
+}
+func (h *hub) count(user string) int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return len(h.clients[user])
 }
 func (h *hub) broadcast(user string, doc syncDocument) {
 	h.mu.Lock()
