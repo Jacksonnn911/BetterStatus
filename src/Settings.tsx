@@ -17,21 +17,25 @@ import {
   Button,
   ConfirmModal,
   Forms,
+  openModal,
   React,
   Select,
   TextInput,
-  openModal,
 } from "@webpack/common";
 
-import { StatusSwitcher } from "./StatusSwitcher";
 import {
   normalizeSavedStatuses,
   rememberStatusInLibrary,
 } from "./savedStatuses";
+import { StatusSwitcher } from "./StatusSwitcher";
 import type {
   PresetType,
   SavedStatus,
+  ScheduleRepeat,
   StatusPreset,
+  StatusSchedule,
+  SyncDocument,
+  SyncProvider,
   UpdateChannel,
   UpdateCheckFrequency,
 } from "./types";
@@ -40,12 +44,46 @@ const Native = VencordNative.pluginHelpers.BetterStatus as PluginNative<
   typeof import("./native")
 >;
 
+interface BetterStatusRuntime {
+  configureCloudSync(): Promise<void>;
+  configureSchedules(): void;
+  configureUpdateChecks(checkNow?: boolean, retryAt?: number): void;
+}
+
+function pluginRuntime() {
+  return Vencord.Plugins.plugins.BetterStatus as unknown as BetterStatusRuntime;
+}
+
 interface UpdateInfo {
   channel: UpdateChannel;
   installedChannel?: UpdateChannel;
   installedVersion?: string;
   latestVersion: string;
   status: "current" | "updateAvailable" | "restartRequired";
+}
+
+interface UpdateFailure {
+  error?: string;
+  retryAt?: number;
+}
+
+let lastRateLimitNotificationRetryAt = 0;
+
+export function showUpdateFailureNotification(failure: UpdateFailure) {
+  const isRateLimited = failure.retryAt !== undefined;
+  if (isRateLimited && failure.retryAt === lastRateLimitNotificationRetryAt)
+    return;
+
+  if (isRateLimited)
+    lastRateLimitNotificationRetryAt = failure.retryAt!;
+
+  showNotification({
+    title: isRateLimited
+      ? "BetterStatus update checks paused"
+      : "BetterStatus update failed",
+    body: failure.error ?? "Run the BetterStatus installer to update manually.",
+    noPersist: isRateLimited,
+  });
 }
 
 type BackupPlatform = "macos" | "windows" | "linux" | "unknown";
@@ -58,6 +96,7 @@ interface BetterStatusBackup {
   settings: {
     presets: StatusPreset[];
     savedStatuses: SavedStatus[];
+    schedules: StatusSchedule[];
     activePresetId?: string;
     autoUpdate: boolean;
     autoRestart: boolean;
@@ -130,6 +169,7 @@ function validateBackup(value: unknown): BetterStatusBackup {
   });
 
   const savedStatuses = normalizeSavedStatuses(source.savedStatuses);
+  const schedules = validateSchedules(source.schedules ?? [], ids);
   const updateChannel: UpdateChannel = source.updateChannel === "dev" ? "dev" : "prod";
   const updateCheckFrequency = normalizeUpdateCheckFrequency(source.updateCheckFrequency);
   const activePresetId = typeof source.activePresetId === "string" && ids.has(source.activePresetId)
@@ -146,6 +186,7 @@ function validateBackup(value: unknown): BetterStatusBackup {
     settings: {
       presets,
       savedStatuses,
+      schedules,
       activePresetId,
       autoUpdate: source.autoUpdate !== false,
       autoRestart: source.autoRestart === true,
@@ -211,6 +252,58 @@ const UPDATE_FREQUENCY_OPTIONS: Array<{
   { label: "Every day", value: 1440 },
   { label: "On startup only", value: 0 },
 ];
+
+const SCHEDULE_REPEAT_OPTIONS = [
+  { label: "Once", value: "once" },
+  { label: "Every day", value: "daily" },
+  { label: "Every week", value: "weekly" },
+];
+
+const SYNC_PROVIDER_OPTIONS = [
+  { label: "BetterStatus Cloud", value: "betterstatus" },
+  { label: "Self-hosted server", value: "custom" },
+];
+
+export function getSyncServerURL() {
+  return settings.store.syncProvider === "custom"
+    ? settings.store.syncServerUrl.trim()
+    : "https://betterstatus.misaliba.eu";
+}
+
+function validateSchedules(value: unknown, presetIds: Set<string>): StatusSchedule[] {
+  if (!Array.isArray(value) || value.length > 1_000)
+    throw new Error("The backup contains invalid schedules.");
+
+  const ids = new Set<string>();
+  return value.map((entry, index) => {
+    const schedule = entry as Partial<StatusSchedule>;
+    if (!schedule || typeof schedule !== "object" || typeof schedule.id !== "string" || !schedule.id || ids.has(schedule.id))
+      throw new Error(`Schedule ${index + 1} has an invalid or duplicate ID.`);
+    if (typeof schedule.name !== "string" || schedule.name.length > 500)
+      throw new Error(`Schedule ${index + 1} has an invalid name.`);
+    if (typeof schedule.presetId !== "string" || !presetIds.has(schedule.presetId))
+      throw new Error(`Schedule ${index + 1} references a missing preset.`);
+    if (typeof schedule.startsAt !== "number" || !Number.isFinite(schedule.startsAt))
+      throw new Error(`Schedule ${index + 1} has an invalid start time.`);
+    if (!(["once", "daily", "weekly"] as unknown[]).includes(schedule.repeat))
+      throw new Error(`Schedule ${index + 1} has an invalid recurrence.`);
+
+    ids.add(schedule.id);
+    return {
+      id: schedule.id,
+      name: schedule.name,
+      presetId: schedule.presetId,
+      startsAt: schedule.startsAt,
+      repeat: schedule.repeat as ScheduleRepeat,
+      enabled: schedule.enabled !== false,
+    };
+  });
+}
+
+function toLocalDateTime(value: number) {
+  const date = new Date(value - new Date(value).getTimezoneOffset() * 60_000);
+  return date.toISOString().slice(0, 16);
+}
 
 function createId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -297,7 +390,7 @@ function DevelopmentChannelPrompt({
         checked: accepted,
         onChange: setAccepted,
       }}
-      onConfirm={(setError) => {
+      onConfirm={setError => {
         if (!accepted) {
           setError("Accept the development-build terms before continuing.");
           throw new Error("Development terms were not accepted.");
@@ -336,20 +429,29 @@ export default function SettingsComponent() {
     updateCheckFrequency,
     updateChannel,
     activePresetId,
+    syncEnabled,
+    syncProvider,
+    syncServerUrl,
   } = settings.use([
     "autoUpdate",
     "autoRestart",
     "updateCheckFrequency",
     "updateChannel",
     "activePresetId",
+    "syncEnabled",
+    "syncProvider",
+    "syncServerUrl",
   ]);
 
   const [recordingId, setRecordingId] = React.useState<string | null>(null);
   const [presets, setPresets] = React.useState<StatusPreset[]>(() => [
     ...getPresets(),
   ]);
+  const [schedules, setSchedules] = React.useState<StatusSchedule[]>(() => [
+    ...getSchedules(),
+  ]);
   const [collapsedIds, setCollapsedIds] = React.useState<Set<string>>(
-    () => new Set(presets.map((preset) => preset.id)),
+    () => new Set(presets.map(preset => preset.id)),
   );
   const [searchQuery, setSearchQuery] = React.useState("");
   const [checkingForUpdates, setCheckingForUpdates] = React.useState(false);
@@ -360,6 +462,8 @@ export default function SettingsComponent() {
   );
   const [lastCheckedAt, setLastCheckedAt] = React.useState<Date | null>(null);
   const [backupStatus, setBackupStatus] = React.useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = React.useState<string>("Not connected");
+  const [syncBusy, setSyncBusy] = React.useState(false);
   const selectedUpdateChannel: UpdateChannel =
     updateChannel === "dev" ? "dev" : "prod";
   const selectedUpdateFrequency =
@@ -383,6 +487,50 @@ export default function SettingsComponent() {
   React.useEffect(() => {
     void refreshUpdateInfo(selectedUpdateChannel);
   }, [selectedUpdateChannel]);
+
+  React.useEffect(() => {
+    Native.getCloudSyncStatus(getSyncServerURL()).then(status => {
+      setSyncStatus(status.connected
+        ? `Connected as Discord user ${status.discordUserId} · expires ${new Date(status.expiresAt!).toLocaleDateString()}`
+        : "Not connected");
+    }).catch(error => setSyncStatus(error instanceof Error ? error.message : String(error)));
+  }, [syncProvider, syncServerUrl]);
+
+  React.useEffect(() => {
+    const refresh = () => {
+      setPresets([...getPresets()]);
+      setSchedules([...getSchedules()]);
+    };
+    window.addEventListener("betterstatus-sync-applied", refresh);
+    return () => window.removeEventListener("betterstatus-sync-applied", refresh);
+  }, []);
+
+  async function connectSync() {
+    setSyncBusy(true);
+    setSyncStatus("Waiting for Discord authorization in your browser…");
+    try {
+      const status = await Native.authorizeCloudSync(getSyncServerURL());
+      settings.store.syncEnabled = true;
+      setSyncStatus(`Connected as Discord user ${status.discordUserId} · expires ${new Date(status.expiresAt).toLocaleDateString()}`);
+      await pluginRuntime().configureCloudSync();
+    } catch (error) {
+      setSyncStatus(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+
+  async function disconnectSync() {
+    setSyncBusy(true);
+    try {
+      await Native.disconnectCloudSync(getSyncServerURL());
+      settings.store.syncEnabled = false;
+      setSyncStatus("Not connected");
+      await pluginRuntime().configureCloudSync();
+    } finally {
+      setSyncBusy(false);
+    }
+  }
 
   async function checkForUpdates() {
     if (checkingForUpdates) return;
@@ -419,14 +567,9 @@ export default function SettingsComponent() {
         const message = result.error ?? "The update could not be completed.";
         retryAt = result.retryAt;
         if (retryAt !== undefined)
-          Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(false, retryAt);
+          pluginRuntime().configureUpdateChecks(false, retryAt);
         setUpdateStatus(`Update failed: ${message}`);
-        showNotification({
-          title: retryAt !== undefined
-            ? "BetterStatus update checks paused"
-            : "BetterStatus update failed",
-          body: message,
-        });
+        showUpdateFailureNotification(result);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -456,6 +599,7 @@ export default function SettingsComponent() {
       settings: {
         presets: getPresets(),
         savedStatuses: getSavedStatuses(),
+        schedules: getSchedules(),
         activePresetId: settings.store.activePresetId,
         autoUpdate: settings.store.autoUpdate,
         autoRestart: settings.store.autoRestart,
@@ -485,6 +629,7 @@ export default function SettingsComponent() {
     }));
 
     settings.store.savedStatuses = backup.settings.savedStatuses;
+    settings.store.schedules = backup.settings.schedules;
     settings.store.autoUpdate = backup.settings.autoUpdate;
     settings.store.autoRestart = backup.settings.autoRestart;
     settings.store.updateCheckFrequency = backup.settings.updateCheckFrequency;
@@ -496,12 +641,14 @@ export default function SettingsComponent() {
       : undefined;
 
     await commit(importedPresets);
+    setSchedules(backup.settings.schedules);
+    pluginRuntime().configureSchedules();
     setCollapsedIds(new Set(importedPresets.map(preset => preset.id)));
     setSearchQuery("");
     setRecordingId(null);
-    Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(false);
+    pluginRuntime().configureUpdateChecks(false);
 
-    const message = `Imported ${importedPresets.length} presets and ${backup.settings.savedStatuses.length} saved statuses${convertMacHotkeys ? "; Command shortcuts were converted to Control" : ""}.`;
+    const message = `Imported ${importedPresets.length} presets, ${backup.settings.schedules.length} schedules, and ${backup.settings.savedStatuses.length} saved statuses${convertMacHotkeys ? "; Command shortcuts were converted to Control" : ""}.`;
     setBackupStatus(message);
     showNotification({ title: "BetterStatus backup imported", body: message });
   }
@@ -564,7 +711,7 @@ export default function SettingsComponent() {
   }
 
   function updatePreset(id: string, patch: Partial<StatusPreset>) {
-    const next = presets.map((preset) =>
+    const next = presets.map(preset =>
       preset.id === id
         ? {
             ...preset,
@@ -613,11 +760,41 @@ export default function SettingsComponent() {
   function deletePreset(id: string) {
     if (id === activePresetId) settings.store.activePresetId = undefined;
 
-    void commit(presets.filter((preset) => preset.id !== id));
+    const nextSchedules = schedules.filter(schedule => schedule.presetId !== id);
+    setSchedules(nextSchedules);
+    settings.store.schedules = nextSchedules;
+    void commit(presets.filter(preset => preset.id !== id));
+    pluginRuntime().configureSchedules();
+  }
+
+  function commitSchedules(next: StatusSchedule[]) {
+    setSchedules(next);
+    settings.store.schedules = next;
+    pluginRuntime().configureSchedules();
+  }
+
+  function addSchedule() {
+    const preset = presets.find(candidate => candidate.enabled) ?? presets[0];
+    if (!preset) return;
+
+    const startsAt = new Date();
+    startsAt.setMinutes(startsAt.getMinutes() + 5, 0, 0);
+    commitSchedules([...schedules, {
+      id: createId(),
+      name: `${preset.name || "Status"} schedule`,
+      presetId: preset.id,
+      startsAt: startsAt.getTime(),
+      repeat: "once",
+      enabled: true,
+    }]);
+  }
+
+  function updateSchedule(id: string, patch: Partial<StatusSchedule>) {
+    commitSchedules(schedules.map(schedule => schedule.id === id ? { ...schedule, ...patch } : schedule));
   }
 
   function toggleCollapsed(id: string) {
-    setCollapsedIds((current) => {
+    setCollapsedIds(current => {
       const next = new Set(current);
 
       if (next.has(id)) next.delete(id);
@@ -632,9 +809,9 @@ export default function SettingsComponent() {
   function toggleAllCollapsed() {
     const allCollapsed =
       presets.length > 0 &&
-      presets.every((preset) => collapsedIds.has(preset.id));
+      presets.every(preset => collapsedIds.has(preset.id));
     setCollapsedIds(
-      allCollapsed ? new Set() : new Set(presets.map((preset) => preset.id)),
+      allCollapsed ? new Set() : new Set(presets.map(preset => preset.id)),
     );
     setRecordingId(null);
   }
@@ -670,33 +847,33 @@ export default function SettingsComponent() {
   React.useEffect(() => {
     if (
       activePresetId &&
-      !presets.some((preset) => preset.id === activePresetId && preset.enabled)
+      !presets.some(preset => preset.id === activePresetId && preset.enabled)
     ) {
       settings.store.activePresetId = undefined;
     }
   }, [activePresetId, presets]);
 
-  const enabledCount = presets.filter((preset) => preset.enabled).length;
+  const enabledCount = presets.filter(preset => preset.enabled).length;
   const memoryCount = presets.filter(
-    (preset) => preset.type === "memory",
+    preset => preset.type === "memory",
   ).length;
   const allCollapsed =
     presets.length > 0 &&
-    presets.every((preset) => collapsedIds.has(preset.id));
+    presets.every(preset => collapsedIds.has(preset.id));
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const visiblePresets = normalizedQuery
-    ? presets.filter((preset) =>
+    ? presets.filter(preset =>
         [
           preset.name,
           preset.text,
           preset.hotkey,
           preset.presence,
           preset.type,
-        ].some((value) => value.toLowerCase().includes(normalizedQuery)),
+        ].some(value => value.toLowerCase().includes(normalizedQuery)),
       )
     : presets;
   const activePreset = presets.find(
-    (preset) => preset.id === activePresetId && preset.enabled,
+    preset => preset.id === activePresetId && preset.enabled,
   );
 
   return (
@@ -767,14 +944,14 @@ export default function SettingsComponent() {
           <div className="bs-update-channel">
             <Select
               options={UPDATE_CHANNEL_OPTIONS}
-              select={(channel) => {
+              select={channel => {
                 if (channel !== "dev") {
                   settings.store.updateChannel = "prod";
                   setUpdateStatus(null);
                   return;
                 }
 
-                openModal((modalProps) => (
+                openModal(modalProps => (
                   <DevelopmentChannelPrompt
                     modalProps={modalProps}
                     onAccept={() => {
@@ -784,8 +961,8 @@ export default function SettingsComponent() {
                   />
                 ));
               }}
-              serialize={(value) => value}
-              isSelected={(value) => value === selectedUpdateChannel}
+              serialize={value => value}
+              isSelected={value => value === selectedUpdateChannel}
               closeOnSelect
             />
           </div>
@@ -796,9 +973,9 @@ export default function SettingsComponent() {
             <FormSwitch
               title="Auto update"
               value={autoUpdate}
-              onChange={(value) => {
+              onChange={value => {
                 settings.store.autoUpdate = value;
-                Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(
+                pluginRuntime().configureUpdateChecks(
                   value,
                 );
               }}
@@ -808,15 +985,15 @@ export default function SettingsComponent() {
               <span>Check frequency</span>
               <Select
                 options={UPDATE_FREQUENCY_OPTIONS}
-                select={(frequency) => {
+                select={frequency => {
                   settings.store.updateCheckFrequency =
                     normalizeUpdateCheckFrequency(frequency);
-                  Vencord.Plugins.plugins.BetterStatus.configureUpdateChecks(
+                  pluginRuntime().configureUpdateChecks(
                     false,
                   );
                 }}
-                serialize={(value) => String(value)}
-                isSelected={(value) => value === selectedUpdateFrequency}
+                serialize={value => String(value)}
+                isSelected={value => value === selectedUpdateFrequency}
                 isDisabled={!autoUpdate}
                 closeOnSelect
               />
@@ -824,7 +1001,7 @@ export default function SettingsComponent() {
             <FormSwitch
               title="Auto restart Discord"
               value={autoRestart}
-              onChange={(value) => (settings.store.autoRestart = value)}
+              onChange={value => (settings.store.autoRestart = value)}
               hideBorder
             />
           </div>
@@ -837,8 +1014,8 @@ export default function SettingsComponent() {
           <Forms.FormTitle>Backup & sharing</Forms.FormTitle>
           <Forms.FormText>
             Move your complete BetterStatus setup between computers or keep a
-            personal backup. Presets, Memory values, saved statuses, favorites,
-            and update preferences are all included.
+            personal backup. Presets, schedules, Memory values, saved statuses,
+            favorites, and update preferences are all included.
           </Forms.FormText>
           {backupStatus && <div className="bs-backup-status" role="status">{backupStatus}</div>}
         </div>
@@ -848,6 +1025,137 @@ export default function SettingsComponent() {
           </button>
           <Button onClick={exportSettings}>Export everything</Button>
         </div>
+      </section>
+
+      <section className="bs-sync-panel">
+        <div className="bs-section-heading">
+          <div>
+            <Forms.FormTitle tag="h2">Cloud sync</Forms.FormTitle>
+            <Forms.FormText>
+              Keep presets, saved statuses, schedules, and preferences current on every client through secure Discord-authorized sync.
+            </Forms.FormText>
+          </div>
+          <FormSwitch
+            title="Sync enabled"
+            value={syncEnabled}
+            onChange={value => {
+              settings.store.syncEnabled = value;
+              void pluginRuntime().configureCloudSync();
+            }}
+            hideBorder
+          />
+        </div>
+        <div className="bs-sync-controls">
+          <div className="bs-field">
+            <span>Sync provider</span>
+            <Select
+              options={SYNC_PROVIDER_OPTIONS}
+              select={provider => {
+                settings.store.syncProvider = provider as SyncProvider;
+                settings.store.syncEnabled = false;
+                void pluginRuntime().configureCloudSync();
+              }}
+              serialize={value => value}
+              isSelected={value => value === syncProvider}
+              closeOnSelect
+            />
+          </div>
+          {syncProvider === "custom" && (
+            <label className="bs-field">
+              <span>Server URL</span>
+              <TextInput
+                value={syncServerUrl}
+                placeholder="https://sync.example.com"
+                onChange={value => {
+                  settings.store.syncServerUrl = value;
+                  settings.store.syncEnabled = false;
+                }}
+              />
+            </label>
+          )}
+          <div className="bs-sync-actions">
+            <Button disabled={syncBusy} onClick={connectSync}>{syncBusy ? "Connecting…" : "Connect Discord"}</Button>
+            <button type="button" className="bs-secondary-button" disabled={syncBusy} onClick={disconnectSync}>Disconnect</button>
+          </div>
+        </div>
+        <div className="bs-sync-status" role="status">{syncStatus}</div>
+        {syncProvider === "custom" && (
+          <Forms.FormText>Your self-hosted server needs its own Discord OAuth application and callback URL.</Forms.FormText>
+        )}
+      </section>
+
+      <section className="bs-calendar-panel">
+        <div className="bs-section-heading">
+          <div>
+            <Forms.FormTitle tag="h2">Status calendar</Forms.FormTitle>
+            <Forms.FormText>
+              Activate a preset at a specific time, once or on a recurring schedule.
+              Times use this computer&apos;s local time.
+            </Forms.FormText>
+          </div>
+          <Button disabled={!presets.length} onClick={addSchedule}>+ Schedule status</Button>
+        </div>
+        {!schedules.length ? (
+          <div className="bs-calendar-empty">
+            {presets.length ? "No scheduled statuses yet." : "Create a preset before adding a schedule."}
+          </div>
+        ) : (
+          <div className="bs-calendar-grid">
+            {schedules.map(schedule => (
+              <article className={`bs-schedule-card${schedule.enabled ? "" : " bs-schedule-disabled"}`} key={schedule.id}>
+                <div className="bs-schedule-main">
+                  <label className="bs-field">
+                    <span>Schedule name</span>
+                    <TextInput value={schedule.name} onChange={name => updateSchedule(schedule.id, { name })} />
+                  </label>
+                  <label className="bs-field">
+                    <span>Date and time</span>
+                    <input
+                      className="bs-datetime-input"
+                      type="datetime-local"
+                      value={toLocalDateTime(schedule.startsAt)}
+                      onChange={event => {
+                        const startsAt = new Date(event.currentTarget.value).getTime();
+                        if (Number.isFinite(startsAt)) updateSchedule(schedule.id, { startsAt });
+                      }}
+                    />
+                  </label>
+                  <div className="bs-field">
+                    <span>Preset</span>
+                    <Select
+                      options={presets.map(preset => ({ label: preset.name || "Untitled preset", value: preset.id }))}
+                      select={presetId => updateSchedule(schedule.id, { presetId })}
+                      serialize={value => value}
+                      isSelected={value => value === schedule.presetId}
+                      closeOnSelect
+                    />
+                  </div>
+                  <div className="bs-field">
+                    <span>Repeat</span>
+                    <Select
+                      options={SCHEDULE_REPEAT_OPTIONS}
+                      select={repeat => updateSchedule(schedule.id, { repeat: repeat as ScheduleRepeat })}
+                      serialize={value => value}
+                      isSelected={value => value === schedule.repeat}
+                      closeOnSelect
+                    />
+                  </div>
+                </div>
+                <div className="bs-schedule-actions">
+                  <FormSwitch
+                    title="Enabled"
+                    value={schedule.enabled}
+                    onChange={enabled => updateSchedule(schedule.id, { enabled })}
+                    hideBorder
+                  />
+                  <Button color={Button.Colors.RED} onClick={() => commitSchedules(schedules.filter(item => item.id !== schedule.id))}>
+                    Delete
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <div className="bs-toolbar">
@@ -925,7 +1233,7 @@ export default function SettingsComponent() {
         </div>
       ) : (
         <div className="bs-preset-grid">
-          {visiblePresets.map((preset) => {
+          {visiblePresets.map(preset => {
             const collapsed = collapsedIds.has(preset.id);
             const contentId = `bs-preset-${preset.id}`;
 
@@ -979,7 +1287,7 @@ export default function SettingsComponent() {
                     <FormSwitch
                       title="Enabled"
                       value={preset.enabled}
-                      onChange={(enabled) =>
+                      onChange={enabled =>
                         updatePreset(preset.id, { enabled })
                       }
                       hideBorder
@@ -1006,7 +1314,7 @@ export default function SettingsComponent() {
                         <TextInput
                           value={preset.name}
                           placeholder="Work, gaming, sleeping…"
-                          onChange={(name) => updatePreset(preset.id, { name })}
+                          onChange={name => updatePreset(preset.id, { name })}
                         />
                       </label>
 
@@ -1014,7 +1322,7 @@ export default function SettingsComponent() {
                         <span>Presence</span>
                         <StatusSwitcher
                           presence={preset.presence}
-                          onPresenceChange={(presence) =>
+                          onPresenceChange={presence =>
                             updatePreset(preset.id, { presence })
                           }
                         />
@@ -1024,13 +1332,13 @@ export default function SettingsComponent() {
                         <span>Behavior</span>
                         <Select
                           options={TYPE_OPTIONS}
-                          select={(type) =>
+                          select={type =>
                             updatePreset(preset.id, {
                               type: type as PresetType,
                             })
                           }
-                          serialize={(value) => value}
-                          isSelected={(value) => value === preset.type}
+                          serialize={value => value}
+                          isSelected={value => value === preset.type}
                           closeOnSelect
                         />
                       </div>
@@ -1048,7 +1356,7 @@ export default function SettingsComponent() {
                               : preset.text
                           }
                           placeholder="What are you doing?"
-                          onChange={(text) =>
+                          onChange={text =>
                             updatePreset(
                               preset.id,
                               preset.type === "memory"
@@ -1136,16 +1444,33 @@ export const settings = definePluginSettings({
     type: OptionType.CUSTOM,
     default: [] as SavedStatus[],
   },
+  schedules: {
+    type: OptionType.CUSTOM,
+    default: [] as StatusSchedule[],
+  },
+  syncEnabled: {
+    type: OptionType.CUSTOM,
+    default: false,
+  },
+  syncProvider: {
+    type: OptionType.CUSTOM,
+    default: "betterstatus" as SyncProvider,
+  },
+  syncServerUrl: {
+    type: OptionType.CUSTOM,
+    default: "https://betterstatus.misaliba.eu",
+  },
   presetEditor: {
     type: OptionType.COMPONENT,
     component: SettingsComponent,
   },
 }).withPrivateSettings<{
   activePresetId?: string;
+  scheduleRuns?: Record<string, number>;
 }>();
 
 export function getPresets(): StatusPreset[] {
-  const normalized = settings.store.presets.map((preset) => ({
+  const normalized = settings.store.presets.map(preset => ({
     ...preset,
     type: preset.type === "memory" ? ("memory" as const) : ("fixed" as const),
   }));
@@ -1169,6 +1494,47 @@ export function getSavedStatuses(): SavedStatus[] {
     settings.store.savedStatuses = normalized;
 
   return normalized;
+}
+
+export function getSchedules(): StatusSchedule[] {
+  return settings.store.schedules.filter(schedule =>
+    schedule && typeof schedule.id === "string" &&
+    typeof schedule.presetId === "string" &&
+    typeof schedule.startsAt === "number" &&
+    ["once", "daily", "weekly"].includes(schedule.repeat)
+  );
+}
+
+export function buildSyncDocument(): SyncDocument {
+  return {
+    version: 1,
+    modifiedAt: Date.now(),
+    presets: getPresets(),
+    savedStatuses: getSavedStatuses(),
+    schedules: getSchedules(),
+    activePresetId: settings.store.activePresetId,
+    autoUpdate: settings.store.autoUpdate,
+    autoRestart: settings.store.autoRestart,
+    updateCheckFrequency: getUpdateCheckFrequency(),
+    updateChannel: getUpdateChannel(),
+  };
+}
+
+export async function applySyncDocument(document: SyncDocument) {
+  if (!document || document.version !== 1) throw new Error("Unsupported sync document.");
+  const presetIds = new Set(document.presets.map(preset => preset.id));
+  settings.store.presets = document.presets;
+  settings.store.savedStatuses = normalizeSavedStatuses(document.savedStatuses);
+  settings.store.schedules = validateSchedules(document.schedules, presetIds);
+  settings.store.activePresetId = document.activePresetId && presetIds.has(document.activePresetId)
+    ? document.activePresetId
+    : undefined;
+  settings.store.autoUpdate = document.autoUpdate !== false;
+  settings.store.autoRestart = document.autoRestart === true;
+  settings.store.updateCheckFrequency = normalizeUpdateCheckFrequency(document.updateCheckFrequency);
+  settings.store.updateChannel = document.updateChannel === "dev" ? "dev" : "prod";
+  await savePresets(document.presets);
+  window.dispatchEvent(new CustomEvent("betterstatus-sync-applied"));
 }
 
 export function rememberSavedStatus(text: string) {

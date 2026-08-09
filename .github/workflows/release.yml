@@ -15,6 +15,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  server-test:
+    name: Test sync server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out BetterStatus
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: Test server
+        working-directory: server
+        run: go test ./...
+
   build-macos-cli:
     if: github.ref_name == 'prod'
     name: Build headless macOS installer
@@ -101,6 +116,7 @@ jobs:
     name: Publish file manifest
     needs:
       - compatibility-test
+      - server-test
     runs-on: ubuntu-latest
 
     steps:
@@ -128,6 +144,7 @@ jobs:
     needs:
       - compatibility-test
       - build-macos-cli
+      - server-test
     runs-on: ubuntu-latest
 
     steps:

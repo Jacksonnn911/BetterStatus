@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: betterstatus
+      POSTGRES_USER: betterstatus
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - betterstatus-db:/var/lib/postgresql/data
+
+  sync:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      LISTEN_ADDR: :8080
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://betterstatus.misaliba.eu}
+      DATABASE_URL: postgres://betterstatus:${POSTGRES_PASSWORD}@postgres:5432/betterstatus?sslmode=disable
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:?set DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:?set DISCORD_CLIENT_SECRET}
+      SESSION_TTL: 4320h
+    ports:
+      - "127.0.0.1:8080:8080"
+
+volumes:
+  betterstatus-db:

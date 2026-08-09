@@ -8,6 +8,8 @@ export type PresenceStatus = "online" | "idle" | "dnd" | "invisible";
 export type PresetType = "fixed" | "memory";
 export type UpdateChannel = "prod" | "dev";
 export type UpdateCheckFrequency = 0 | 15 | 30 | 60 | 180 | 360 | 720 | 1440;
+export type ScheduleRepeat = "once" | "daily" | "weekly";
+export type SyncProvider = "betterstatus" | "custom";
 
 export interface StatusPreset {
     id: string;
@@ -27,4 +29,26 @@ export interface SavedStatus {
     createdAt: number;
     lastUsedAt: number;
     useCount: number;
+}
+
+export interface StatusSchedule {
+    id: string;
+    name: string;
+    presetId: string;
+    startsAt: number;
+    repeat: ScheduleRepeat;
+    enabled: boolean;
+}
+
+export interface SyncDocument {
+    version: 1;
+    modifiedAt: number;
+    presets: StatusPreset[];
+    savedStatuses: SavedStatus[];
+    schedules: StatusSchedule[];
+    activePresetId?: string;
+    autoUpdate: boolean;
+    autoRestart: boolean;
+    updateCheckFrequency: UpdateCheckFrequency;
+    updateChannel: UpdateChannel;
 }
