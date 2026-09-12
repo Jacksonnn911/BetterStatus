@@ -1,0 +1,64 @@
+name: Build BetterDiscord plugin
+
+on:
+  push:
+    branches:
+      - prod
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: betterdiscord-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: ${{ !contains(github.event.head_commit.message || '', '[skip ci]') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out BetterStatus
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install BetterDiscord build dependencies
+        run: npm install --no-save --no-package-lock esbuild@0.25.9 scrypt-js@3.0.1
+
+      - name: Build BetterDiscord plugin
+        run: node betterdiscord/build.mjs
+        env:
+          BETTERSTATUS_COMMIT: ${{ github.sha }}
+          BETTERSTATUS_CHANNEL: ${{ github.ref_name }}
+
+      - name: Validate BetterDiscord plugin
+        run: |
+          node --check betterdiscord/BetterStatus.plugin.js
+          grep -q '@name BetterStatus' betterdiscord/BetterStatus.plugin.js
+          grep -q 'withPrivateSettings' betterdiscord/BetterStatus.plugin.js
+          grep -q 'bs-settings' betterdiscord/BetterStatus.plugin.js
+          grep -q 'inputEventRegister' betterdiscord/BetterStatus.plugin.js
+          grep -q 'raw.githubusercontent.com' betterdiscord/BetterStatus.plugin.js
+
+      - name: Upload BetterDiscord artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BetterStatus-BetterDiscord-${{ github.ref_name }}
+          path: betterdiscord/BetterStatus.plugin.js
+
+      - name: Publish generated plugin to channel branch
+        run: |
+          git add betterdiscord/BetterStatus.plugin.js
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Build BetterDiscord plugin [skip ci]'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
