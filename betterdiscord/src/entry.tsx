@@ -1,7 +1,8 @@
 import SettingsComponent from "../../src/Settings";
 import BetterStatusPlugin from "../../src/index";
-import { React } from "./compat";
+import { React } from "./ui";
 import Native from "./native";
+import Updater from "./updater";
 
 const G = globalThis as any;
 const api = new G.BdApi("BetterStatus");
@@ -20,18 +21,23 @@ export default class BetterStatusBetterDiscord {
     G.Vencord.Plugins.plugins.BetterStatus = BetterStatusPlugin;
     G.VencordNative ??= {};
     G.VencordNative.pluginHelpers ??= {};
+
+    Object.assign(Native, Updater);
     G.VencordNative.pluginHelpers.BetterStatus = Native;
     Native.attachRuntime(BetterStatusPlugin);
 
-    const css = G.__BETTERSTATUS_SOURCE_CSS__;
-    if (css) api.DOM.addStyle(css);
+    const css = `${G.__BETTERSTATUS_COMPAT_CSS__ || ""}\n${G.__BETTERSTATUS_SOURCE_CSS__ || ""}`;
+    if (css.trim()) api.DOM.addStyle(css);
 
     try {
       BetterStatusPlugin.start?.call(BetterStatusPlugin);
-      api.Logger.info("Started the original BetterStatus runtime through the BetterDiscord compatibility layer.");
+      api.Logger.info("Started BetterStatus through the BetterDiscord compatibility layer.");
     } catch (error) {
       api.Logger.error("BetterStatus failed to start", error);
-      api.UI.showToast(`BetterStatus failed to start: ${error instanceof Error ? error.message : String(error)}`, { type: "error", timeout: 10000 });
+      api.UI.showToast(`BetterStatus failed to start: ${error instanceof Error ? error.message : String(error)}`, {
+        type: "error",
+        timeout: 10000
+      });
       throw error;
     }
   }
@@ -46,6 +52,10 @@ export default class BetterStatusBetterDiscord {
   }
 
   getSettingsPanel() {
-    return React.createElement(SettingsComponent);
+    return React.createElement(
+      "div",
+      { className: "bs-bd-settings-host" },
+      React.createElement(SettingsComponent)
+    );
   }
 }
