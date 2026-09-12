@@ -5,7 +5,7 @@
  * @version 1.0.0-bd
  * @website https://github.com/Jacksonnn911/BetterStatus
  * @source https://github.com/Jacksonnn911/BetterStatus
- * @build ccfc7fef1c1599c5a238826cc5c8ee06e2856a8f
+ * @build 920df2f081b5e68568f378c31c5dfa89818464df
  * @channel prod
  */
 globalThis.__BETTERSTATUS_COMPAT_CSS__ = ".vc-btn-base {\n  position: relative;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  max-width: 100%;\n  border: 1px solid transparent;\n  border-radius: var(--radius-sm, 8px);\n  font-family: var(--font-primary);\n  text-align: start;\n  transition: 50ms ease-in;\n  transition-property: background-color, color, border-color, opacity;\n  background: var(--control-secondary-background-default);\n  color: var(--text-default);\n  white-space: nowrap;\n  cursor: pointer;\n}\n.vc-btn-base:hover { transition: .15s ease-out; }\n.vc-btn-base:disabled { opacity: .5; pointer-events: none; cursor: not-allowed; }\n.vc-btn-base:focus-visible { box-shadow: 0 0 0 4px var(--__adaptive-focus-ring-color, var(--border-focus, #00b0f4)); }\n.vc-btn-min,.vc-btn-xs { padding: 3px 7px; min-height: 22px; min-width: unset; font-size: 12px; font-weight: 400; line-height: 1.3333; }\n.vc-btn-xs { min-width: 60px; }\n.vc-btn-small { padding: 3px 11px; min-height: 30px; min-width: 60px; font-size: 14px; font-weight: 500; line-height: 1.2857; }\n.vc-btn-medium { padding: 7px 15px; min-height: 38px; min-width: 100px; font-size: 16px; font-weight: 500; line-height: 1.25; }\n.vc-btn-iconOnly { width: 32px; height: 32px; min-width: unset; min-height: unset; padding: 0; background-color: transparent; border-color: transparent; }\n.vc-btn-iconOnly:hover { background-color: var(--control-icon-only-background-hover); border-color: var(--control-icon-only-border-hover); }\n.vc-btn-primary { background-color: var(--control-primary-background-default); border-color: var(--control-primary-border-default); color: var(--control-primary-text-default); }\n.vc-btn-primary:hover { background-color: var(--control-primary-background-hover); border-color: var(--control-primary-border-hover); color: var(--control-primary-text-hover); }\n.vc-btn-secondary,.vc-btn-link { background-color: var(--control-secondary-background-default); border-color: var(--control-secondary-border-default); color: var(--control-secondary-text-default); }\n.vc-btn-secondary:hover,.vc-btn-link:hover { background-color: var(--control-secondary-background-hover); border-color: var(--control-secondary-border-hover); color: var(--control-secondary-text-hover); }\n.vc-btn-dangerPrimary { background-color: var(--control-critical-primary-background-default); border-color: var(--control-critical-primary-border-default); color: var(--control-critical-primary-text-default); }\n.vc-btn-dangerPrimary:hover { background-color: var(--control-critical-primary-background-hover); border-color: var(--control-critical-primary-border-hover); color: var(--control-critical-primary-text-hover); }\n.vc-btn-dangerSecondary { background-color: var(--control-critical-secondary-background-default); border-color: var(--control-critical-secondary-border-default); color: var(--control-critical-secondary-text-default); }\n.vc-btn-overlayPrimary { background-color: var(--control-overlay-primary-background-default); border-color: var(--control-overlay-primary-border-default); color: var(--control-overlay-primary-text-default); }\n.vc-btn-positive { background-color: var(--control-connected-background-default, var(--green-430)); color: var(--white); }\n.vc-btn-none { background-color: transparent; border-color: transparent; color: var(--control-icon-only-icon-default); }\n.vc-text-btn-base { display: inline-flex; justify-content: center; align-items: center; gap: var(--space-4, 4px); background: initial; color: var(--text-default); font-size: medium; font-weight: 400; margin: 0; padding: 0; text-align: start; text-decoration: none; max-width: 100%; white-space: nowrap; border: 0; cursor: pointer; }\n.vc-text-btn-base:hover { text-decoration: underline; }\n.vc-text-btn-primary { color: var(--text-brand); }\n.vc-text-btn-secondary { color: var(--text-strong, var(--text-default)); }\n.vc-text-btn-danger { color: var(--text-feedback-critical); }\n.vc-text-btn-link { color: var(--text-link); }\n\n.vc-switch-container { background: var(--primary-400); border: 1px solid transparent; border-radius: 16px; box-sizing: border-box; cursor: pointer; height: 28px; position: relative; width: 44px; }\n.vc-switch-checked { background: var(--brand-500); border-color: var(--control-primary-border-default); }\n.vc-switch-disabled { cursor: not-allowed; opacity: .3; }\n.vc-switch-focusVisible { box-shadow: 0 0 0 4px var(--__adaptive-focus-ring-color, var(--border-focus, #00b0f4)); }\n.vc-switch-slider { display: block; height: 20px; left: 0; margin: 3px; position: absolute; width: 28px; transition: 100ms transform ease-in-out; overflow: visible; }\n.vc-switch-input { border-radius: 14px; cursor: pointer; height: 100%; left: 0; margin: 0; opacity: 0; position: absolute; top: 0; width: 100%; }\n.vc-switch-input:disabled { pointer-events: none; cursor: not-allowed; }\n\n.vc-form-switch-wrapper { display: block; margin-bottom: 20px; cursor: pointer; }\n.vc-form-switch { display: flex; width: 100%; align-items: center; }\n.vc-form-switch > :last-child { margin-left: auto; }\n.vc-form-switch-disabled { opacity: .5; pointer-events: none; cursor: not-allowed; }\n.vc-form-switch-text { display: flex; flex-direction: column; justify-content: center; gap: 8px; min-width: 0; padding-right: 16px; }\n.vc-form-switch-title { color: var(--text-default); font-size: 16px; font-weight: 500; line-height: 20px; }\n.vc-form-switch-description { color: var(--text-subtle); font-size: 14px; line-height: 18px; }\n.vc-form-switch-border { margin-top: 20px; height: 1px; background: var(--border-subtle, var(--background-modifier-accent)); }\n\n.vc-form-title { margin: 0 0 8px; color: var(--header-primary, var(--text-default)); font-size: 16px; font-weight: 600; line-height: 20px; }\n.vc-form-text { color: var(--text-normal, var(--text-default)); font-size: 14px; line-height: 20px; }\n.bs-bd-text-input,.bs-bd-select { width: 100%; box-sizing: border-box; border: 1px solid var(--input-border-default, var(--border-subtle)); border-radius: var(--radius-sm, 8px); background: var(--input-background-default, var(--background-tertiary)); color: var(--text-default); padding: 8px 10px; font-family: var(--font-primary); }\n.bs-bd-fallback-modal { min-width: min(520px, 90vw); color: var(--text-default); }\n.bs-bd-modal-error { color: var(--text-feedback-critical, var(--text-danger)); margin-top: 10px; }\n.bs-bd-modal-actions { display: flex; gap: 8px; margin-top: 16px; }\n.bs-bd-settings-host { width: 100%; min-width: 0; }\n";
@@ -3788,7 +3788,7 @@ var G = globalThis;
 var Bd = G.BdApi;
 var api = new Bd("BetterStatus");
 var REPOSITORY = "Jacksonnn911/BetterStatus";
-var COMMIT = true ? "ccfc7fef1c1599c5a238826cc5c8ee06e2856a8f" : "development";
+var COMMIT = true ? "920df2f081b5e68568f378c31c5dfa89818464df" : "development";
 var BUILD_CHANNEL = true ? "prod" : "betterdiscord-port";
 var AAD = new TextEncoder().encode("BetterStatus encrypted sync document v1");
 var VAULT_AAD = new TextEncoder().encode("BetterStatus BetterDiscord secure sessions v1");
@@ -4354,10 +4354,10 @@ var native_default = Native;
 var G2 = globalThis;
 var Bd2 = G2.BdApi;
 if (!Bd2) throw new Error("BetterStatus requires BetterDiscord/BdApi.");
+var api2 = new Bd2("BetterStatus");
 var React2 = Bd2.React;
 var ReactDOM = Bd2.ReactDOM;
 var createRoot = Bd2.ReactDOM.createRoot;
-var api2 = new Bd2("BetterStatus");
 G2.Vencord ??= {};
 G2.Vencord.Plugins ??= {};
 G2.Vencord.Plugins.plugins ??= {};
@@ -4365,25 +4365,38 @@ G2.VencordNative ??= {};
 G2.VencordNative.pluginHelpers ??= {};
 G2.VencordNative.pluginHelpers.BetterStatus = native_default;
 var OptionType = Object.freeze({ CUSTOM: "CUSTOM", COMPONENT: "COMPONENT" });
+function definePlugin(plugin) {
+  return plugin;
+}
+var compat_default = definePlugin;
 function userSettingsModules() {
   const store = Bd2.Webpack.getStore("UserSettingsProtoStore");
-  const actions = Bd2.Webpack.getModule(
-    (module2) => module2?.ProtoClass?.typeName?.endsWith?.(".PreloadedUserSettings") && typeof module2.updateAsync === "function",
+  let actions = Bd2.Webpack.getModule(
+    (module2) => module2?.ProtoClass?.typeName?.endsWith?.(".PreloadedUserSettings"),
     { first: true, searchExports: true }
   );
+  if (!actions?.updateAsync) {
+    actions = Bd2.Webpack.getModule(
+      (module2) => typeof module2?.updateAsync === "function" && /UserSettings|settings/i.test(String(module2.updateAsync)),
+      { first: true, searchExports: true }
+    );
+  }
   return { store, actions };
 }
 function getUserSettingLazy(group, key) {
   return {
     getSetting() {
       const { store } = userSettingsModules();
-      if (group === "status" && key === "status") return store?.settings?.status?.status?.value;
-      if (group === "status" && key === "customStatus") return store?.settings?.status?.customStatus;
+      if (group === "status" && key === "status")
+        return store?.settings?.status?.status?.value;
+      if (group === "status" && key === "customStatus")
+        return store?.settings?.status?.customStatus;
       return store?.settings?.[group]?.[key]?.value ?? store?.settings?.[group]?.[key];
     },
     async updateSetting(value) {
       const { actions } = userSettingsModules();
-      if (!actions?.updateAsync) throw new Error("Discord UserSettingsProtoActions is unavailable.");
+      if (!actions?.updateAsync)
+        throw new Error("Discord UserSettingsProtoActions is unavailable.");
       await actions.updateAsync(group, (draft) => {
         if (group === "status" && key === "status") {
           draft.status ??= {};
@@ -4406,26 +4419,26 @@ function showNotification(options) {
   });
 }
 function relaunch() {
-  if (G2.DiscordNative?.app?.relaunch) return G2.DiscordNative.app.relaunch();
+  if (G2.DiscordNative?.app?.relaunch)
+    return G2.DiscordNative.app.relaunch();
   location.reload();
 }
 function Link(props) {
   const { href, children, ...rest } = props;
-  return React2.createElement("a", { ...rest, href, target: rest.target ?? "_blank", rel: "noreferrer noopener" }, children);
+  return React2.createElement(
+    "a",
+    {
+      ...rest,
+      href,
+      target: rest.target ?? "_blank",
+      rel: rest.rel ?? "noreferrer noopener"
+    },
+    children
+  );
 }
-var BdButton = Bd2.Components.Button;
-function Button({ variant, ...props }) {
-  const color = variant === "danger" ? BdButton.Colors?.RED : props.color;
-  return React2.createElement(BdButton, { ...props, color }, props.children);
-}
-Button.Colors = BdButton.Colors;
-Button.Looks = BdButton.Looks;
-Button.Sizes = BdButton.Sizes;
-var TextInput = Bd2.Components.TextInput;
 function openPluginModal() {
   G2.__BETTERSTATUS_OPEN_SETTINGS__?.();
 }
-var compat_default = React2;
 
 // betterdiscord/src/settings.ts
 var G3 = globalThis;
@@ -4571,7 +4584,7 @@ function normalizeButtonSize(size) {
   if (value === "icononly") return "iconOnly";
   return "medium";
 }
-function Button2(props) {
+function Button(props) {
   const {
     look,
     color = "BRAND",
@@ -4602,8 +4615,8 @@ function Button2(props) {
     children
   );
 }
-Button2.Looks = { FILLED: "", LINK: "LINK" };
-Button2.Colors = {
+Button.Looks = { FILLED: "", LINK: "LINK" };
+Button.Colors = {
   BRAND: "BRAND",
   PRIMARY: "PRIMARY",
   RED: "RED",
@@ -4613,7 +4626,7 @@ Button2.Colors = {
   LINK: "LINK",
   WHITE: "WHITE"
 };
-Button2.Sizes = {
+Button.Sizes = {
   SMALL: "small",
   MEDIUM: "medium",
   LARGE: "medium",
@@ -4695,7 +4708,7 @@ function FormSwitch({ title, description, note, value, onChange, disabled, class
     !hideBorder ? React4.createElement("div", { className: "vc-form-switch-border" }) : null
   );
 }
-function TextInput2(props) {
+function TextInput(props) {
   if (NativeTextInput) return React4.createElement(NativeTextInput, props);
   const { onChange, ...rest } = props;
   return React4.createElement("input", {
@@ -4770,8 +4783,8 @@ function ConfirmModal(props) {
     React4.createElement(
       "div",
       { className: "bs-bd-modal-actions" },
-      React4.createElement(Button2, { onClick: confirm }, props.confirmText || "Confirm"),
-      React4.createElement(Button2, { color: Button2.Colors.PRIMARY, onClick: () => {
+      React4.createElement(Button, { onClick: confirm }, props.confirmText || "Confirm"),
+      React4.createElement(Button, { color: Button.Colors.PRIMARY, onClick: () => {
         props.onCancel?.();
         props.onClose?.();
       } }, props.cancelText || "Cancel")
@@ -4784,7 +4797,7 @@ function OAuth2AuthorizeModal(props) {
     "div",
     { className: "bs-password-modal" },
     React4.createElement(Forms.FormText, null, "Authorize BetterStatus with Discord in your browser, then return here."),
-    React4.createElement(Button2, {
+    React4.createElement(Button, {
       onClick: async () => {
         try {
           await native_default.openExternalAuthorization(props.state);
@@ -6145,10 +6158,10 @@ function SettingsComponent() {
       isDisabled: checkingForUpdates,
       closeOnSelect: true
     }
-  )), /* @__PURE__ */ React4.createElement(Button2, { disabled: checkingForUpdates, onClick: () => checkForUpdates3(false) }, checkingForUpdates ? "Checking\u2026" : "Check for updates"), lastUpdateFailed && /* @__PURE__ */ React4.createElement(
-    Button2,
+  )), /* @__PURE__ */ React4.createElement(Button, { disabled: checkingForUpdates, onClick: () => checkForUpdates3(false) }, checkingForUpdates ? "Checking\u2026" : "Check for updates"), lastUpdateFailed && /* @__PURE__ */ React4.createElement(
+    Button,
     {
-      color: Button2.Colors.RED,
+      color: Button.Colors.RED,
       disabled: checkingForUpdates,
       onClick: () => checkForUpdates3(true)
     },
@@ -6189,7 +6202,7 @@ function SettingsComponent() {
       onChange: (value) => settings.store.autoRestart = value,
       hideBorder: true
     }
-  ), autoRestartPausedUntil && autoRestartPausedUntil > Date.now() && /* @__PURE__ */ React4.createElement("div", { className: "bs-restart-guard", role: "status" }, "Restart loop protection is active. Updates still install, but Discord must be restarted manually.")))), /* @__PURE__ */ React4.createElement("section", { className: "bs-backup-panel" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-backup-mark", "aria-hidden": "true" }, "\u21C5"), /* @__PURE__ */ React4.createElement("div", { className: "bs-backup-copy" }, /* @__PURE__ */ React4.createElement(Forms.FormTitle, null, "Backup & sharing"), /* @__PURE__ */ React4.createElement(Forms.FormText, null, "Move your complete BetterStatus setup between computers or keep a personal backup. Presets, schedules, Memory values, saved statuses, favorites, and update preferences are all included."), backupStatus && /* @__PURE__ */ React4.createElement("div", { className: "bs-backup-status", role: "status" }, backupStatus)), /* @__PURE__ */ React4.createElement("div", { className: "bs-backup-actions" }, /* @__PURE__ */ React4.createElement("button", { type: "button", className: "bs-secondary-button", onClick: importSettings }, "Import backup"), /* @__PURE__ */ React4.createElement(Button2, { onClick: exportSettings }, "Export everything"))), /* @__PURE__ */ React4.createElement("section", { className: "bs-sync-panel" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-section-heading" }, /* @__PURE__ */ React4.createElement("div", null, /* @__PURE__ */ React4.createElement(Forms.FormTitle, { tag: "h2" }, "Cloud sync"), /* @__PURE__ */ React4.createElement(Forms.FormText, null, "Keep presets, saved statuses, schedules, and preferences current on every client through secure Discord-authorized sync."))), /* @__PURE__ */ React4.createElement("div", { className: "bs-sync-controls" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-field" }, /* @__PURE__ */ React4.createElement("span", null, "Sync provider"), /* @__PURE__ */ React4.createElement(
+  ), autoRestartPausedUntil && autoRestartPausedUntil > Date.now() && /* @__PURE__ */ React4.createElement("div", { className: "bs-restart-guard", role: "status" }, "Restart loop protection is active. Updates still install, but Discord must be restarted manually.")))), /* @__PURE__ */ React4.createElement("section", { className: "bs-backup-panel" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-backup-mark", "aria-hidden": "true" }, "\u21C5"), /* @__PURE__ */ React4.createElement("div", { className: "bs-backup-copy" }, /* @__PURE__ */ React4.createElement(Forms.FormTitle, null, "Backup & sharing"), /* @__PURE__ */ React4.createElement(Forms.FormText, null, "Move your complete BetterStatus setup between computers or keep a personal backup. Presets, schedules, Memory values, saved statuses, favorites, and update preferences are all included."), backupStatus && /* @__PURE__ */ React4.createElement("div", { className: "bs-backup-status", role: "status" }, backupStatus)), /* @__PURE__ */ React4.createElement("div", { className: "bs-backup-actions" }, /* @__PURE__ */ React4.createElement("button", { type: "button", className: "bs-secondary-button", onClick: importSettings }, "Import backup"), /* @__PURE__ */ React4.createElement(Button, { onClick: exportSettings }, "Export everything"))), /* @__PURE__ */ React4.createElement("section", { className: "bs-sync-panel" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-section-heading" }, /* @__PURE__ */ React4.createElement("div", null, /* @__PURE__ */ React4.createElement(Forms.FormTitle, { tag: "h2" }, "Cloud sync"), /* @__PURE__ */ React4.createElement(Forms.FormText, null, "Keep presets, saved statuses, schedules, and preferences current on every client through secure Discord-authorized sync."))), /* @__PURE__ */ React4.createElement("div", { className: "bs-sync-controls" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-field" }, /* @__PURE__ */ React4.createElement("span", null, "Sync provider"), /* @__PURE__ */ React4.createElement(
     Select,
     {
       options: SYNC_PROVIDER_OPTIONS,
@@ -6204,7 +6217,7 @@ function SettingsComponent() {
       closeOnSelect: true
     }
   )), syncProvider === "custom" && /* @__PURE__ */ React4.createElement("label", { className: "bs-field" }, /* @__PURE__ */ React4.createElement("span", null, "Server URL"), /* @__PURE__ */ React4.createElement(
-    TextInput2,
+    TextInput,
     {
       value: syncServerUrl,
       placeholder: "https://sync.example.com",
@@ -6214,7 +6227,7 @@ function SettingsComponent() {
         setSyncConnected(false);
       }
     }
-  )), /* @__PURE__ */ React4.createElement("div", { className: "bs-sync-actions" }, syncConnected ? /* @__PURE__ */ React4.createElement(React4.Fragment, null, /* @__PURE__ */ React4.createElement("button", { type: "button", className: "bs-secondary-button", disabled: syncBusy, onClick: resyncFromServer }, syncBusy ? "Synchronizing\u2026" : "Resync now"), /* @__PURE__ */ React4.createElement("button", { type: "button", className: "bs-danger-button", disabled: syncBusy, onClick: disconnectSync }, "Disconnect")) : /* @__PURE__ */ React4.createElement(Button2, { disabled: syncBusy, onClick: connectSync }, syncBusy ? "Connecting\u2026" : "Connect Discord"))), /* @__PURE__ */ React4.createElement("div", { className: "bs-sync-status", role: "status" }, syncStatus), /* @__PURE__ */ React4.createElement("div", { className: "bs-sync-protection" }, /* @__PURE__ */ React4.createElement("div", null, /* @__PURE__ */ React4.createElement("strong", null, syncEncrypted ? syncLocked ? "Password required" : "Client-side encrypted" : "Password protection off"), /* @__PURE__ */ React4.createElement("span", null, syncEncrypted ? "The server stores only authenticated ciphertext." : "Optionally encrypt all synchronized configuration before upload.")), /* @__PURE__ */ React4.createElement("div", { className: "bs-sync-protection-actions" }, /* @__PURE__ */ React4.createElement(
+  )), /* @__PURE__ */ React4.createElement("div", { className: "bs-sync-actions" }, syncConnected ? /* @__PURE__ */ React4.createElement(React4.Fragment, null, /* @__PURE__ */ React4.createElement("button", { type: "button", className: "bs-secondary-button", disabled: syncBusy, onClick: resyncFromServer }, syncBusy ? "Synchronizing\u2026" : "Resync now"), /* @__PURE__ */ React4.createElement("button", { type: "button", className: "bs-danger-button", disabled: syncBusy, onClick: disconnectSync }, "Disconnect")) : /* @__PURE__ */ React4.createElement(Button, { disabled: syncBusy, onClick: connectSync }, syncBusy ? "Connecting\u2026" : "Connect Discord"))), /* @__PURE__ */ React4.createElement("div", { className: "bs-sync-status", role: "status" }, syncStatus), /* @__PURE__ */ React4.createElement("div", { className: "bs-sync-protection" }, /* @__PURE__ */ React4.createElement("div", null, /* @__PURE__ */ React4.createElement("strong", null, syncEncrypted ? syncLocked ? "Password required" : "Client-side encrypted" : "Password protection off"), /* @__PURE__ */ React4.createElement("span", null, syncEncrypted ? "The server stores only authenticated ciphertext." : "Optionally encrypt all synchronized configuration before upload.")), /* @__PURE__ */ React4.createElement("div", { className: "bs-sync-protection-actions" }, /* @__PURE__ */ React4.createElement(
     "button",
     {
       type: "button",
@@ -6223,7 +6236,7 @@ function SettingsComponent() {
       onClick: () => syncLocked ? requestSyncPassword((password) => pluginRuntime().unlockCloudSyncPassword(password)) : changeSyncPassword()
     },
     syncLocked ? "Unlock" : syncEncrypted ? "Change password" : "Add password"
-  ), syncEncrypted && !syncLocked && /* @__PURE__ */ React4.createElement("button", { type: "button", className: "bs-secondary-button bs-danger-text", disabled: syncBusy, onClick: removeSyncPassword }, "Remove password"))), syncProvider === "custom" && /* @__PURE__ */ React4.createElement(Forms.FormText, null, "Your self-hosted server needs its own Discord OAuth application and callback URL.")), /* @__PURE__ */ React4.createElement("section", { className: "bs-calendar-panel" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-section-heading" }, /* @__PURE__ */ React4.createElement("div", null, /* @__PURE__ */ React4.createElement(Forms.FormTitle, { tag: "h2" }, "Status calendar"), /* @__PURE__ */ React4.createElement(Forms.FormText, null, "Plan when a preset or custom status starts, how long it lasts, and what Discord should show when it ends. Times use this computer's local time.")), /* @__PURE__ */ React4.createElement("div", { className: "bs-section-actions" }, !!schedules.length && /* @__PURE__ */ React4.createElement("button", { type: "button", className: "bs-secondary-button", onClick: toggleAllSchedulesCollapsed }, /* @__PURE__ */ React4.createElement(ChevronIcon2, { collapsed: !allSchedulesCollapsed }), allSchedulesCollapsed ? "Expand all" : "Collapse all"), /* @__PURE__ */ React4.createElement(Button2, { onClick: addSchedule }, "+ Schedule status"))), /* @__PURE__ */ React4.createElement("div", { className: "bs-calendar-week", "aria-label": "Upcoming seven days" }, calendarDays.map(({ day, schedules: daySchedules }, index) => /* @__PURE__ */ React4.createElement("div", { className: `bs-calendar-day${index === 0 ? " bs-calendar-today" : ""}`, key: day.toISOString() }, /* @__PURE__ */ React4.createElement("span", null, day.toLocaleDateString([], { weekday: "short" })), /* @__PURE__ */ React4.createElement("strong", null, day.getDate()), /* @__PURE__ */ React4.createElement("div", { className: "bs-calendar-day-events" }, daySchedules.slice(0, 4).map((schedule) => {
+  ), syncEncrypted && !syncLocked && /* @__PURE__ */ React4.createElement("button", { type: "button", className: "bs-secondary-button bs-danger-text", disabled: syncBusy, onClick: removeSyncPassword }, "Remove password"))), syncProvider === "custom" && /* @__PURE__ */ React4.createElement(Forms.FormText, null, "Your self-hosted server needs its own Discord OAuth application and callback URL.")), /* @__PURE__ */ React4.createElement("section", { className: "bs-calendar-panel" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-section-heading" }, /* @__PURE__ */ React4.createElement("div", null, /* @__PURE__ */ React4.createElement(Forms.FormTitle, { tag: "h2" }, "Status calendar"), /* @__PURE__ */ React4.createElement(Forms.FormText, null, "Plan when a preset or custom status starts, how long it lasts, and what Discord should show when it ends. Times use this computer's local time.")), /* @__PURE__ */ React4.createElement("div", { className: "bs-section-actions" }, !!schedules.length && /* @__PURE__ */ React4.createElement("button", { type: "button", className: "bs-secondary-button", onClick: toggleAllSchedulesCollapsed }, /* @__PURE__ */ React4.createElement(ChevronIcon2, { collapsed: !allSchedulesCollapsed }), allSchedulesCollapsed ? "Expand all" : "Collapse all"), /* @__PURE__ */ React4.createElement(Button, { onClick: addSchedule }, "+ Schedule status"))), /* @__PURE__ */ React4.createElement("div", { className: "bs-calendar-week", "aria-label": "Upcoming seven days" }, calendarDays.map(({ day, schedules: daySchedules }, index) => /* @__PURE__ */ React4.createElement("div", { className: `bs-calendar-day${index === 0 ? " bs-calendar-today" : ""}`, key: day.toISOString() }, /* @__PURE__ */ React4.createElement("span", null, day.toLocaleDateString([], { weekday: "short" })), /* @__PURE__ */ React4.createElement("strong", null, day.getDate()), /* @__PURE__ */ React4.createElement("div", { className: "bs-calendar-day-events" }, daySchedules.slice(0, 4).map((schedule) => {
     const preset = presets.find((item) => item.id === schedule.presetId);
     const presence = schedule.startBehavior === "custom" ? schedule.startPresence : preset?.presence;
     return /* @__PURE__ */ React4.createElement("i", { className: `bs-mini-event bs-presence-${presence ?? "online"}`, key: schedule.id });
@@ -6233,7 +6246,7 @@ function SettingsComponent() {
     const endTime = schedule.endsAt ?? schedule.startsAt + 60 * 6e4;
     const collapsed = collapsedScheduleIds.has(schedule.id);
     const contentId = `bs-schedule-${schedule.id}`;
-    return /* @__PURE__ */ React4.createElement("article", { className: `bs-schedule-card bs-presence-${startPresence ?? "online"}${schedule.enabled ? "" : " bs-schedule-disabled"}${collapsed ? " bs-schedule-collapsed" : ""}`, key: schedule.id }, /* @__PURE__ */ React4.createElement("header", { className: "bs-schedule-header" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-schedule-date", "aria-hidden": "true" }, /* @__PURE__ */ React4.createElement("span", null, new Date(schedule.startsAt).toLocaleDateString([], { month: "short" })), /* @__PURE__ */ React4.createElement("strong", null, new Date(schedule.startsAt).getDate())), /* @__PURE__ */ React4.createElement("label", { className: "bs-schedule-name" }, /* @__PURE__ */ React4.createElement(TextInput2, { value: schedule.name, placeholder: "Schedule name", onChange: (name) => updateSchedule(schedule.id, { name }) }), /* @__PURE__ */ React4.createElement("span", null, scheduleRepeatLabel(schedule))), /* @__PURE__ */ React4.createElement("div", { className: "bs-schedule-actions" }, /* @__PURE__ */ React4.createElement(FormSwitch, { title: "Enabled", value: schedule.enabled, onChange: (enabled) => updateSchedule(schedule.id, { enabled }), hideBorder: true }), /* @__PURE__ */ React4.createElement("button", { type: "button", className: "bs-schedule-delete", "aria-label": `Delete ${schedule.name}`, onClick: () => commitSchedules(schedules.filter((item) => item.id !== schedule.id)) }, "\xD7"), /* @__PURE__ */ React4.createElement(
+    return /* @__PURE__ */ React4.createElement("article", { className: `bs-schedule-card bs-presence-${startPresence ?? "online"}${schedule.enabled ? "" : " bs-schedule-disabled"}${collapsed ? " bs-schedule-collapsed" : ""}`, key: schedule.id }, /* @__PURE__ */ React4.createElement("header", { className: "bs-schedule-header" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-schedule-date", "aria-hidden": "true" }, /* @__PURE__ */ React4.createElement("span", null, new Date(schedule.startsAt).toLocaleDateString([], { month: "short" })), /* @__PURE__ */ React4.createElement("strong", null, new Date(schedule.startsAt).getDate())), /* @__PURE__ */ React4.createElement("label", { className: "bs-schedule-name" }, /* @__PURE__ */ React4.createElement(TextInput, { value: schedule.name, placeholder: "Schedule name", onChange: (name) => updateSchedule(schedule.id, { name }) }), /* @__PURE__ */ React4.createElement("span", null, scheduleRepeatLabel(schedule))), /* @__PURE__ */ React4.createElement("div", { className: "bs-schedule-actions" }, /* @__PURE__ */ React4.createElement(FormSwitch, { title: "Enabled", value: schedule.enabled, onChange: (enabled) => updateSchedule(schedule.id, { enabled }), hideBorder: true }), /* @__PURE__ */ React4.createElement("button", { type: "button", className: "bs-schedule-delete", "aria-label": `Delete ${schedule.name}`, onClick: () => commitSchedules(schedules.filter((item) => item.id !== schedule.id)) }, "\xD7"), /* @__PURE__ */ React4.createElement(
       "button",
       {
         type: "button",
@@ -6271,7 +6284,7 @@ function SettingsComponent() {
         repeat: nextRepeat,
         repeatDays: nextRepeat === "custom" && !schedule.repeatDays?.length ? [new Date(schedule.startsAt).getDay()] : schedule.repeatDays
       });
-    }, serialize: (value) => value, isSelected: (value) => value === schedule.repeat, closeOnSelect: true }))), (schedule.startBehavior ?? "preset") === "preset" ? /* @__PURE__ */ React4.createElement("div", { className: "bs-start-detail" }, /* @__PURE__ */ React4.createElement("span", null, "Activate preset"), /* @__PURE__ */ React4.createElement(Select, { options: presets.map((preset) => ({ label: preset.name || "Untitled preset", value: preset.id })), select: (presetId) => updateSchedule(schedule.id, { presetId }), serialize: (value) => value, isSelected: (value) => value === schedule.presetId, closeOnSelect: true })) : /* @__PURE__ */ React4.createElement("div", { className: "bs-custom-start-grid" }, /* @__PURE__ */ React4.createElement("label", { className: "bs-field" }, /* @__PURE__ */ React4.createElement("span", null, "Custom status when it starts"), /* @__PURE__ */ React4.createElement(TextInput2, { value: schedule.startText ?? "", placeholder: "What should Discord show?", onChange: (startText) => updateSchedule(schedule.id, { startText }) })), /* @__PURE__ */ React4.createElement("div", { className: "bs-field" }, /* @__PURE__ */ React4.createElement("span", null, "Presence when it starts"), /* @__PURE__ */ React4.createElement(StatusSwitcher, { presence: schedule.startPresence ?? "online", onPresenceChange: (startPresence2) => updateSchedule(schedule.id, { startPresence: startPresence2 }) }))), schedule.repeat === "custom" && /* @__PURE__ */ React4.createElement("div", { className: "bs-weekday-picker", "aria-label": "Repeat on specific days" }, /* @__PURE__ */ React4.createElement("span", null, "Repeat on"), /* @__PURE__ */ React4.createElement("div", null, WEEKDAY_OPTIONS.map((day) => {
+    }, serialize: (value) => value, isSelected: (value) => value === schedule.repeat, closeOnSelect: true }))), (schedule.startBehavior ?? "preset") === "preset" ? /* @__PURE__ */ React4.createElement("div", { className: "bs-start-detail" }, /* @__PURE__ */ React4.createElement("span", null, "Activate preset"), /* @__PURE__ */ React4.createElement(Select, { options: presets.map((preset) => ({ label: preset.name || "Untitled preset", value: preset.id })), select: (presetId) => updateSchedule(schedule.id, { presetId }), serialize: (value) => value, isSelected: (value) => value === schedule.presetId, closeOnSelect: true })) : /* @__PURE__ */ React4.createElement("div", { className: "bs-custom-start-grid" }, /* @__PURE__ */ React4.createElement("label", { className: "bs-field" }, /* @__PURE__ */ React4.createElement("span", null, "Custom status when it starts"), /* @__PURE__ */ React4.createElement(TextInput, { value: schedule.startText ?? "", placeholder: "What should Discord show?", onChange: (startText) => updateSchedule(schedule.id, { startText }) })), /* @__PURE__ */ React4.createElement("div", { className: "bs-field" }, /* @__PURE__ */ React4.createElement("span", null, "Presence when it starts"), /* @__PURE__ */ React4.createElement(StatusSwitcher, { presence: schedule.startPresence ?? "online", onPresenceChange: (startPresence2) => updateSchedule(schedule.id, { startPresence: startPresence2 }) }))), schedule.repeat === "custom" && /* @__PURE__ */ React4.createElement("div", { className: "bs-weekday-picker", "aria-label": "Repeat on specific days" }, /* @__PURE__ */ React4.createElement("span", null, "Repeat on"), /* @__PURE__ */ React4.createElement("div", null, WEEKDAY_OPTIONS.map((day) => {
       const selected = (schedule.repeatDays ?? []).includes(day.value);
       return /* @__PURE__ */ React4.createElement(
         "button",
@@ -6284,7 +6297,7 @@ function SettingsComponent() {
         },
         day.label
       );
-    }))))), /* @__PURE__ */ React4.createElement("div", { className: "bs-timeline-rail" }, /* @__PURE__ */ React4.createElement("span", null, schedule.endsAt ? `${Math.max(1, Math.round((schedule.endsAt - schedule.startsAt) / 6e4))} min` : "no end")), /* @__PURE__ */ React4.createElement("section", { className: "bs-timepoint bs-timepoint-end" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-timepoint-marker" }, /* @__PURE__ */ React4.createElement("i", null)), /* @__PURE__ */ React4.createElement("div", { className: "bs-timepoint-content" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-timepoint-title" }, /* @__PURE__ */ React4.createElement("span", null, "END"), /* @__PURE__ */ React4.createElement("div", { className: "bs-end-time-heading" }, schedule.endsAt && /* @__PURE__ */ React4.createElement("strong", null, "Ends at ", timeInputValue(schedule.endsAt)), /* @__PURE__ */ React4.createElement(FormSwitch, { title: "Use end time", value: Boolean(schedule.endsAt), onChange: (enabled) => updateSchedule(schedule.id, enabled ? { endsAt: endTime, endBehavior: schedule.endBehavior === "keep" ? "restore" : schedule.endBehavior } : { endsAt: void 0, endBehavior: "keep" }), hideBorder: true }))), schedule.endsAt ? /* @__PURE__ */ React4.createElement(React4.Fragment, null, /* @__PURE__ */ React4.createElement("div", { className: "bs-schedule-fields" }, /* @__PURE__ */ React4.createElement("label", { className: "bs-compact-field" }, /* @__PURE__ */ React4.createElement("span", null, "Date"), /* @__PURE__ */ React4.createElement("input", { type: "date", value: dateInputValue(schedule.endsAt), min: dateInputValue(schedule.startsAt), onChange: (event) => updateSchedule(schedule.id, { endsAt: Math.max(schedule.startsAt + 6e4, updateLocalDateTime(schedule.endsAt, event.currentTarget.value)) }) })), /* @__PURE__ */ React4.createElement("label", { className: "bs-compact-field" }, /* @__PURE__ */ React4.createElement("span", null, "Time"), /* @__PURE__ */ React4.createElement("input", { type: "time", value: timeInputValue(schedule.endsAt), onChange: (event) => updateSchedule(schedule.id, { endsAt: Math.max(schedule.startsAt + 6e4, updateLocalDateTime(schedule.endsAt, void 0, event.currentTarget.value)) }) })), /* @__PURE__ */ React4.createElement("div", { className: "bs-compact-field bs-compact-select bs-end-action-field" }, /* @__PURE__ */ React4.createElement("span", null, "When it ends"), /* @__PURE__ */ React4.createElement(Select, { options: SCHEDULE_END_OPTIONS, select: (endBehavior) => updateSchedule(schedule.id, { endBehavior }), serialize: (value) => value, isSelected: (value) => value === schedule.endBehavior, closeOnSelect: true }))), schedule.endBehavior === "preset" && /* @__PURE__ */ React4.createElement("div", { className: "bs-end-detail" }, /* @__PURE__ */ React4.createElement("span", null, "Then activate"), /* @__PURE__ */ React4.createElement(Select, { options: presets.filter((preset) => preset.id !== schedule.presetId).map((preset) => ({ label: preset.name || "Untitled preset", value: preset.id })), select: (endPresetId) => updateSchedule(schedule.id, { endPresetId }), serialize: (value) => value, isSelected: (value) => value === schedule.endPresetId, closeOnSelect: true })), schedule.endBehavior === "custom" && /* @__PURE__ */ React4.createElement("div", { className: "bs-custom-end-grid" }, /* @__PURE__ */ React4.createElement("label", { className: "bs-field" }, /* @__PURE__ */ React4.createElement("span", null, "Custom status after end"), /* @__PURE__ */ React4.createElement(TextInput2, { value: schedule.endText ?? "", placeholder: "What should Discord show?", onChange: (endText) => updateSchedule(schedule.id, { endText }) })), /* @__PURE__ */ React4.createElement("div", { className: "bs-field" }, /* @__PURE__ */ React4.createElement("span", null, "Presence after end"), /* @__PURE__ */ React4.createElement(StatusSwitcher, { presence: schedule.endPresence ?? "online", onPresenceChange: (endPresence) => updateSchedule(schedule.id, { endPresence }) })))) : /* @__PURE__ */ React4.createElement("div", { className: "bs-no-end-copy" }, "The scheduled preset stays active until something else changes it.")))));
+    }))))), /* @__PURE__ */ React4.createElement("div", { className: "bs-timeline-rail" }, /* @__PURE__ */ React4.createElement("span", null, schedule.endsAt ? `${Math.max(1, Math.round((schedule.endsAt - schedule.startsAt) / 6e4))} min` : "no end")), /* @__PURE__ */ React4.createElement("section", { className: "bs-timepoint bs-timepoint-end" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-timepoint-marker" }, /* @__PURE__ */ React4.createElement("i", null)), /* @__PURE__ */ React4.createElement("div", { className: "bs-timepoint-content" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-timepoint-title" }, /* @__PURE__ */ React4.createElement("span", null, "END"), /* @__PURE__ */ React4.createElement("div", { className: "bs-end-time-heading" }, schedule.endsAt && /* @__PURE__ */ React4.createElement("strong", null, "Ends at ", timeInputValue(schedule.endsAt)), /* @__PURE__ */ React4.createElement(FormSwitch, { title: "Use end time", value: Boolean(schedule.endsAt), onChange: (enabled) => updateSchedule(schedule.id, enabled ? { endsAt: endTime, endBehavior: schedule.endBehavior === "keep" ? "restore" : schedule.endBehavior } : { endsAt: void 0, endBehavior: "keep" }), hideBorder: true }))), schedule.endsAt ? /* @__PURE__ */ React4.createElement(React4.Fragment, null, /* @__PURE__ */ React4.createElement("div", { className: "bs-schedule-fields" }, /* @__PURE__ */ React4.createElement("label", { className: "bs-compact-field" }, /* @__PURE__ */ React4.createElement("span", null, "Date"), /* @__PURE__ */ React4.createElement("input", { type: "date", value: dateInputValue(schedule.endsAt), min: dateInputValue(schedule.startsAt), onChange: (event) => updateSchedule(schedule.id, { endsAt: Math.max(schedule.startsAt + 6e4, updateLocalDateTime(schedule.endsAt, event.currentTarget.value)) }) })), /* @__PURE__ */ React4.createElement("label", { className: "bs-compact-field" }, /* @__PURE__ */ React4.createElement("span", null, "Time"), /* @__PURE__ */ React4.createElement("input", { type: "time", value: timeInputValue(schedule.endsAt), onChange: (event) => updateSchedule(schedule.id, { endsAt: Math.max(schedule.startsAt + 6e4, updateLocalDateTime(schedule.endsAt, void 0, event.currentTarget.value)) }) })), /* @__PURE__ */ React4.createElement("div", { className: "bs-compact-field bs-compact-select bs-end-action-field" }, /* @__PURE__ */ React4.createElement("span", null, "When it ends"), /* @__PURE__ */ React4.createElement(Select, { options: SCHEDULE_END_OPTIONS, select: (endBehavior) => updateSchedule(schedule.id, { endBehavior }), serialize: (value) => value, isSelected: (value) => value === schedule.endBehavior, closeOnSelect: true }))), schedule.endBehavior === "preset" && /* @__PURE__ */ React4.createElement("div", { className: "bs-end-detail" }, /* @__PURE__ */ React4.createElement("span", null, "Then activate"), /* @__PURE__ */ React4.createElement(Select, { options: presets.filter((preset) => preset.id !== schedule.presetId).map((preset) => ({ label: preset.name || "Untitled preset", value: preset.id })), select: (endPresetId) => updateSchedule(schedule.id, { endPresetId }), serialize: (value) => value, isSelected: (value) => value === schedule.endPresetId, closeOnSelect: true })), schedule.endBehavior === "custom" && /* @__PURE__ */ React4.createElement("div", { className: "bs-custom-end-grid" }, /* @__PURE__ */ React4.createElement("label", { className: "bs-field" }, /* @__PURE__ */ React4.createElement("span", null, "Custom status after end"), /* @__PURE__ */ React4.createElement(TextInput, { value: schedule.endText ?? "", placeholder: "What should Discord show?", onChange: (endText) => updateSchedule(schedule.id, { endText }) })), /* @__PURE__ */ React4.createElement("div", { className: "bs-field" }, /* @__PURE__ */ React4.createElement("span", null, "Presence after end"), /* @__PURE__ */ React4.createElement(StatusSwitcher, { presence: schedule.endPresence ?? "online", onPresenceChange: (endPresence) => updateSchedule(schedule.id, { endPresence }) })))) : /* @__PURE__ */ React4.createElement("div", { className: "bs-no-end-copy" }, "The scheduled preset stays active until something else changes it.")))));
   }))), /* @__PURE__ */ React4.createElement("div", { className: "bs-toolbar" }, /* @__PURE__ */ React4.createElement("div", null, /* @__PURE__ */ React4.createElement(Forms.FormTitle, { tag: "h2" }, "Status presets"), /* @__PURE__ */ React4.createElement("div", { className: "bs-stats" }, /* @__PURE__ */ React4.createElement("span", null, /* @__PURE__ */ React4.createElement("strong", null, presets.length), " total"), /* @__PURE__ */ React4.createElement("span", null, /* @__PURE__ */ React4.createElement("strong", null, enabledCount), " active"), /* @__PURE__ */ React4.createElement("span", null, /* @__PURE__ */ React4.createElement("strong", null, memoryCount), " memory"), /* @__PURE__ */ React4.createElement(
     "span",
     {
@@ -6293,7 +6306,7 @@ function SettingsComponent() {
     /* @__PURE__ */ React4.createElement("i", null),
     activePreset ? /* @__PURE__ */ React4.createElement(React4.Fragment, null, "Current:", " ", /* @__PURE__ */ React4.createElement("strong", null, activePreset.name || "Untitled preset")) : "No active preset"
   ))), /* @__PURE__ */ React4.createElement("div", { className: "bs-toolbar-actions" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-search" }, /* @__PURE__ */ React4.createElement("span", { "aria-hidden": "true" }, "\u2315"), /* @__PURE__ */ React4.createElement(
-    TextInput2,
+    TextInput,
     {
       value: searchQuery,
       placeholder: "Search presets",
@@ -6308,7 +6321,7 @@ function SettingsComponent() {
     },
     /* @__PURE__ */ React4.createElement(ChevronIcon2, { collapsed: !allCollapsed }),
     allCollapsed ? "Expand all" : "Collapse all"
-  ), /* @__PURE__ */ React4.createElement(Button2, { onClick: addPreset }, "+ Add preset"))), presets.length === 0 ? /* @__PURE__ */ React4.createElement("div", { className: "bs-empty" }, /* @__PURE__ */ React4.createElement(Forms.FormTitle, null, "No presets yet"), /* @__PURE__ */ React4.createElement(Forms.FormText, null, "Create your first status preset to get started."), /* @__PURE__ */ React4.createElement(Button2, { onClick: addPreset }, "Create preset")) : visiblePresets.length === 0 ? /* @__PURE__ */ React4.createElement("div", { className: "bs-empty" }, /* @__PURE__ */ React4.createElement(Forms.FormTitle, null, "No matching presets"), /* @__PURE__ */ React4.createElement(Forms.FormText, null, "Try a different name, status, presence, mode, or hotkey."), /* @__PURE__ */ React4.createElement(
+  ), /* @__PURE__ */ React4.createElement(Button, { onClick: addPreset }, "+ Add preset"))), presets.length === 0 ? /* @__PURE__ */ React4.createElement("div", { className: "bs-empty" }, /* @__PURE__ */ React4.createElement(Forms.FormTitle, null, "No presets yet"), /* @__PURE__ */ React4.createElement(Forms.FormText, null, "Create your first status preset to get started."), /* @__PURE__ */ React4.createElement(Button, { onClick: addPreset }, "Create preset")) : visiblePresets.length === 0 ? /* @__PURE__ */ React4.createElement("div", { className: "bs-empty" }, /* @__PURE__ */ React4.createElement(Forms.FormTitle, null, "No matching presets"), /* @__PURE__ */ React4.createElement(Forms.FormText, null, "Try a different name, status, presence, mode, or hotkey."), /* @__PURE__ */ React4.createElement(
     "button",
     {
       type: "button",
@@ -6362,7 +6375,7 @@ function SettingsComponent() {
         /* @__PURE__ */ React4.createElement(ChevronIcon2, { collapsed })
       ))),
       !collapsed && /* @__PURE__ */ React4.createElement("div", { id: contentId, className: "bs-card-content" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-fields" }, /* @__PURE__ */ React4.createElement("label", { className: "bs-field" }, /* @__PURE__ */ React4.createElement("span", null, "Preset name"), /* @__PURE__ */ React4.createElement(
-        TextInput2,
+        TextInput,
         {
           value: preset.name,
           placeholder: "Work, gaming, sleeping\u2026",
@@ -6386,7 +6399,7 @@ function SettingsComponent() {
           closeOnSelect: true
         }
       )), /* @__PURE__ */ React4.createElement("label", { className: "bs-field bs-field-status" }, /* @__PURE__ */ React4.createElement("span", null, preset.type === "memory" ? "Remembered status" : "Custom status"), /* @__PURE__ */ React4.createElement(
-        TextInput2,
+        TextInput,
         {
           value: preset.type === "memory" ? preset.rememberedText ?? preset.text : preset.text,
           placeholder: "What are you doing?",
@@ -6401,14 +6414,14 @@ function SettingsComponent() {
           className: `bs-hotkey${recordingId === preset.id ? " bs-hotkey-recording" : ""}`
         },
         /* @__PURE__ */ React4.createElement(
-          TextInput2,
+          TextInput,
           {
             value: recordingId === preset.id ? "Press a shortcut\u2026" : preset.hotkey || "Not assigned",
             editable: false
           }
         ),
         /* @__PURE__ */ React4.createElement(
-          Button2,
+          Button,
           {
             onClick: () => setRecordingId(
               recordingId === preset.id ? null : preset.id
@@ -6417,9 +6430,9 @@ function SettingsComponent() {
           recordingId === preset.id ? "Cancel" : "Record"
         )
       ))), /* @__PURE__ */ React4.createElement("div", { className: "bs-card-footer" }, /* @__PURE__ */ React4.createElement(Forms.FormText, null, preset.type === "memory" ? "Remembers the last status used while active." : "Always applies the status saved above."), /* @__PURE__ */ React4.createElement(
-        Button2,
+        Button,
         {
-          color: Button2.Colors.RED,
+          color: Button.Colors.RED,
           onClick: () => deletePreset(preset.id)
         },
         "Delete"
@@ -6660,7 +6673,7 @@ function StatusHistory({ textarea }) {
       setPage(pageCount - 1);
   }, [page, pageCount]);
   return /* @__PURE__ */ React4.createElement("div", { className: "bs-history-card" }, /* @__PURE__ */ React4.createElement("div", { className: "bs-history-heading" }, /* @__PURE__ */ React4.createElement("div", null, /* @__PURE__ */ React4.createElement("h2", null, "Saved statuses"), /* @__PURE__ */ React4.createElement("p", null, statuses.length.toLocaleString(), " remembered \xB7 up to 1,000")), statuses.length > 0 && /* @__PURE__ */ React4.createElement("span", { className: "bs-history-count", "aria-label": `${filtered.length} matching statuses` }, filtered.length)), statuses.length > 0 && /* @__PURE__ */ React4.createElement("div", { className: "bs-history-search" }, /* @__PURE__ */ React4.createElement(
-    TextInput2,
+    TextInput,
     {
       value: query,
       placeholder: "Search saved statuses",
@@ -7541,7 +7554,7 @@ var Bd5 = G5.BdApi;
 if (!Bd5) throw new Error("BetterStatus requires BetterDiscord/BdApi.");
 var api5 = new Bd5("BetterStatus");
 var REPOSITORY2 = "Jacksonnn911/BetterStatus";
-var COMMIT2 = true ? "ccfc7fef1c1599c5a238826cc5c8ee06e2856a8f" : "development";
+var COMMIT2 = true ? "920df2f081b5e68568f378c31c5dfa89818464df" : "development";
 var BUILD_CHANNEL2 = true ? "prod" : "betterdiscord-port";
 var pendingRestartVersion2;
 var updatePromise2;
