@@ -5,7 +5,7 @@
  * @version 1.0.0-bd
  * @website https://github.com/Jacksonnn911/BetterStatus
  * @source https://github.com/Jacksonnn911/BetterStatus
- * @build 1f822f19c31d587657d0ab3d6ecf0b3f8b663b15
+ * @build 5cb4dfc066c1ae17e7fdca8e3d7da3562c238d62
  * @channel dev
  */
 globalThis.__BETTERSTATUS_COMPAT_CSS__ = ".vc-btn-base {\n  position: relative;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  max-width: 100%;\n  border: 1px solid transparent;\n  border-radius: var(--radius-sm, 8px);\n  font-family: var(--font-primary);\n  text-align: start;\n  transition: 50ms ease-in;\n  transition-property: background-color, color, border-color, opacity;\n  background: var(--control-secondary-background-default);\n  color: var(--text-default);\n  white-space: nowrap;\n  cursor: pointer;\n}\n.vc-btn-base:hover { transition: .15s ease-out; }\n.vc-btn-base:disabled { opacity: .5; pointer-events: none; cursor: not-allowed; }\n.vc-btn-base:focus-visible { box-shadow: 0 0 0 4px var(--__adaptive-focus-ring-color, var(--border-focus, #00b0f4)); }\n.vc-btn-min,.vc-btn-xs { padding: 3px 7px; min-height: 22px; min-width: unset; font-size: 12px; font-weight: 400; line-height: 1.3333; }\n.vc-btn-xs { min-width: 60px; }\n.vc-btn-small { padding: 3px 11px; min-height: 30px; min-width: 60px; font-size: 14px; font-weight: 500; line-height: 1.2857; }\n.vc-btn-medium { padding: 7px 15px; min-height: 38px; min-width: 100px; font-size: 16px; font-weight: 500; line-height: 1.25; }\n.vc-btn-iconOnly { width: 32px; height: 32px; min-width: unset; min-height: unset; padding: 0; background-color: transparent; border-color: transparent; }\n.vc-btn-iconOnly:hover { background-color: var(--control-icon-only-background-hover); border-color: var(--control-icon-only-border-hover); }\n.vc-btn-primary { background-color: var(--control-primary-background-default); border-color: var(--control-primary-border-default); color: var(--control-primary-text-default); }\n.vc-btn-primary:hover { background-color: var(--control-primary-background-hover); border-color: var(--control-primary-border-hover); color: var(--control-primary-text-hover); }\n.vc-btn-secondary,.vc-btn-link { background-color: var(--control-secondary-background-default); border-color: var(--control-secondary-border-default); color: var(--control-secondary-text-default); }\n.vc-btn-secondary:hover,.vc-btn-link:hover { background-color: var(--control-secondary-background-hover); border-color: var(--control-secondary-border-hover); color: var(--control-secondary-text-hover); }\n.vc-btn-dangerPrimary { background-color: var(--control-critical-primary-background-default); border-color: var(--control-critical-primary-border-default); color: var(--control-critical-primary-text-default); }\n.vc-btn-dangerPrimary:hover { background-color: var(--control-critical-primary-background-hover); border-color: var(--control-critical-primary-border-hover); color: var(--control-critical-primary-text-hover); }\n.vc-btn-dangerSecondary { background-color: var(--control-critical-secondary-background-default); border-color: var(--control-critical-secondary-border-default); color: var(--control-critical-secondary-text-default); }\n.vc-btn-overlayPrimary { background-color: var(--control-overlay-primary-background-default); border-color: var(--control-overlay-primary-border-default); color: var(--control-overlay-primary-text-default); }\n.vc-btn-positive { background-color: var(--control-connected-background-default, var(--green-430)); color: var(--white); }\n.vc-btn-none { background-color: transparent; border-color: transparent; color: var(--control-icon-only-icon-default); }\n.vc-text-btn-base { display: inline-flex; justify-content: center; align-items: center; gap: var(--space-4, 4px); background: initial; color: var(--text-default); font-size: medium; font-weight: 400; margin: 0; padding: 0; text-align: start; text-decoration: none; max-width: 100%; white-space: nowrap; border: 0; cursor: pointer; }\n.vc-text-btn-base:hover { text-decoration: underline; }\n.vc-text-btn-primary { color: var(--text-brand); }\n.vc-text-btn-secondary { color: var(--text-strong, var(--text-default)); }\n.vc-text-btn-danger { color: var(--text-feedback-critical); }\n.vc-text-btn-link { color: var(--text-link); }\n\n.vc-switch-container { background: var(--primary-400); border: 1px solid transparent; border-radius: 16px; box-sizing: border-box; cursor: pointer; height: 28px; position: relative; width: 44px; }\n.vc-switch-checked { background: var(--brand-500); border-color: var(--control-primary-border-default); }\n.vc-switch-disabled { cursor: not-allowed; opacity: .3; }\n.vc-switch-focusVisible { box-shadow: 0 0 0 4px var(--__adaptive-focus-ring-color, var(--border-focus, #00b0f4)); }\n.vc-switch-slider { display: block; height: 20px; left: 0; margin: 3px; position: absolute; width: 28px; transition: 100ms transform ease-in-out; overflow: visible; }\n.vc-switch-input { border-radius: 14px; cursor: pointer; height: 100%; left: 0; margin: 0; opacity: 0; position: absolute; top: 0; width: 100%; }\n.vc-switch-input:disabled { pointer-events: none; cursor: not-allowed; }\n\n.vc-form-switch-wrapper { display: block; margin-bottom: 20px; cursor: pointer; }\n.vc-form-switch { display: flex; width: 100%; align-items: center; }\n.vc-form-switch > :last-child { margin-left: auto; }\n.vc-form-switch-disabled { opacity: .5; pointer-events: none; cursor: not-allowed; }\n.vc-form-switch-text { display: flex; flex-direction: column; justify-content: center; gap: 8px; min-width: 0; padding-right: 16px; }\n.vc-form-switch-title { color: var(--text-default); font-size: 16px; font-weight: 500; line-height: 20px; }\n.vc-form-switch-description { color: var(--text-subtle); font-size: 14px; line-height: 18px; }\n.vc-form-switch-border { margin-top: 20px; height: 1px; background: var(--border-subtle, var(--background-modifier-accent)); }\n\n.vc-form-title { margin: 0 0 8px; color: var(--header-primary, var(--text-default)); font-size: 16px; font-weight: 600; line-height: 20px; }\n.vc-form-text { color: var(--text-normal, var(--text-default)); font-size: 14px; line-height: 20px; }\n.bs-bd-text-input,.bs-bd-select { width: 100%; box-sizing: border-box; border: 1px solid var(--input-border-default, var(--border-subtle)); border-radius: var(--radius-sm, 8px); background: var(--input-background-default, var(--background-tertiary)); color: var(--text-default); padding: 8px 10px; font-family: var(--font-primary); }\n.bs-bd-fallback-modal { min-width: min(520px, 90vw); color: var(--text-default); }\n.bs-bd-modal-error { color: var(--text-feedback-critical, var(--text-danger)); margin-top: 10px; }\n.bs-bd-modal-actions { display: flex; gap: 8px; margin-top: 16px; }\n.bs-bd-settings-host { width: 100%; min-width: 0; }\n";
@@ -3788,7 +3788,7 @@ var G = globalThis;
 var Bd = G.BdApi;
 var api = new Bd("BetterStatus");
 var REPOSITORY = "Jacksonnn911/BetterStatus";
-var COMMIT = true ? "1f822f19c31d587657d0ab3d6ecf0b3f8b663b15" : "development";
+var COMMIT = true ? "5cb4dfc066c1ae17e7fdca8e3d7da3562c238d62" : "development";
 var BUILD_CHANNEL = true ? "dev" : "betterdiscord-port";
 var AAD = new TextEncoder().encode("BetterStatus encrypted sync document v1");
 var VAULT_AAD = new TextEncoder().encode("BetterStatus BetterDiscord secure sessions v1");
@@ -4032,8 +4032,24 @@ function fallbackWindowsKey(name) {
   if (fn) return 112 + Number(fn[1]) - 1;
   return void 0;
 }
+function currentPlatform() {
+  const nodePlatform = G.process?.platform || G.window?.process?.platform;
+  if (nodePlatform === "win32" || nodePlatform === "linux" || nodePlatform === "darwin") return nodePlatform;
+  const browserPlatform = String(G.navigator?.userAgentData?.platform || G.navigator?.platform || G.navigator?.userAgent || "").toLowerCase();
+  if (browserPlatform.includes("win")) return "win32";
+  if (browserPlatform.includes("mac")) return "darwin";
+  if (browserPlatform.includes("linux")) return "linux";
+  return void 0;
+}
 function discordKeyMap() {
   try {
+    const platform = currentPlatform();
+    const expectedCtrl = platform === "win32" ? 162 : platform === "linux" ? 37 : platform === "darwin" ? 224 : void 0;
+    if (expectedCtrl !== void 0) {
+      const exact = Bd.Webpack.getModule((value) => value && typeof value === "object" && value.ctrl === expectedCtrl, { searchExports: true });
+      if (exact) return exact;
+      if (platform === "win32") return void 0;
+    }
     return Bd.Webpack.getModule((value) => value && typeof value === "object" && typeof value.ctrl === "number" && typeof value.shift === "number" && typeof value.alt === "number", { searchExports: true });
   } catch {
     return void 0;
@@ -4061,7 +4077,8 @@ function keyCode(name, keyMap) {
   }
   if (typeof keyMap?.[lower] === "number") return keyMap[lower];
   if (typeof keyMap?.[name] === "number") return keyMap[name];
-  return fallbackWindowsKey(name);
+  const platform = currentPlatform();
+  return platform === void 0 || platform === "win32" ? fallbackWindowsKey(name) : void 0;
 }
 function discordUtils() {
   return G.DiscordNative?.nativeModules?.requireModule?.("discord_utils");
@@ -5219,7 +5236,7 @@ function showUpdateFailureNotification(failure, channel = getUpdateChannel()) {
 }
 var MAX_BACKUP_BYTES = 2 * 1024 * 1024;
 var PRESENCE_VALUES = /* @__PURE__ */ new Set(["online", "idle", "dnd", "invisible"]);
-function currentPlatform() {
+function currentPlatform2() {
   const platform = navigator.platform.toLowerCase();
   if (platform.includes("mac")) return "macos";
   if (platform.includes("win")) return "windows";
@@ -5851,7 +5868,7 @@ function SettingsComponent() {
       format: "betterstatus-backup",
       version: 1,
       exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
-      platform: currentPlatform(),
+      platform: currentPlatform2(),
       settings: {
         presets: getPresets(),
         savedStatuses: getSavedStatuses(),
@@ -5874,7 +5891,7 @@ function SettingsComponent() {
     setBackupStatus(`Exported ${backup.settings.presets.length} presets, ${backup.settings.schedules.length} schedules, and ${backup.settings.savedStatuses.length} saved statuses.`);
   }
   async function applyBackup(backup) {
-    const convertMacHotkeys = backup.platform === "macos" && currentPlatform() === "windows";
+    const convertMacHotkeys = backup.platform === "macos" && currentPlatform2() === "windows";
     const importedPresets = backup.settings.presets.map((preset) => ({
       ...preset,
       hotkey: convertMacHotkeys ? preset.hotkey.replace(/(^|\+)Command(?=\+|$)/g, "$1Control") : preset.hotkey
@@ -5900,7 +5917,7 @@ function SettingsComponent() {
     showNotification({ title: "BetterStatus backup imported", body: message });
   }
   function confirmBackupImport(backup) {
-    const convertsHotkeys = backup.platform === "macos" && currentPlatform() === "windows";
+    const convertsHotkeys = backup.platform === "macos" && currentPlatform2() === "windows";
     openModal((modalProps) => /* @__PURE__ */ React4.createElement(
       ConfirmModal,
       {
@@ -7554,7 +7571,7 @@ var Bd5 = G5.BdApi;
 if (!Bd5) throw new Error("BetterStatus requires BetterDiscord/BdApi.");
 var api5 = new Bd5("BetterStatus");
 var REPOSITORY2 = "Jacksonnn911/BetterStatus";
-var COMMIT2 = true ? "1f822f19c31d587657d0ab3d6ecf0b3f8b663b15" : "development";
+var COMMIT2 = true ? "5cb4dfc066c1ae17e7fdca8e3d7da3562c238d62" : "development";
 var BUILD_CHANNEL2 = true ? "dev" : "betterdiscord-port";
 var pendingRestartVersion2;
 var updatePromise2;
