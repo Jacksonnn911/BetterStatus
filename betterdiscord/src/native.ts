@@ -243,8 +243,28 @@ function fallbackWindowsKey(name: string) {
   return undefined;
 }
 
+function currentPlatform() {
+  const nodePlatform = G.process?.platform || G.window?.process?.platform;
+  if (nodePlatform === "win32" || nodePlatform === "linux" || nodePlatform === "darwin") return nodePlatform;
+
+  const browserPlatform = String(G.navigator?.userAgentData?.platform || G.navigator?.platform || G.navigator?.userAgent || "").toLowerCase();
+  if (browserPlatform.includes("win")) return "win32";
+  if (browserPlatform.includes("mac")) return "darwin";
+  if (browserPlatform.includes("linux")) return "linux";
+  return undefined;
+}
+
 function discordKeyMap() {
   try {
+    const platform = currentPlatform();
+    const expectedCtrl = platform === "win32" ? 0xA2 : platform === "linux" ? 0x25 : platform === "darwin" ? 0xE0 : undefined;
+
+    if (expectedCtrl !== undefined) {
+      const exact = Bd.Webpack.getModule((value: any) => value && typeof value === "object" && value.ctrl === expectedCtrl, { searchExports: true });
+      if (exact) return exact;
+      if (platform === "win32") return undefined;
+    }
+
     return Bd.Webpack.getModule((value: any) => value && typeof value === "object" && typeof value.ctrl === "number" && typeof value.shift === "number" && typeof value.alt === "number", { searchExports: true });
   } catch { return undefined; }
 }
@@ -262,7 +282,8 @@ function keyCode(name: string, keyMap: any) {
   }
   if (typeof keyMap?.[lower] === "number") return keyMap[lower];
   if (typeof keyMap?.[name] === "number") return keyMap[name];
-  return fallbackWindowsKey(name);
+  const platform = currentPlatform();
+  return platform === undefined || platform === "win32" ? fallbackWindowsKey(name) : undefined;
 }
 
 function discordUtils() {
