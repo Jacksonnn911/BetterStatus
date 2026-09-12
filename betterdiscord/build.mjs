@@ -6,21 +6,24 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
 const compat = path.join(here, "src", "compat.tsx");
+const settings = path.join(here, "src", "settings.ts");
+const ui = path.join(here, "src", "ui.tsx");
 const entry = path.join(here, "src", "entry.tsx");
 const outfile = path.join(here, "BetterStatus.plugin.js");
 const commit = process.env.GITHUB_SHA || process.env.BETTERSTATUS_COMMIT || "development";
 const channel = process.env.GITHUB_REF_NAME || process.env.BETTERSTATUS_CHANNEL || "betterdiscord-port";
+const compatCss = await readFile(path.join(here, "vencord-ui.css"), "utf8");
 
 const aliases = {
   "@api/Notifications": compat,
-  "@api/Settings": compat,
+  "@api/Settings": settings,
   "@api/UserSettings": compat,
-  "@components/FormSwitch": compat,
+  "@components/FormSwitch": ui,
   "@components/Link": compat,
   "@components/settings/tabs": compat,
   "@utils/native": compat,
   "@utils/types": compat,
-  "@webpack/common": compat,
+  "@webpack/common": ui,
   "@vencord/discord-types": compat
 };
 
@@ -37,16 +40,18 @@ const cssPlugin = {
   }
 };
 
-const banner = `/**
+const metadata = `/**
  * @name BetterStatus
  * @author Jacksonnn911 & qtmisaliba
- * @description The complete BetterStatus presence workspace, ported 1:1 from Vencord to BetterDiscord.
+ * @description The complete BetterStatus presence workspace for BetterDiscord.
  * @version 1.0.0-bd
  * @website https://github.com/Jacksonnn911/BetterStatus
  * @source https://github.com/Jacksonnn911/BetterStatus
  * @build ${commit}
  * @channel ${channel}
  */`;
+
+const banner = `${metadata}\nglobalThis.__BETTERSTATUS_COMPAT_CSS__ = ${JSON.stringify(compatCss)};`;
 
 await esbuild.build({
   entryPoints: [entry],
