@@ -29,8 +29,6 @@ BetterStatus has two maintained editions from the same feature source. The norma
 
 ## BetterDiscord installation
 
-No manual downloading or copying into `%appdata%` is required.
-
 ### Windows
 
 Open **PowerShell**, paste this command, and press Enter:
