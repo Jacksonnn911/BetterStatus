@@ -71,4 +71,13 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'Build BetterDiscord plugin [skip ci]'
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+          for attempt in 1 2 3 4; do
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            echo "${GITHUB_REF_NAME} moved while publishing the BetterDiscord bundle; rebasing and retrying ($attempt/4)..."
+            git fetch origin "${GITHUB_REF_NAME}"
+            git rebase "origin/${GITHUB_REF_NAME}"
+          done
+          exit 1
