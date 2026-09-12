@@ -5,7 +5,7 @@
  * @version 1.0.0-bd
  * @website https://github.com/Jacksonnn911/BetterStatus
  * @source https://github.com/Jacksonnn911/BetterStatus
- * @build a4bf94f7d0ba3ccd8485a1a1708ed686c974d5c4
+ * @build e59bafbe62b6aae3e17aa075d37110f21a12676d
  * @channel betterdiscord-port
  */
 var __create = Object.create;
@@ -3787,7 +3787,7 @@ var G = globalThis;
 var Bd = G.BdApi;
 var api = new Bd("BetterStatus");
 var REPOSITORY = "Jacksonnn911/BetterStatus";
-var COMMIT = true ? "a4bf94f7d0ba3ccd8485a1a1708ed686c974d5c4" : "development";
+var COMMIT = true ? "e59bafbe62b6aae3e17aa075d37110f21a12676d" : "development";
 var BUILD_CHANNEL = true ? "betterdiscord-port" : "betterdiscord-port";
 var AAD = new TextEncoder().encode("BetterStatus encrypted sync document v1");
 var VAULT_AAD = new TextEncoder().encode("BetterStatus BetterDiscord secure sessions v1");
@@ -4481,15 +4481,19 @@ function Link(props) {
 function FormSwitch({ title, note, value, onChange, disabled }) {
   const Switch = Bd2.Components.SwitchInput;
   return React2.createElement(
-    "label",
+    "div",
     { className: "vc-form-switch-wrapper" },
     React2.createElement(
-      "div",
-      { className: "vc-form-switch-text" },
-      React2.createElement("div", { className: "vc-form-switch-title" }, title),
-      note ? React2.createElement("div", { className: "vc-form-switch-note" }, note) : null
-    ),
-    React2.createElement(Switch, { value: Boolean(value), disabled, onChange })
+      "label",
+      { className: "vc-form-switch" },
+      React2.createElement(
+        "div",
+        { className: "vc-form-switch-text" },
+        React2.createElement("div", { className: "vc-form-switch-title" }, title),
+        note ? React2.createElement("div", { className: "vc-form-switch-note" }, note) : null
+      ),
+      React2.createElement(Switch, { value: Boolean(value), disabled, onChange })
+    )
   );
 }
 var BdButton = Bd2.Components.Button;
@@ -4502,7 +4506,7 @@ Button.Looks = BdButton.Looks;
 Button.Sizes = BdButton.Sizes;
 var TextInput = Bd2.Components.TextInput;
 function Select(props) {
-  const { options = [], select, serialize, isSelected, hideBorder, ...rest } = props;
+  const { options = [], select, serialize, isSelected, hideBorder, closeOnSelect, ...rest } = props;
   let value = props.value;
   if (isSelected) value = options.find((option) => isSelected(option.value))?.value;
   if (value === void 0) value = options.find((option) => option.default)?.value ?? options[0]?.value;
@@ -4515,6 +4519,9 @@ function Select(props) {
   });
 }
 var Forms = {
+  FormTitle({ children, className = "" }) {
+    return React2.createElement("h5", { className: `vc-form-title ${className}` }, children);
+  },
   FormText({ children, className = "" }) {
     return React2.createElement("div", { className: `vc-form-text ${className}` }, children);
   }
@@ -4548,7 +4555,7 @@ function ConfirmModal(props) {
       await props.onConfirm?.(setError);
       props.onClose?.();
     } catch (failure) {
-      if (!error) setError(failure?.message || String(failure));
+      setError((current) => current || failure?.message || String(failure));
     }
   };
   return React2.createElement(
@@ -4597,6 +4604,7 @@ function OAuth2AuthorizeModal(props) {
   );
 }
 function openPluginModal() {
+  G2.__BETTERSTATUS_OPEN_SETTINGS__?.();
 }
 var compat_default = React2;
 
