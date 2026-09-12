@@ -22,26 +22,36 @@ BetterStatus has two maintained editions from the same feature source. The norma
 
 | Edition | Install | Updates |
 | --- | --- | --- |
-| **Vencord** | Source userplugin, built into Vencord | `prod` / `dev` Vencord update channels |
-| **BetterDiscord** | One `BetterStatus.plugin.js` file | `prod` / `dev` BetterDiscord builds |
+| **Vencord** | One-command source installer | `prod` / `dev` Vencord update channels |
+| **BetterDiscord** | One-command plugin installer | `prod` / `dev` BetterDiscord builds |
 
 > BetterStatus is a third-party plugin and is not supported by the official Vencord or BetterDiscord support teams.
 
 ## BetterDiscord installation
 
-1. Install Discord from the official Discord website.
-2. Install BetterDiscord.
-3. Download **[`BetterStatus.plugin.js`](https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/prod/betterdiscord/BetterStatus.plugin.js)**.
-4. Put it in the BetterDiscord plugins folder.
-5. Open **Discord Settings → BetterDiscord → Plugins** and enable **BetterStatus**.
+No manual downloading or copying into `%appdata%` is required.
 
-On Windows the plugins folder is normally:
+### Windows
 
-```text
-%appdata%\BetterDiscord\plugins
+Open **PowerShell**, paste this command, and press Enter:
+
+```powershell
+irm https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/prod/install-betterdiscord.ps1 | iex
 ```
 
-The BetterDiscord build is generated automatically from the same BetterStatus source whenever `prod` or `dev` changes. Do not install the Vencord userplugin files into BetterDiscord manually; use the generated `.plugin.js` file above.
+### macOS & Linux
+
+Open **Terminal**, paste this command, and press Enter:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/prod/install-betterdiscord.sh | bash
+```
+
+The installer finds BetterDiscord's plugins directory, downloads the current production `BetterStatus.plugin.js`, validates the build, safely replaces an older BetterStatus installation, and leaves your BetterStatus settings/data intact. You can rerun the exact same command at any time to repair or reinstall the plugin.
+
+After installation, open **Discord Settings → BetterDiscord → Plugins** and enable **BetterStatus**. If Discord was already open and BetterStatus does not appear immediately, reload Discord once.
+
+For a manual fallback, download **[`BetterStatus.plugin.js`](https://raw.githubusercontent.com/Jacksonnn911/BetterStatus/prod/betterdiscord/BetterStatus.plugin.js)** and place it in BetterDiscord's plugins folder.
 
 ## Vencord installation
 
@@ -113,17 +123,20 @@ dev/betterdiscord/BetterStatus.plugin.js
 
 The updater downloads only the BetterDiscord bundle, validates that it is a BetterStatus plugin, replaces the installed `BetterStatus.plugin.js` and asks Discord to restart when required.
 
+The one-command installers default to Production. Advanced users can set the `BETTERSTATUS_CHANNEL` environment variable to `dev` before running an installer to install the Development build directly.
+
 The two update systems are intentionally separate. This prevents the BetterDiscord client from trying to fetch Vencord source files or a Vencord client from trying to install a BetterDiscord bundle.
 
 ## Project layout
 
 ```text
-src/                         Shared BetterStatus feature source / Vencord userplugin
-betterdiscord/src/           BetterDiscord compatibility and native adapters
-betterdiscord/build.mjs      BetterDiscord bundler
-betterdiscord/BetterStatus.plugin.js
-server/                      Optional BetterStatus sync server
-install.sh / install.ps1     Guided Vencord installers
+src/                                      Shared BetterStatus feature source / Vencord userplugin
+betterdiscord/src/                        BetterDiscord compatibility and native adapters
+betterdiscord/build.mjs                   BetterDiscord bundler
+betterdiscord/BetterStatus.plugin.js      Generated BetterDiscord plugin
+install.sh / install.ps1                  Guided Vencord installers
+install-betterdiscord.sh / .ps1           One-command BetterDiscord installers
+server/                                   Optional BetterStatus sync server
 ```
 
 The generated BetterDiscord plugin is committed by GitHub Actions so users always have a stable raw download URL and the in-plugin updater can use the same channel files.
@@ -155,7 +168,7 @@ Self-hosting and protocol information are in [`server/README.md`](server/README.
 
 ## Troubleshooting
 
-**BetterDiscord does not show the plugin:** make sure the filename ends exactly in `.plugin.js`, not `.plugin.js.txt`, and place it in the BetterDiscord plugins folder.
+**BetterDiscord does not show the plugin:** rerun the BetterDiscord one-command installer first. If Discord was already running, reload it once. As a manual fallback, make sure the filename ends exactly in `.plugin.js`, not `.plugin.js.txt`.
 
 **BetterStatus settings fail to open:** update to the latest `prod` BetterDiscord build first. The BetterDiscord compatibility layer is shipped inside the plugin; Vencord itself is not required.
 
