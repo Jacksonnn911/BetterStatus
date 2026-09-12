@@ -46,11 +46,21 @@ jobs:
           grep -q 'inputEventRegister' betterdiscord/BetterStatus.plugin.js
           grep -q 'raw.githubusercontent.com' betterdiscord/BetterStatus.plugin.js
 
+      - name: Validate one-command installers
+        run: |
+          bash -n install-betterdiscord.sh
+          grep -q 'BetterStatus.plugin.js' install-betterdiscord.sh
+          grep -q 'BetterStatus.plugin.js' install-betterdiscord.ps1
+          pwsh -NoProfile -Command '$tokens = $null; $errors = $null; [System.Management.Automation.Language.Parser]::ParseFile("install-betterdiscord.ps1", [ref]$tokens, [ref]$errors) > $null; if ($errors.Count) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }'
+
       - name: Upload BetterDiscord artifact
         uses: actions/upload-artifact@v4
         with:
           name: BetterStatus-BetterDiscord-${{ github.ref_name }}
-          path: betterdiscord/BetterStatus.plugin.js
+          path: |
+            betterdiscord/BetterStatus.plugin.js
+            install-betterdiscord.ps1
+            install-betterdiscord.sh
 
       - name: Publish generated plugin to channel branch
         run: |
@@ -61,4 +71,13 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'Build BetterDiscord plugin [skip ci]'
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+          for attempt in 1 2 3 4; do
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            echo "${GITHUB_REF_NAME} moved while publishing the BetterDiscord bundle; rebasing and retrying ($attempt/4)..."
+            git fetch origin "${GITHUB_REF_NAME}"
+            git rebase "origin/${GITHUB_REF_NAME}"
+          done
+          exit 1
