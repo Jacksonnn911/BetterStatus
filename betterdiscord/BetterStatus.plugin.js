@@ -5,7 +5,7 @@
  * @version 1.0.0-bd
  * @website https://github.com/Jacksonnn911/BetterStatus
  * @source https://github.com/Jacksonnn911/BetterStatus
- * @build 82cbce68253e65d6f2ee47f8afadc0e182936caf
+ * @build 7fd11ba13bf6c64e059da029761ee740d87a6d4b
  * @channel betterdiscord-port
  */
 var __create = Object.create;
@@ -3787,7 +3787,7 @@ var G = globalThis;
 var Bd = G.BdApi;
 var api = new Bd("BetterStatus");
 var REPOSITORY = "Jacksonnn911/BetterStatus";
-var COMMIT = true ? "82cbce68253e65d6f2ee47f8afadc0e182936caf" : "development";
+var COMMIT = true ? "7fd11ba13bf6c64e059da029761ee740d87a6d4b" : "development";
 var BUILD_CHANNEL = true ? "betterdiscord-port" : "betterdiscord-port";
 var AAD = new TextEncoder().encode("BetterStatus encrypted sync document v1");
 var VAULT_AAD = new TextEncoder().encode("BetterStatus BetterDiscord secure sessions v1");
