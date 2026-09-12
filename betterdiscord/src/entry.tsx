@@ -3,6 +3,7 @@ import BetterStatusPlugin from "../../src/index";
 import { React } from "./ui";
 import Native from "./native";
 import Updater from "./updater";
+import installWindowsHotkeys from "./windowsHotkeys";
 
 const G = globalThis as any;
 const api = new G.BdApi("BetterStatus");
@@ -23,8 +24,9 @@ export default class BetterStatusBetterDiscord {
     G.VencordNative.pluginHelpers ??= {};
 
     Object.assign(Native, Updater);
-    G.VencordNative.pluginHelpers.BetterStatus = Native;
     Native.attachRuntime(BetterStatusPlugin);
+    installWindowsHotkeys(Native, BetterStatusPlugin, api);
+    G.VencordNative.pluginHelpers.BetterStatus = Native;
 
     const css = `${G.__BETTERSTATUS_COMPAT_CSS__ || ""}\n${G.__BETTERSTATUS_SOURCE_CSS__ || ""}`;
     if (css.trim()) api.DOM.addStyle(css);
