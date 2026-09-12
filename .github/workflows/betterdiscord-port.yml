@@ -1,0 +1,61 @@
+name: Build BetterDiscord port
+
+on:
+  push:
+    branches:
+      - betterdiscord-port
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: betterdiscord-port-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: ${{ !contains(github.event.head_commit.message || '', '[skip bd build]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out BetterStatus
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install BetterDiscord build dependencies
+        run: npm install --no-save --no-package-lock esbuild@0.25.9 scrypt-js@3.0.1
+
+      - name: Bundle original BetterStatus source for BetterDiscord
+        run: node betterdiscord/build.mjs
+        env:
+          BETTERSTATUS_COMMIT: ${{ github.sha }}
+          BETTERSTATUS_CHANNEL: betterdiscord-port
+
+      - name: Validate generated plugin
+        run: |
+          node --check betterdiscord/BetterStatus.plugin.js
+          grep -q '@name BetterStatus' betterdiscord/BetterStatus.plugin.js
+          grep -q 'bs-settings' betterdiscord/BetterStatus.plugin.js
+          grep -q 'receiveCloudSnapshot' betterdiscord/BetterStatus.plugin.js
+          grep -q 'inputEventRegister' betterdiscord/BetterStatus.plugin.js
+
+      - name: Upload test plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: BetterStatus-BetterDiscord
+          path: betterdiscord/BetterStatus.plugin.js
+
+      - name: Commit generated plugin
+        run: |
+          git add betterdiscord/BetterStatus.plugin.js
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Build BetterDiscord plugin [skip bd build]'
+          git push origin HEAD:betterdiscord-port
