@@ -20,9 +20,7 @@ export const OptionType = Object.freeze({ CUSTOM: "CUSTOM", COMPONENT: "COMPONEN
 export type PluginNative<T> = T;
 export type RenderModalProps = Record<string, any>;
 
-export function definePlugin<T>(plugin: T): T {
-  return plugin;
-}
+export function definePlugin<T>(plugin: T): T { return plugin; }
 
 function clone<T>(value: T): T {
   if (value === undefined) return value;
@@ -34,7 +32,6 @@ let sharedSettingsStore: any;
 
 export function definePluginSettings(definitions: Record<string, any>) {
   if (sharedSettingsStore) return sharedSettingsStore;
-
   const defaults: Record<string, any> = {};
   for (const [key, definition] of Object.entries(definitions)) {
     if (Object.prototype.hasOwnProperty.call(definition, "default")) defaults[key] = clone((definition as any).default);
@@ -93,9 +90,7 @@ export function definePluginSettings(definitions: Record<string, any>) {
   return settings;
 }
 
-export function migratePluginSettings() {
-  // The BetterDiscord adapter stores the exact same logical fields under BetterStatus/settings.
-}
+export function migratePluginSettings() {}
 
 function userSettingsModules() {
   const store = Bd.Webpack.getStore("UserSettingsProtoStore");
@@ -152,12 +147,14 @@ export function Link(props: any) {
 
 export function FormSwitch({ title, note, value, onChange, disabled }: any) {
   const Switch = Bd.Components.SwitchInput;
-  return React.createElement("label", { className: "vc-form-switch-wrapper" },
-    React.createElement("div", { className: "vc-form-switch-text" },
-      React.createElement("div", { className: "vc-form-switch-title" }, title),
-      note ? React.createElement("div", { className: "vc-form-switch-note" }, note) : null
-    ),
-    React.createElement(Switch, { value: Boolean(value), disabled, onChange })
+  return React.createElement("div", { className: "vc-form-switch-wrapper" },
+    React.createElement("label", { className: "vc-form-switch" },
+      React.createElement("div", { className: "vc-form-switch-text" },
+        React.createElement("div", { className: "vc-form-switch-title" }, title),
+        note ? React.createElement("div", { className: "vc-form-switch-note" }, note) : null
+      ),
+      React.createElement(Switch, { value: Boolean(value), disabled, onChange })
+    )
   );
 }
 
@@ -173,7 +170,7 @@ export function Button({ variant, ...props }: any) {
 export const TextInput = Bd.Components.TextInput;
 
 export function Select(props: any) {
-  const { options = [], select, serialize, isSelected, hideBorder, ...rest } = props;
+  const { options = [], select, serialize, isSelected, hideBorder, closeOnSelect, ...rest } = props;
   let value = props.value;
   if (isSelected) value = options.find((option: any) => isSelected(option.value))?.value;
   if (value === undefined) value = options.find((option: any) => option.default)?.value ?? options[0]?.value;
@@ -187,6 +184,9 @@ export function Select(props: any) {
 }
 
 export const Forms = {
+  FormTitle({ children, className = "" }: any) {
+    return React.createElement("h5", { className: `vc-form-title ${className}` }, children);
+  },
   FormText({ children, className = "" }: any) {
     return React.createElement("div", { className: `vc-form-text ${className}` }, children);
   }
@@ -224,7 +224,7 @@ export function ConfirmModal(props: any) {
       await props.onConfirm?.(setError);
       props.onClose?.();
     } catch (failure: any) {
-      if (!error) setError(failure?.message || String(failure));
+      setError((current: string) => current || failure?.message || String(failure));
     }
   };
   return React.createElement("div", { className: "bs-bd-fallback-modal" },
@@ -267,8 +267,7 @@ export function OAuth2AuthorizeModal(props: any) {
 }
 
 export function openPluginModal() {
-  // BetterDiscord does not currently expose its internal addon-settings modal through BdApi.
-  // Settings themselves remain identical; after an updater restart the user can reopen the BetterStatus cog.
+  G.__BETTERSTATUS_OPEN_SETTINGS__?.();
 }
 
 export default React;
