@@ -55,7 +55,13 @@ jobs:
       - name: Build CLI for Intel and Apple Silicon
         working-directory: Installer
         run: |
-          cp ../betterStatus/scripts/vencord_cli_darwin_compat.go .
+          # Older Vencord Installer revisions did not provide ParseDiscordNew on
+          # macOS, so BetterStatus carried a compatibility implementation. Newer
+          # upstream revisions provide it themselves; only copy the shim when it
+          # is actually missing to avoid a duplicate-symbol build failure.
+          if ! grep -R --include='*.go' -q '^func ParseDiscordNew' .; then
+            cp ../betterStatus/scripts/vencord_cli_darwin_compat.go .
+          fi
           CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -tags cli -o ../vencord-installer-cli-macos-x64 .
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -tags cli -o ../vencord-installer-cli-macos-arm64 .
 
